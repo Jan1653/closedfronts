@@ -18,6 +18,7 @@ import {
   UnitType,
 } from "../../core/game/Game";
 import { TileRef } from "../../core/game/GameMap";
+import { WATER_TOLL_STATION_RADIUS } from "../../core/game/TollStationUtils";
 import { UserSettings } from "../../core/game/UserSettings";
 import { Controller } from "../Controller";
 import {
@@ -444,6 +445,9 @@ export class BuildPreviewController implements Controller {
         break;
       case UnitType.DefensePost:
         rangeRadius = this.game.config().defensePostRange();
+        break;
+      case UnitType.WaterTollStation:
+        rangeRadius = WATER_TOLL_STATION_RADIUS;
         break;
     }
     let radiusTileX = this.game.x(tileRef);
