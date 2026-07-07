@@ -29,6 +29,7 @@ export const UT_FACTORY = "Factory" as const;
 export const UT_DEFENSE_POST = "Defense Post" as const;
 export const UT_SAM_LAUNCHER = "SAM Launcher" as const;
 export const UT_MISSILE_SILO = "Missile Silo" as const;
+export const UT_WATER_TOLL_STATION = "Water Toll Station" as const;
 
 // ---------------------------------------------------------------------------
 // Derived sets
@@ -41,6 +42,7 @@ export const STRUCTURE_TYPES: ReadonlySet<string> = new Set([
   UT_DEFENSE_POST,
   UT_SAM_LAUNCHER,
   UT_MISSILE_SILO,
+  UT_WATER_TOLL_STATION,
 ]);
 
 export const NUKE_TYPES: ReadonlySet<string> = new Set([
@@ -90,4 +92,5 @@ export const ALL_UNIT_TYPES = [
   UT_SAM_LAUNCHER,
   UT_MISSILE_SILO,
   UT_TRAIN,
+  UT_WATER_TOLL_STATION,
 ] as const;

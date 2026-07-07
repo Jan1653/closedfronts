@@ -22,6 +22,7 @@ import {
   UT_MISSILE_SILO,
   UT_PORT,
   UT_SAM_LAUNCHER,
+  UT_WATER_TOLL_STATION,
 } from "../../types";
 import { DynamicInstanceBuffer } from "../DynamicBuffer";
 import type { RenderSettings } from "../RenderSettings";
@@ -148,6 +149,14 @@ export class StructurePass {
       if (col >= 0) {
         this.typeToAtlasCol.set(header.unitTypes[i], col);
       }
+    }
+
+    // The water toll station has no dedicated atlas icon yet, so render it with
+    // the port icon as a placeholder (a dedicated icon needs the icon atlas
+    // regenerated with an extra column).
+    const portCol = this.typeToAtlasCol.get(UT_PORT);
+    if (portCol !== undefined) {
+      this.typeToAtlasCol.set(UT_WATER_TOLL_STATION, portCol);
     }
 
     // Compile shaders

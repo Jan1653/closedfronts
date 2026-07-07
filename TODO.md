@@ -14,7 +14,8 @@ Querschnittsregel für ALLES: **muss auch auf der Handy-/Mobile-UI funktionieren
 - [x] Core-Tests (Platzierung positiv/negativ, Kapern)
 - [x] **Client:** Build-Menü-Eintrag (Icon + Beschriftung)
 - [x] **Client:** Radius-Vorschau beim Platzieren (man sieht den Umkreis)
-- [ ] **Client:** Rendering der Station + der zwei „Straßen"-Verbindungen zu den Landmassen
+- [x] **Client:** Station auf der Karte sichtbar (vorerst Port-Platzhalter-Icon; eigenes Icon braucht Atlas-Neugenerierung)
+- [ ] **Client:** die zwei „Straßen"-Verbindungslinien zu den Landmassen zeichnen
 - [ ] **Sea-Build (neu):** im Meer erst platzierbar, nachdem ein **Truppen-Transportschiff** (kein Handelsschiff) hinfährt und baut; es darf währenddessen **nicht abgeschossen** werden, sonst kein Bau
 - [x] **Phase 2a – Maut kassieren:** **Feinde & Neutrale** zahlen beim Durchfahren einmalig Gold an den Besitzer; eigene/verbündete Boote frei; gilt für **Transport- UND Handelsschiffe** (getestet)
 - [ ] **Phase 2b – Umgehung:** Boote umfahren die Station im Pathfinding, außer es ist der einzige Weg (Aufpreis-Ebene im Wasser-A\*)
