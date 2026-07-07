@@ -16,7 +16,8 @@ Querschnittsregel für ALLES: **muss auch auf der Handy-/Mobile-UI funktionieren
 - [x] **Client:** Radius-Vorschau beim Platzieren (man sieht den Umkreis)
 - [ ] **Client:** Rendering der Station + der zwei „Straßen"-Verbindungen zu den Landmassen
 - [ ] **Sea-Build (neu):** im Meer erst platzierbar, nachdem ein **Truppen-Transportschiff** (kein Handelsschiff) hinfährt und baut; es darf währenddessen **nicht abgeschossen** werden, sonst kein Bau
-- [ ] **Phase 2 – Maut:** Gold-Maut im Boot-Pathfinding; Boote umfahren die Station, außer es ist der einzige Weg; **Feinde & Neutrale** zahlen Gold an den Besitzer; gilt für **Transport- UND Handelsschiffe**
+- [x] **Phase 2a – Maut kassieren:** **Feinde & Neutrale** zahlen beim Durchfahren einmalig Gold an den Besitzer; eigene/verbündete Boote frei; gilt für **Transport- UND Handelsschiffe** (getestet)
+- [ ] **Phase 2b – Umgehung:** Boote umfahren die Station im Pathfinding, außer es ist der einzige Weg (Aufpreis-Ebene im Wasser-A\*)
 - [ ] **Phase 3 – Verkettung:** neue Station an bestehende anhängen (Einweg-Verbindung), so über längere Strecken bauen
 - [ ] Mobile-UI geprüft
 

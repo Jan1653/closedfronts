@@ -112,4 +112,36 @@ describe("WaterTollStation", () => {
 
     expect(station.owner()).toBe(p2);
   });
+
+  test("charges an enemy boat a gold toll when passing through", () => {
+    const strait = findStraitTile();
+    expect(strait).not.toBeNull();
+    const station = p1.buildUnit(UnitType.WaterTollStation, strait!, {});
+    game.addExecution(new WaterTollStationExecution(station));
+
+    const gate = game.neighbors(strait!).find((n) => game.isWater(n));
+    expect(gate).toBeDefined();
+    p2.buildUnit(UnitType.TransportShip, gate!, {});
+
+    const p2Before = p2.gold();
+    const p1Before = p1.gold();
+    executeTicks(game, 5);
+
+    // p2 paid; the station owner p1 received exactly what p2 lost.
+    expect(p2.gold()).toBeLessThan(p2Before);
+    expect(p1.gold() - p1Before).toBe(p2Before - p2.gold());
+  });
+
+  test("does not toll the station owner's own boats", () => {
+    const strait = findStraitTile();
+    const station = p1.buildUnit(UnitType.WaterTollStation, strait!, {});
+    game.addExecution(new WaterTollStationExecution(station));
+
+    const gate = game.neighbors(strait!).find((n) => game.isWater(n));
+    p1.buildUnit(UnitType.TransportShip, gate!, {});
+
+    const p1Before = p1.gold();
+    executeTicks(game, 1);
+    expect(p1.gold()).toBe(p1Before);
+  });
 });
