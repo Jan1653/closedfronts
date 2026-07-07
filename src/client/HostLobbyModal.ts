@@ -1,0 +1,1416 @@
+import { html, nothing } from "lit";
+import { customElement, property, state } from "lit/decorators.js";
+import { ClientEnv } from "src/client/ClientEnv";
+import {
+  calculateServerTimeOffset,
+  getSecondsUntilServerTimestamp,
+  renderDuration,
+  showToast,
+  translateText,
+} from "../client/Utils";
+import { hasActiveSubscription } from "../core/ApiSchemas";
+import { GameEnv } from "../core/configuration/Config";
+import { EventBus } from "../core/EventBus";
+import { DoomsdayClockSpeed } from "../core/game/DoomsdayClock";
+import {
+  Difficulty,
+  GameMapSize,
+  GameMapType,
+  GameMode,
+  UnitType,
+} from "../core/game/Game";
+import { UserSettings } from "../core/game/UserSettings";
+import {
+  ClientInfo,
+  GameConfig,
+  GameInfo,
+  LobbyInfoEvent,
+  TeamCountConfig,
+  isValidGameID,
+} from "../core/Schemas";
+import { getUserMe, setLobbyListed } from "./Api";
+import { getPlayToken } from "./Auth";
+import "./components/baseComponents/Modal";
+import { BaseModal } from "./components/BaseModal";
+import "./components/ConfirmDialog";
+import { CopyButton } from "./components/CopyButton";
+import "./components/GameConfigSettings";
+import "./components/InputCard";
+import "./components/LobbyPlayerView";
+import "./components/ToggleInputCard";
+import { modalHeader } from "./components/ui/ModalHeader";
+import { crazyGamesSDK } from "./CrazyGamesSDK";
+import { JoinLobbyEvent } from "./Main";
+import { terrainMapFileLoader } from "./TerrainMapFileLoader";
+import {
+  getBotsForCompactMap,
+  getNationsForCompactMap,
+  getRandomMapType,
+  getUpdatedDisabledUnits,
+  parseBoundedFloatFromInput,
+  parseBoundedIntegerFromInput,
+  preventDisallowedKeys,
+  sliderToNationsConfig,
+  toOptionalNumber,
+} from "./utilities/GameConfigHelpers";
+
+@customElement("host-lobby-modal")
+export class HostLobbyModal extends BaseModal {
+  @state() private selectedMap: GameMapType = GameMapType.World;
+  @state() private selectedDifficulty: Difficulty = Difficulty.Easy;
+  @state() private nations: number = 0;
+  @state() private defaultNationCount: number = 0;
+  @state() private gameMode: GameMode = GameMode.FFA;
+  @state() private teamCount: TeamCountConfig = 2;
+
+  constructor() {
+    super();
+    this.id = "page-host-lobby";
+  }
+  @state() private bots: number = 400;
+  @state() private spawnImmunity: boolean = false;
+  @state() private spawnImmunityDurationMinutes: number | undefined = undefined;
+  @state() private infiniteGold: boolean = false;
+  @state() private donateGold: boolean = false;
+  @state() private infiniteTroops: boolean = false;
+  @state() private donateTroops: boolean = false;
+  @state() private maxTimer: boolean = false;
+  @state() private maxTimerValue: number | undefined = undefined;
+  @state() private startDelayValue: number | undefined = 3;
+  @state() private instantBuild: boolean = false;
+  @state() private randomSpawn: boolean = false;
+  @state() private compactMap: boolean = false;
+  @state() private goldMultiplier: boolean = false;
+  @state() private goldMultiplierValue: number | undefined = undefined;
+  @state() private startingGold: boolean = false;
+  @state() private startingGoldValue: number | undefined = undefined;
+  @state() private disableAlliances: boolean = false;
+  @state() private doomsdayClock: boolean = false;
+  @state() private doomsdayClockSpeed: DoomsdayClockSpeed = "normal";
+  @state() private anonymizeNames: boolean = false;
+  @state() private nameReveals: string[] = [];
+  @state() private whitelistEnabled: boolean = false;
+  @state() private allowedPublicIds: string = "";
+  @state() private waterNukes: boolean = false;
+  @state() private lobbyId = "";
+  @state() private lobbyUrlSuffix = "";
+  @state() private clients: ClientInfo[] = [];
+  @state() private useRandomMap: boolean = false;
+  @state() private disabledUnits: UnitType[] = [];
+  @state() private hostCheatsEnabled: boolean = false;
+  @state() private hostCheatInfiniteGold: boolean = false;
+  @state() private hostCheatInfiniteTroops: boolean = false;
+  @state() private hostCheatGoldMultiplier: boolean = false;
+  @state() private hostCheatGoldMultiplierValue: number | undefined = undefined;
+  @state() private hostCheatStartingGold: boolean = false;
+  @state() private hostCheatStartingGoldValue: number | undefined = undefined;
+  @state() private lobbyCreatorClientID: string = "";
+  @state() private lobbyStartAt: number | null = null;
+  @state() private serverTimeOffset: number = 0;
+  // Whether this user may actually make the lobby public (subscribers, or
+  // anyone in dev). The toggle itself is always shown.
+  @state() private canListPublicly: boolean = false;
+  @state() private publiclyListed: boolean = false;
+  @state() private showSubscriptionRequired: boolean = false;
+  // Server timestamp when the listed lobby auto-starts (from lobby info).
+  @state() private autoStartAt: number | null = null;
+
+  @property({ attribute: false }) eventBus: EventBus | null = null;
+  // Timers for debouncing slider changes
+  private botsUpdateTimer: number | null = null;
+  private nationsUpdateTimer: number | null = null;
+  private mapLoader = terrainMapFileLoader;
+  private userSettings = new UserSettings();
+
+  private leaveLobbyOnClose = true;
+
+  // Guards against overlapping listing requests: rapid Public/Private clicks
+  // could otherwise be applied out of order by the server, leaving the UI
+  // showing the opposite of the real listed state.
+  private listingRequestInFlight = false;
+
+  private readonly handleLobbyInfo = (event: LobbyInfoEvent) => {
+    const lobby = event.lobby;
+    if (!this.lobbyId || lobby.gameID !== this.lobbyId) {
+      return;
+    }
+    if ("serverTime" in lobby && typeof lobby.serverTime === "number") {
+      this.serverTimeOffset = calculateServerTimeOffset(lobby.serverTime);
+    }
+    this.lobbyStartAt = lobby.startsAt ?? null;
+    this.lobbyCreatorClientID = lobby.lobbyCreatorClientID ?? "";
+    if (lobby.clients) {
+      this.clients = lobby.clients;
+    }
+    // The server can delist on its own (join whitelist enabled, duplicate
+    // creator resolved by the master); follow its state unless our own
+    // toggle request is mid-flight.
+    if (!this.listingRequestInFlight && lobby.listed !== undefined) {
+      this.publiclyListed = lobby.listed;
+    }
+    this.autoStartAt = lobby.autoStartAt ?? null;
+  };
+
+  private getRandomString(): string {
+    const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+    return Array.from(
+      { length: 5 },
+      () => chars[Math.floor(Math.random() * chars.length)],
+    ).join("");
+  }
+
+  private async buildLobbyUrl(): Promise<string> {
+    if (crazyGamesSDK.isOnCrazyGames()) {
+      const link = crazyGamesSDK.createInviteLink(this.lobbyId);
+      if (link !== null) {
+        return link;
+      }
+    }
+    return `${window.location.origin}/${ClientEnv.workerPath(this.lobbyId)}/game/${this.lobbyId}?lobby&s=${encodeURIComponent(this.lobbyUrlSuffix)}`;
+  }
+
+  private async constructUrl(): Promise<string> {
+    this.lobbyUrlSuffix = this.getRandomString();
+    return await this.buildLobbyUrl();
+  }
+
+  private updateHistory(url: string): void {
+    if (crazyGamesSDK.isOnCrazyGames()) {
+      return;
+    }
+    history.replaceState(null, "", url);
+  }
+
+  private updateLobbyHistory(lobbyUrl: string): void {
+    if (crazyGamesSDK.isOnCrazyGames()) {
+      return;
+    }
+    const lobbyIdHidden = !this.userSettings.lobbyIdVisibility();
+    history.replaceState(null, "", lobbyIdHidden ? "/streamer-mode" : lobbyUrl);
+  }
+
+  private startLobbyUpdates() {
+    this.stopLobbyUpdates();
+    if (!this.eventBus) {
+      console.warn(
+        "HostLobbyModal: eventBus not set, cannot subscribe to lobby updates",
+      );
+      return;
+    }
+    this.eventBus.on(LobbyInfoEvent, this.handleLobbyInfo);
+  }
+
+  private stopLobbyUpdates() {
+    this.eventBus?.off(LobbyInfoEvent, this.handleLobbyInfo);
+  }
+
+  protected renderHeaderSlot() {
+    return modalHeader({
+      titleContent: html`
+        <span
+          class="text-white text-xl lg:text-2xl font-bold uppercase tracking-widest break-words hyphens-auto"
+        >
+          ${translateText("host_modal.title")}
+        </span>
+        ${this.renderVisibilityToggle()}
+      `,
+      onBack: () => {
+        this.leaveLobbyOnClose = true;
+        this.close();
+      },
+      ariaLabel: translateText("common.back"),
+      rightContent: html`
+        <copy-button
+          .lobbyId=${this.lobbyId}
+          .lobbySuffix=${this.lobbyUrlSuffix}
+          include-lobby-query
+        ></copy-button>
+      `,
+    });
+  }
+
+  // Private/Public segmented toggle in the header. Shown to everyone;
+  // non-subscribers get a subscription-required dialog instead of a listing
+  // request (the server re-checks the subscription regardless).
+  private renderVisibilityToggle() {
+    const segment = (labelKey: string, isPublic: boolean) => html`
+      <button
+        class="px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-full transition-all ${this
+          .publiclyListed === isPublic
+          ? "bg-malibu-blue text-white"
+          : "text-white/50 hover:text-white"}"
+        @click=${() => this.handleVisibilitySelect(isPublic)}
+      >
+        ${translateText(labelKey)}
+      </button>
+    `;
+    return html`
+      <div
+        class="flex items-center rounded-full border border-white/10 bg-white/5 p-0.5 shrink-0"
+      >
+        ${segment("host_modal.visibility_private", false)}
+        ${segment("host_modal.visibility_public", true)}
+      </div>
+      ${this.renderAutoStartTimer()}
+    `;
+  }
+
+  // Countdown until the listed lobby starts automatically (hosts can't sit
+  // on a public listing). Hidden once the real start countdown is running —
+  // the Start button shows that one.
+  private renderAutoStartTimer() {
+    if (
+      !this.publiclyListed ||
+      this.autoStartAt === null ||
+      this.lobbyStartAt !== null
+    ) {
+      return nothing;
+    }
+    const seconds = getSecondsUntilServerTimestamp(
+      this.autoStartAt,
+      this.serverTimeOffset,
+    );
+    return html`<span
+      class="text-amber-300 text-xs font-bold tabular-nums shrink-0"
+      title=${translateText("host_modal.auto_start_timer")}
+      >${renderDuration(seconds)}</span
+    >`;
+  }
+
+  private handleVisibilitySelect(isPublic: boolean) {
+    if (
+      this.listingRequestInFlight ||
+      isPublic === this.publiclyListed ||
+      !this.lobbyId
+    ) {
+      return;
+    }
+    if (isPublic && !this.canListPublicly) {
+      this.showSubscriptionRequired = true;
+      return;
+    }
+    void this.handlePublicListingToggle(isPublic);
+  }
+
+  protected renderBody() {
+    const secondsRemaining =
+      this.lobbyStartAt !== null
+        ? getSecondsUntilServerTimestamp(
+            this.lobbyStartAt,
+            this.serverTimeOffset,
+          )
+        : null;
+    const statusLabel =
+      secondsRemaining === null
+        ? this.clients.length === 1
+          ? translateText("host_modal.waiting")
+          : translateText("host_modal.start")
+        : translateText("host_modal.starting_in", {
+            time: renderDuration(secondsRemaining),
+          });
+
+    const inputCards = [
+      html`<toggle-input-card
+        .labelKey=${"host_modal.max_timer"}
+        .checked=${this.maxTimer}
+        .inputMin=${1}
+        .inputMax=${120}
+        .inputValue=${this.maxTimerValue}
+        .inputAriaLabel=${translateText("host_modal.max_timer")}
+        .inputPlaceholder=${translateText("host_modal.mins_placeholder")}
+        .defaultInputValue=${30}
+        .minValidOnEnable=${1}
+        .onToggle=${this.handleMaxTimerToggle}
+        .onInput=${this.handleMaxTimerValueChanges}
+        .onKeyDown=${this.handleMaxTimerValueKeyDown}
+      ></toggle-input-card>`,
+      html`<input-card
+        .labelKey=${"host_modal.start_delay"}
+        .inputId=${"start-delay-value"}
+        .inputMin=${0}
+        .inputMax=${600}
+        .inputStep=${"1"}
+        .inputValue=${this.startDelayValue}
+        .inputAriaLabel=${translateText("host_modal.start_delay")}
+        .inputPlaceholder=${translateText("host_modal.start_delay_placeholder")}
+        .defaultInputValue=${3}
+        .onChange=${this.handleStartDelayValueChanges}
+        .onKeyDown=${this.handleStartDelayValueKeyDown}
+      ></input-card>`,
+      html`<toggle-input-card
+        .labelKey=${"host_modal.player_immunity_duration"}
+        .checked=${this.spawnImmunity}
+        .inputMin=${0}
+        .inputMax=${120}
+        .inputStep=${1}
+        .inputValue=${this.spawnImmunityDurationMinutes}
+        .inputAriaLabel=${translateText("host_modal.player_immunity_duration")}
+        .inputPlaceholder=${translateText("host_modal.mins_placeholder")}
+        .defaultInputValue=${5}
+        .minValidOnEnable=${0}
+        .onToggle=${this.handleSpawnImmunityToggle}
+        .onInput=${this.handleSpawnImmunityDurationInput}
+        .onKeyDown=${this.handleSpawnImmunityDurationKeyDown}
+      ></toggle-input-card>`,
+      html`<toggle-input-card
+        .labelKey=${"host_modal.gold_multiplier"}
+        .checked=${this.goldMultiplier}
+        .inputId=${"gold-multiplier-value"}
+        .inputMin=${0.1}
+        .inputMax=${1000}
+        .inputStep=${"any"}
+        .inputValue=${this.goldMultiplierValue}
+        .inputAriaLabel=${translateText("host_modal.gold_multiplier")}
+        .inputPlaceholder=${translateText(
+          "host_modal.gold_multiplier_placeholder",
+        )}
+        .defaultInputValue=${2}
+        .minValidOnEnable=${0.1}
+        .onToggle=${this.handleGoldMultiplierToggle}
+        .onChange=${this.handleGoldMultiplierValueChanges}
+        .onKeyDown=${this.handleGoldMultiplierValueKeyDown}
+      ></toggle-input-card>`,
+      html`<toggle-input-card
+        .labelKey=${"host_modal.starting_gold"}
+        .checked=${this.startingGold}
+        .inputId=${"starting-gold-value"}
+        .inputMin=${0.1}
+        .inputMax=${1000}
+        .inputStep=${"any"}
+        .inputValue=${this.startingGoldValue}
+        .inputAriaLabel=${translateText("host_modal.starting_gold")}
+        .inputPlaceholder=${translateText(
+          "host_modal.starting_gold_placeholder",
+        )}
+        .defaultInputValue=${5}
+        .minValidOnEnable=${0.1}
+        .onToggle=${this.handleStartingGoldToggle}
+        .onChange=${this.handleStartingGoldValueChanges}
+        .onKeyDown=${this.handleStartingGoldValueKeyDown}
+      ></toggle-input-card>`,
+      // A join whitelist and public listing are mutually exclusive (the
+      // server rejects both combinations), so the control disappears while
+      // the lobby is listed.
+      ...(this.publiclyListed
+        ? []
+        : [
+            html`<toggle-input-card
+              .labelKey=${"host_modal.player_whitelist"}
+              .checked=${this.whitelistEnabled}
+              .inputType=${"text"}
+              .inputId=${"allowed-public-ids"}
+              .inputValue=${this.allowedPublicIds}
+              .inputAriaLabel=${translateText("host_modal.player_whitelist")}
+              .inputPlaceholder=${translateText(
+                "host_modal.player_whitelist_placeholder",
+              )}
+              .onToggle=${this.handleWhitelistToggle}
+              .onChange=${this.handleAllowedPublicIdsChange}
+            ></toggle-input-card>`,
+          ]),
+    ];
+
+    const hostCheatInputCards = [
+      html`<toggle-input-card
+        .labelKey=${"host_modal.gold_multiplier"}
+        .checked=${this.hostCheatGoldMultiplier}
+        .inputId=${"host-cheat-gold-multiplier-value"}
+        .inputMin=${0.1}
+        .inputMax=${1000}
+        .inputStep=${"any"}
+        .inputValue=${this.hostCheatGoldMultiplierValue}
+        .inputAriaLabel=${translateText("host_modal.gold_multiplier")}
+        .inputPlaceholder=${translateText(
+          "host_modal.gold_multiplier_placeholder",
+        )}
+        .defaultInputValue=${2}
+        .minValidOnEnable=${0.1}
+        .onToggle=${this.handleHostCheatGoldMultiplierToggle}
+        .onChange=${this.handleHostCheatGoldMultiplierValueChanges}
+        .onKeyDown=${this.handleHostCheatGoldMultiplierValueKeyDown}
+      ></toggle-input-card>`,
+      html`<toggle-input-card
+        .labelKey=${"host_modal.starting_gold"}
+        .checked=${this.hostCheatStartingGold}
+        .inputId=${"host-cheat-starting-gold-value"}
+        .inputMin=${0.1}
+        .inputMax=${1000}
+        .inputStep=${"any"}
+        .inputValue=${this.hostCheatStartingGoldValue}
+        .inputAriaLabel=${translateText("host_modal.starting_gold")}
+        .inputPlaceholder=${translateText(
+          "host_modal.starting_gold_placeholder",
+        )}
+        .defaultInputValue=${5}
+        .minValidOnEnable=${0.1}
+        .onToggle=${this.handleHostCheatStartingGoldToggle}
+        .onChange=${this.handleHostCheatStartingGoldValueChanges}
+        .onKeyDown=${this.handleHostCheatStartingGoldValueKeyDown}
+      ></toggle-input-card>`,
+    ];
+
+    return html`
+      <div class="flex flex-col h-full">
+        <div
+          class="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-6 mr-1 mx-auto w-full max-w-5xl"
+        >
+          <game-config-settings
+            class="block"
+            .sectionGapClass=${"space-y-10"}
+            .settings=${{
+              map: {
+                selected: this.selectedMap,
+                useRandom: this.useRandomMap,
+                randomMapDivider: true,
+              },
+              difficulty: {
+                selected: this.selectedDifficulty,
+                disabled: this.nations === 0,
+              },
+              gameMode: {
+                selected: this.gameMode,
+              },
+              teamCount: {
+                selected: this.teamCount,
+              },
+              options: {
+                titleKey: "host_modal.options_title",
+                bots: {
+                  value: this.bots,
+                  labelKey: "host_modal.bots",
+                  disabledKey: "host_modal.bots_disabled",
+                },
+                nations: {
+                  value: this.nations,
+                  defaultValue: this.defaultNationCount,
+                  labelKey: "host_modal.nations",
+                  disabledKey: "host_modal.nations_disabled",
+                },
+                toggles: [
+                  {
+                    labelKey: "host_modal.instant_build",
+                    checked: this.instantBuild,
+                  },
+                  {
+                    labelKey: "host_modal.random_spawn",
+                    checked: this.randomSpawn,
+                  },
+                  {
+                    labelKey: "host_modal.donate_gold",
+                    checked: this.donateGold,
+                  },
+                  {
+                    labelKey: "host_modal.donate_troops",
+                    checked: this.donateTroops,
+                  },
+                  {
+                    labelKey: "host_modal.infinite_gold",
+                    checked: this.infiniteGold,
+                  },
+                  {
+                    labelKey: "host_modal.infinite_troops",
+                    checked: this.infiniteTroops,
+                  },
+                  {
+                    labelKey: "host_modal.compact_map",
+                    checked: this.compactMap,
+                  },
+                  {
+                    labelKey: "host_modal.disable_alliances",
+                    checked: this.disableAlliances,
+                  },
+                  {
+                    labelKey: "host_modal.anonymous_players",
+                    checked: this.anonymizeNames,
+                  },
+                  {
+                    labelKey: "host_modal.water_nukes",
+                    checked: this.waterNukes,
+                  },
+                  {
+                    labelKey: "host_modal.doomsday_clock",
+                    checked: this.doomsdayClock,
+                    doomsdayClockSpeed: this.doomsdayClockSpeed,
+                  },
+                  // Host cheats and public listing are mutually exclusive
+                  // (the server rejects both combinations), so the controls
+                  // disappear while the lobby is listed.
+                  ...(this.publiclyListed
+                    ? []
+                    : [
+                        {
+                          labelKey: "host_modal.host_cheats",
+                          checked: this.hostCheatsEnabled,
+                        },
+                      ]),
+                ],
+                inputCards,
+              },
+              hostCheats: {
+                titleKey: "host_modal.host_cheats",
+                visible: this.hostCheatsEnabled && !this.publiclyListed,
+                toggles: [
+                  {
+                    labelKey: "host_modal.infinite_gold",
+                    checked: this.hostCheatInfiniteGold,
+                  },
+                  {
+                    labelKey: "host_modal.infinite_troops",
+                    checked: this.hostCheatInfiniteTroops,
+                  },
+                ],
+                inputCards: hostCheatInputCards,
+              },
+              unitTypes: {
+                titleKey: "host_modal.enables_title",
+                disabledUnits: this.disabledUnits,
+              },
+            }}
+            @map-selected=${this.handleConfigMapSelected}
+            @random-map-selected=${this.handleConfigRandomMapSelected}
+            @difficulty-selected=${this.handleConfigDifficultySelected}
+            @doomsday-clock-speed-selected=${this
+              .handleConfigDoomsdayClockSpeedSelected}
+            @game-mode-selected=${this.handleConfigGameModeSelected}
+            @team-count-selected=${this.handleConfigTeamCountSelected}
+            @bots-changed=${this.handleBotsChange}
+            @nations-changed=${this.handleNationsChange}
+            @option-toggle-changed=${this.handleConfigOptionToggleChanged}
+            @host-cheat-toggle-changed=${this
+              .handleConfigHostCheatToggleChanged}
+            @unit-toggle-changed=${this.handleConfigUnitToggleChanged}
+          ></game-config-settings>
+
+          <lobby-player-view
+            class="mt-10"
+            .gameMode=${this.gameMode}
+            .clients=${this.clients}
+            .lobbyCreatorClientID=${this.lobbyCreatorClientID}
+            .currentClientID=${this.lobbyCreatorClientID}
+            .teamCount=${this.teamCount}
+            .nationCount=${this.nations}
+            .onKickPlayer=${this.publiclyListed
+              ? undefined
+              : (clientID: string) => this.kickPlayer(clientID)}
+            .onToggleNameReveal=${(clientID: string) =>
+              this.toggleNameReveal(clientID)}
+            .nameReveals=${this.nameReveals}
+            .anonymizeNames=${this.anonymizeNames}
+          ></lobby-player-view>
+        </div>
+
+        <!-- Player List / footer -->
+        <div class="p-6 pt-4 border-t border-white/10 bg-black/20 shrink-0">
+          <o-button
+            variant=${secondsRemaining !== null ? "warning" : "primary"}
+            width="block"
+            size="lg"
+            .title=${statusLabel}
+            ?disable=${this.lobbyStartAt === null && this.clients.length < 2}
+            @click=${this.toggleGameStartTimer}
+          ></o-button>
+        </div>
+
+        ${this.showSubscriptionRequired
+          ? html`<confirm-dialog
+              .heading=${translateText(
+                "host_modal.subscription_required_title",
+              )}
+              .message=${translateText("host_modal.subscription_required_body")}
+              variant="warning"
+              .showClose=${true}
+              .buttons=${"confirmOnly"}
+              .confirmText=${translateText("host_modal.view_subscriptions")}
+              @cancel=${() => (this.showSubscriptionRequired = false)}
+              @confirm=${() => {
+                this.showSubscriptionRequired = false;
+                window.location.href = "/#modal=store&tab=subscriptions";
+              }}
+            ></confirm-dialog>`
+          : ""}
+      </div>
+    `;
+  }
+
+  protected onOpen(): void {
+    // Re-armed here (not in onClose's reset) so that once
+    // closeWithoutLeaving() disarms it, no close cascade — e.g. another
+    // modal's close() navigating via showPage, which force-closes this one —
+    // can re-arm it and disconnect the host mid game-start.
+    this.leaveLobbyOnClose = true;
+    this.startLobbyUpdates();
+    void getUserMe().then((userMe) => {
+      // Dev skips the subscription gate (matching the server) so the
+      // listing flow is testable locally.
+      this.canListPublicly =
+        ClientEnv.env() === GameEnv.Dev ||
+        (userMe !== false && hasActiveSubscription(userMe));
+    });
+    // The server mints the game id, so we don't know it until createLobby
+    // resolves. clientID is assigned by the server when we join the lobby.
+
+    // Pass auth token for creator identification (server extracts persistentID from it)
+    createLobby()
+      .then(async (lobby) => {
+        this.lobbyId = lobby.gameID;
+        if (!isValidGameID(this.lobbyId)) {
+          throw new Error(`Invalid lobby ID format: ${this.lobbyId}`);
+        }
+        crazyGamesSDK.showInviteButton(this.lobbyId);
+
+        // Now that we have the id, build and copy the share link. If lobby
+        // creation fails, the catch below clears the clipboard.
+        const url = await this.constructUrl();
+        this.updateLobbyHistory(url);
+        await this.updateComplete;
+        void (this.querySelector("copy-button") as CopyButton)?.handleCopy();
+      })
+      .then(() => {
+        this.dispatchEvent(
+          new CustomEvent("join-lobby", {
+            detail: {
+              gameID: this.lobbyId,
+              source: "host",
+            } as JoinLobbyEvent,
+            bubbles: true,
+            composed: true,
+          }),
+        );
+      })
+      .catch(() => {
+        // Clear clipboard so the host doesn't accidentally share a dead link
+        void navigator.clipboard.writeText("").catch(() => {});
+      });
+    // BaseModal.firstUpdated() owns modalEl.onClose so the o-modal close path
+    // (backdrop / close button) runs confirmBeforeClose(). Don't override it
+    // here — doing so would bypass the leave-lobby confirmation.
+    this.loadNationCount();
+  }
+
+  private leaveLobby() {
+    if (!this.lobbyId) {
+      return;
+    }
+    this.dispatchEvent(
+      new CustomEvent("leave-lobby", {
+        detail: { lobby: this.lobbyId },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+
+  // Close as part of the lobby -> game transition (e.g. auto-start of a
+  // listed lobby): the host is entering the game, not leaving the lobby, so
+  // closing must not disconnect them (the server would tear the lobby down).
+  // disarmLeaveOnClose is separate because closing ANY page-modal navigates
+  // via showPage, which force-closes the currently visible page — so all
+  // lobby modals must be disarmed before any of them is closed.
+  public disarmLeaveOnClose() {
+    this.leaveLobbyOnClose = false;
+  }
+
+  public closeWithoutLeaving() {
+    this.disarmLeaveOnClose();
+    this.close();
+  }
+
+  public confirmBeforeClose(): boolean | Promise<boolean> {
+    return this.confirmClose(translateText("host_modal.leave_confirmation"));
+  }
+
+  protected onClose(): void {
+    console.log("Closing host lobby modal");
+    this.stopLobbyUpdates();
+    if (this.leaveLobbyOnClose) {
+      this.leaveLobby();
+      this.updateHistory("/"); // Reset URL to base
+    }
+    crazyGamesSDK.hideInviteButton();
+
+    // Clean up timers and resources
+    if (this.botsUpdateTimer !== null) {
+      clearTimeout(this.botsUpdateTimer);
+      this.botsUpdateTimer = null;
+    }
+    if (this.nationsUpdateTimer !== null) {
+      clearTimeout(this.nationsUpdateTimer);
+      this.nationsUpdateTimer = null;
+    }
+
+    // Reset all transient form state to ensure clean slate
+    this.selectedMap = GameMapType.World;
+    this.selectedDifficulty = Difficulty.Easy;
+    this.nations = 0;
+    this.defaultNationCount = 0;
+    this.gameMode = GameMode.FFA;
+    this.teamCount = 2;
+    this.bots = 400;
+    this.spawnImmunity = false;
+    this.spawnImmunityDurationMinutes = undefined;
+    this.infiniteGold = false;
+    this.donateGold = false;
+    this.infiniteTroops = false;
+    this.donateTroops = false;
+    this.maxTimer = false;
+    this.maxTimerValue = undefined;
+    this.startDelayValue = 3;
+    this.instantBuild = false;
+    this.randomSpawn = false;
+    this.compactMap = false;
+    this.useRandomMap = false;
+    this.disabledUnits = [];
+    this.lobbyId = "";
+    this.clients = [];
+    this.lobbyCreatorClientID = "";
+    this.goldMultiplier = false;
+    this.goldMultiplierValue = undefined;
+    this.startingGold = false;
+    this.startingGoldValue = undefined;
+    this.disableAlliances = false;
+    this.doomsdayClock = false;
+    this.doomsdayClockSpeed = "normal";
+    this.anonymizeNames = false;
+    this.nameReveals = [];
+    this.whitelistEnabled = false;
+    this.allowedPublicIds = "";
+    this.waterNukes = false;
+    this.hostCheatsEnabled = false;
+    this.hostCheatInfiniteGold = false;
+    this.hostCheatInfiniteTroops = false;
+    this.hostCheatGoldMultiplier = false;
+    this.hostCheatGoldMultiplierValue = undefined;
+    this.hostCheatStartingGold = false;
+    this.hostCheatStartingGoldValue = undefined;
+    this.publiclyListed = false;
+    this.showSubscriptionRequired = false;
+    this.autoStartAt = null;
+  }
+
+  private async handleSelectRandomMap() {
+    this.useRandomMap = true;
+    this.selectedMap = getRandomMapType();
+    await this.loadNationCount();
+    this.putGameConfig();
+  }
+
+  private handleConfigRandomMapSelected = () => {
+    void this.handleSelectRandomMap();
+  };
+
+  private async handleMapSelection(value: GameMapType) {
+    this.selectedMap = value;
+    this.useRandomMap = false;
+    await this.loadNationCount();
+    this.putGameConfig();
+  }
+
+  private handleConfigMapSelected = (e: Event) => {
+    const customEvent = e as CustomEvent<{ map: GameMapType }>;
+    void this.handleMapSelection(customEvent.detail.map);
+  };
+
+  private async handleDifficultySelection(value: Difficulty) {
+    this.selectedDifficulty = value;
+    this.putGameConfig();
+  }
+
+  private handleConfigDifficultySelected = (e: Event) => {
+    const customEvent = e as CustomEvent<{ difficulty: Difficulty }>;
+    void this.handleDifficultySelection(customEvent.detail.difficulty);
+  };
+
+  private handleConfigDoomsdayClockSpeedSelected = (e: Event) => {
+    const customEvent = e as CustomEvent<{ speed: DoomsdayClockSpeed }>;
+    this.doomsdayClockSpeed = customEvent.detail.speed;
+    this.putGameConfig();
+  };
+
+  private handleConfigGameModeSelected = (e: Event) => {
+    const customEvent = e as CustomEvent<{ mode: GameMode }>;
+    void this.handleGameModeSelection(customEvent.detail.mode);
+  };
+
+  private handleConfigTeamCountSelected = (e: Event) => {
+    const customEvent = e as CustomEvent<{ count: TeamCountConfig }>;
+    void this.handleTeamCountSelection(customEvent.detail.count);
+  };
+
+  private handleConfigOptionToggleChanged = (e: Event) => {
+    const customEvent = e as CustomEvent<{
+      labelKey: string;
+      checked: boolean;
+    }>;
+    const { labelKey, checked } = customEvent.detail;
+
+    switch (labelKey) {
+      case "host_modal.instant_build":
+        this.handleInstantBuildChange(checked);
+        break;
+      case "host_modal.random_spawn":
+        this.handleRandomSpawnChange(checked);
+        break;
+      case "host_modal.donate_gold":
+        this.handleDonateGoldChange(checked);
+        break;
+      case "host_modal.donate_troops":
+        this.handleDonateTroopsChange(checked);
+        break;
+      case "host_modal.infinite_gold":
+        this.handleInfiniteGoldChange(checked);
+        break;
+      case "host_modal.infinite_troops":
+        this.handleInfiniteTroopsChange(checked);
+        break;
+      case "host_modal.compact_map":
+        this.handleCompactMapChange(checked);
+        break;
+      case "host_modal.disable_alliances":
+        this.disableAlliances = checked;
+        this.putGameConfig();
+        break;
+      case "host_modal.anonymous_players":
+        this.anonymizeNames = checked;
+        this.putGameConfig();
+        break;
+      case "host_modal.water_nukes":
+        this.waterNukes = checked;
+        this.putGameConfig();
+        break;
+      case "host_modal.doomsday_clock":
+        this.doomsdayClock = checked;
+        this.putGameConfig();
+        break;
+      case "host_modal.host_cheats":
+        this.hostCheatsEnabled = checked;
+        this.putGameConfig();
+        break;
+      default:
+        break;
+    }
+  };
+
+  private handleConfigHostCheatToggleChanged = (e: Event) => {
+    const customEvent = e as CustomEvent<{
+      labelKey: string;
+      checked: boolean;
+    }>;
+    const { labelKey, checked } = customEvent.detail;
+
+    switch (labelKey) {
+      case "host_modal.infinite_gold":
+        this.hostCheatInfiniteGold = checked;
+        this.putGameConfig();
+        break;
+      case "host_modal.infinite_troops":
+        this.hostCheatInfiniteTroops = checked;
+        this.putGameConfig();
+        break;
+      default:
+        break;
+    }
+  };
+
+  private handleConfigUnitToggleChanged = (e: Event) => {
+    const customEvent = e as CustomEvent<{ unit: UnitType; checked: boolean }>;
+    const { unit, checked } = customEvent.detail;
+    this.disabledUnits = getUpdatedDisabledUnits(
+      this.disabledUnits,
+      unit,
+      checked,
+    );
+    this.putGameConfig();
+  };
+
+  // Modified to include debouncing
+  private handleBotsChange = (e: Event) => {
+    const customEvent = e as CustomEvent<{ value: number }>;
+    const value = customEvent.detail.value;
+    if (isNaN(value) || value < 0 || value > 400) {
+      return;
+    }
+
+    // Update the display value immediately
+    this.bots = value;
+
+    // Clear any existing timer
+    if (this.botsUpdateTimer !== null) {
+      clearTimeout(this.botsUpdateTimer);
+    }
+
+    // Set a new timer to call putGameConfig after 300ms of inactivity
+    this.botsUpdateTimer = window.setTimeout(() => {
+      this.putGameConfig();
+      this.botsUpdateTimer = null;
+    }, 300);
+  };
+
+  private handleInstantBuildChange = (val: boolean) => {
+    this.instantBuild = val;
+    this.putGameConfig();
+  };
+
+  private handleMaxTimerToggle = (
+    checked: boolean,
+    value: number | string | undefined,
+  ) => {
+    this.maxTimer = checked;
+    this.maxTimerValue = toOptionalNumber(value);
+    this.putGameConfig();
+  };
+
+  private handleSpawnImmunityToggle = (
+    checked: boolean,
+    value: number | string | undefined,
+  ) => {
+    this.spawnImmunity = checked;
+    this.spawnImmunityDurationMinutes = toOptionalNumber(value);
+    this.putGameConfig();
+  };
+
+  private handleGoldMultiplierToggle = (
+    checked: boolean,
+    value: number | string | undefined,
+  ) => {
+    this.goldMultiplier = checked;
+    this.goldMultiplierValue = toOptionalNumber(value);
+    this.putGameConfig();
+  };
+
+  private handleStartingGoldToggle = (
+    checked: boolean,
+    value: number | string | undefined,
+  ) => {
+    this.startingGold = checked;
+    this.startingGoldValue = toOptionalNumber(value);
+    this.putGameConfig();
+  };
+
+  private handleSpawnImmunityDurationKeyDown = (e: KeyboardEvent) => {
+    preventDisallowedKeys(e, ["-", "+", "e", "E"]);
+  };
+
+  private handleSpawnImmunityDurationInput = (e: Event) => {
+    const input = e.target as HTMLInputElement;
+    const value = parseBoundedIntegerFromInput(input, { min: 0, max: 120 });
+    if (value === undefined) {
+      return;
+    }
+    this.spawnImmunityDurationMinutes = value;
+    this.putGameConfig();
+  };
+
+  private handleGoldMultiplierValueKeyDown = (e: KeyboardEvent) => {
+    preventDisallowedKeys(e, ["+", "-", "e", "E"]);
+  };
+
+  private handleGoldMultiplierValueChanges = (e: Event) => {
+    const input = e.target as HTMLInputElement;
+    const value = parseBoundedFloatFromInput(input, { min: 0.1, max: 1000 });
+
+    if (value === undefined) {
+      this.goldMultiplierValue = undefined;
+      input.value = "";
+    } else {
+      this.goldMultiplierValue = value;
+    }
+    this.putGameConfig();
+  };
+
+  private handleStartingGoldValueKeyDown = (e: KeyboardEvent) => {
+    preventDisallowedKeys(e, ["-", "+", "e", "E"]);
+  };
+
+  private handleStartingGoldValueChanges = (e: Event) => {
+    const input = e.target as HTMLInputElement;
+    const value = parseBoundedFloatFromInput(input, {
+      min: 0.1,
+      max: 1000,
+    });
+
+    if (value === undefined) {
+      this.startingGoldValue = undefined;
+      input.value = "";
+    } else {
+      this.startingGoldValue = value;
+    }
+    this.putGameConfig();
+  };
+
+  private handleHostCheatGoldMultiplierToggle = (
+    checked: boolean,
+    value: number | string | undefined,
+  ) => {
+    this.hostCheatGoldMultiplier = checked;
+    this.hostCheatGoldMultiplierValue = toOptionalNumber(value);
+    this.putGameConfig();
+  };
+
+  private handleHostCheatGoldMultiplierValueKeyDown = (e: KeyboardEvent) => {
+    preventDisallowedKeys(e, ["+", "-", "e", "E"]);
+  };
+
+  private handleHostCheatGoldMultiplierValueChanges = (e: Event) => {
+    const input = e.target as HTMLInputElement;
+    const value = parseBoundedFloatFromInput(input, { min: 0.1, max: 1000 });
+
+    if (value === undefined) {
+      this.hostCheatGoldMultiplierValue = undefined;
+      input.value = "";
+    } else {
+      this.hostCheatGoldMultiplierValue = value;
+    }
+    this.putGameConfig();
+  };
+
+  private handleHostCheatStartingGoldToggle = (
+    checked: boolean,
+    value: number | string | undefined,
+  ) => {
+    this.hostCheatStartingGold = checked;
+    this.hostCheatStartingGoldValue = toOptionalNumber(value);
+    this.putGameConfig();
+  };
+
+  private handleHostCheatStartingGoldValueKeyDown = (e: KeyboardEvent) => {
+    preventDisallowedKeys(e, ["-", "+", "e", "E"]);
+  };
+
+  private handleHostCheatStartingGoldValueChanges = (e: Event) => {
+    const input = e.target as HTMLInputElement;
+    const value = parseBoundedFloatFromInput(input, {
+      min: 0.1,
+      max: 1000,
+    });
+
+    if (value === undefined) {
+      this.hostCheatStartingGoldValue = undefined;
+      input.value = "";
+    } else {
+      this.hostCheatStartingGoldValue = value;
+    }
+    this.putGameConfig();
+  };
+
+  private handleRandomSpawnChange = (val: boolean) => {
+    this.randomSpawn = val;
+    this.putGameConfig();
+  };
+
+  private handleInfiniteGoldChange = (val: boolean) => {
+    this.infiniteGold = val;
+    this.putGameConfig();
+  };
+
+  private handleDonateGoldChange = (val: boolean) => {
+    this.donateGold = val;
+    this.putGameConfig();
+  };
+
+  private handleInfiniteTroopsChange = (val: boolean) => {
+    this.infiniteTroops = val;
+    this.putGameConfig();
+  };
+
+  private handleCompactMapChange = (val: boolean) => {
+    this.compactMap = val;
+    this.bots = getBotsForCompactMap(this.bots, val);
+    this.nations = getNationsForCompactMap(
+      this.nations,
+      this.defaultNationCount,
+      val,
+    );
+    this.putGameConfig();
+  };
+
+  private handleDonateTroopsChange = (val: boolean) => {
+    this.donateTroops = val;
+    this.putGameConfig();
+  };
+
+  private handleMaxTimerValueKeyDown = (e: KeyboardEvent) => {
+    preventDisallowedKeys(e, ["-", "+", "e"]);
+  };
+
+  private handleMaxTimerValueChanges = (e: Event) => {
+    const input = e.target as HTMLInputElement;
+    const value = parseBoundedIntegerFromInput(input, {
+      min: 1,
+      max: 120,
+      stripPattern: /[e+-]/gi,
+    });
+
+    if (value === undefined) {
+      return;
+    }
+    this.maxTimerValue = value;
+    this.putGameConfig();
+  };
+
+  private handleStartDelayValueKeyDown = (e: KeyboardEvent) => {
+    preventDisallowedKeys(e, ["-", "+", "e", "E", "."]);
+  };
+
+  private handleStartDelayValueChanges = (e: Event) => {
+    const input = e.target as HTMLInputElement;
+    const value = parseBoundedIntegerFromInput(input, {
+      min: 0,
+      max: 600,
+    });
+
+    if (value === undefined) {
+      this.startDelayValue = undefined;
+      input.value = "";
+    } else {
+      this.startDelayValue = value;
+    }
+    this.putGameConfig();
+  };
+
+  private handleNationsChange = (e: Event) => {
+    const customEvent = e as CustomEvent<{ value: number }>;
+    const value = customEvent.detail.value;
+    if (isNaN(value) || value < 0 || value > 400) {
+      return;
+    }
+    this.nations = value;
+
+    if (this.nationsUpdateTimer !== null) {
+      clearTimeout(this.nationsUpdateTimer);
+    }
+    this.nationsUpdateTimer = window.setTimeout(() => {
+      this.putGameConfig();
+      this.nationsUpdateTimer = null;
+    }, 300);
+  };
+
+  private async handleGameModeSelection(value: GameMode) {
+    this.gameMode = value;
+    if (this.gameMode === GameMode.Team) {
+      this.donateGold = true;
+      this.donateTroops = true;
+    } else {
+      this.donateGold = false;
+      this.donateTroops = false;
+    }
+    this.putGameConfig();
+  }
+
+  private async handleTeamCountSelection(value: TeamCountConfig) {
+    this.teamCount = value;
+    this.putGameConfig();
+  }
+
+  private handleWhitelistToggle = (checked: boolean) => {
+    this.whitelistEnabled = checked;
+    this.putGameConfig();
+  };
+
+  // Server-authoritative: it re-verifies the subscription and enforces the
+  // listing limits, so a failed request reverts the toggle.
+  private async handlePublicListingToggle(checked: boolean) {
+    this.listingRequestInFlight = true;
+    this.publiclyListed = checked;
+    const result = await setLobbyListed(this.lobbyId, checked);
+    if (result.ok) {
+      this.publiclyListed = result.listed;
+    } else {
+      this.publiclyListed = !checked;
+      this.showListingError(result.error);
+    }
+    this.listingRequestInFlight = false;
+  }
+
+  private showListingError(serverError?: string) {
+    let key = "private_lobby.listing_failed";
+    if (serverError === "subscription_required") {
+      key = "private_lobby.listing_requires_subscription";
+    } else if (serverError === "listing_limit_reached") {
+      key = "private_lobby.listing_limit_reached";
+    } else if (serverError === "listing_whitelist_enabled") {
+      key = "private_lobby.listing_whitelist_enabled";
+    } else if (serverError === "listing_host_cheats_enabled") {
+      key = "private_lobby.listing_host_cheats_enabled";
+    } else if (serverError === "listing_full") {
+      key = "private_lobby.listing_full";
+    }
+    showToast(translateText(key), "red", 3000);
+  }
+
+  private handleAllowedPublicIdsChange = (e: Event) => {
+    this.allowedPublicIds = (e.target as HTMLInputElement).value;
+    this.putGameConfig();
+  };
+
+  // Comma/space/newline-separated publicIds, capped at the 200 the schema
+  // allows so a large paste can't make the config update fail validation.
+  // Undefined when empty (no allowlist).
+  private parseAllowedPublicIds(): string[] | undefined {
+    const ids = this.allowedPublicIds
+      .split(/[\s,]+/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0)
+      .slice(0, 200);
+    return ids.length > 0 ? ids : undefined;
+  }
+
+  private async putGameConfig() {
+    const spawnImmunityTicks = this.spawnImmunityDurationMinutes
+      ? this.spawnImmunityDurationMinutes * 60 * 10
+      : 0;
+    const url = await this.constructUrl();
+    this.updateLobbyHistory(url);
+    this.dispatchEvent(
+      new CustomEvent("update-game-config", {
+        detail: {
+          config: {
+            gameMap: this.selectedMap,
+            gameMapSize: this.compactMap
+              ? GameMapSize.Compact
+              : GameMapSize.Normal,
+            difficulty: this.selectedDifficulty,
+            bots: this.bots,
+            infiniteGold: this.infiniteGold,
+            donateGold: this.donateGold,
+            infiniteTroops: this.infiniteTroops,
+            donateTroops: this.donateTroops,
+            instantBuild: this.instantBuild,
+            randomSpawn: this.randomSpawn,
+            gameMode: this.gameMode,
+            disabledUnits: this.disabledUnits,
+            spawnImmunityDuration: this.spawnImmunity
+              ? spawnImmunityTicks
+              : null,
+            playerTeams: this.teamCount,
+            nations: sliderToNationsConfig(
+              this.nations,
+              this.defaultNationCount,
+            ),
+            maxTimerValue: this.maxTimer === true ? this.maxTimerValue : null,
+            startDelay: this.startDelayValue,
+            goldMultiplier:
+              this.goldMultiplier === true ? this.goldMultiplierValue : null,
+            startingGold:
+              this.startingGold === true && this.startingGoldValue !== undefined
+                ? Math.round(this.startingGoldValue * 1_000_000)
+                : null,
+            disableAlliances: this.disableAlliances || null,
+            // Send {enabled:false} (not undefined) when off: undefined is dropped
+            // by JSON.stringify, so the server's "!== undefined" merge would keep a
+            // previously-enabled config and the toggle could never turn off.
+            doomsdayClock: this.doomsdayClock
+              ? { enabled: true, speed: this.doomsdayClockSpeed }
+              : { enabled: false },
+            anonymizeNames: this.anonymizeNames,
+            nameReveals: this.nameReveals,
+            allowedPublicIds: this.whitelistEnabled
+              ? (this.parseAllowedPublicIds() ?? [])
+              : [],
+            waterNukes: this.waterNukes ? true : null,
+            hostCheats: this.hostCheatsEnabled
+              ? {
+                  infiniteGold: this.hostCheatInfiniteGold || undefined,
+                  infiniteTroops: this.hostCheatInfiniteTroops || undefined,
+                  goldMultiplier:
+                    this.hostCheatGoldMultiplier === true
+                      ? this.hostCheatGoldMultiplierValue
+                      : null,
+                  startingGold:
+                    this.hostCheatStartingGold === true &&
+                    this.hostCheatStartingGoldValue !== undefined
+                      ? Math.round(this.hostCheatStartingGoldValue * 1_000_000)
+                      : null,
+                }
+              : undefined,
+          } satisfies Partial<GameConfig>,
+        },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+
+  private toggleNameReveal(clientID: string) {
+    this.nameReveals = this.nameReveals.includes(clientID)
+      ? this.nameReveals.filter((c) => c !== clientID)
+      : [...this.nameReveals, clientID];
+    this.putGameConfig();
+  }
+
+  private async toggleGameStartTimer() {
+    await this.putGameConfig();
+    console.log(
+      `Starting private game with map: ${GameMapType[this.selectedMap as keyof typeof GameMapType]} ${this.useRandomMap ? " (Randomly selected)" : ""}`,
+    );
+
+    // If the modal closes as part of starting the game, do not leave the lobby
+    this.leaveLobbyOnClose = false;
+
+    this.dispatchEvent(
+      new CustomEvent("toggle_game_start_timer", {
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+
+  private kickPlayer(clientID: string) {
+    // Dispatch event to be handled by WebSocket instead of HTTP
+    this.dispatchEvent(
+      new CustomEvent("kick-player", {
+        detail: { target: clientID },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+
+  private async loadNationCount() {
+    const currentMap = this.selectedMap;
+    try {
+      const mapData = this.mapLoader.getMapData(currentMap);
+      const manifest = await mapData.manifest();
+      // Only update if the map hasn't changed
+      if (this.selectedMap === currentMap) {
+        this.defaultNationCount = manifest.nations.length;
+        this.nations = this.compactMap
+          ? Math.max(0, Math.floor(manifest.nations.length * 0.25))
+          : manifest.nations.length;
+      }
+    } catch (error) {
+      console.warn("Failed to load nation count", error);
+      // Leave existing values unchanged so the UI stays consistent
+    }
+  }
+}
+
+async function createLobby(): Promise<GameInfo> {
+  // Send JWT token for creator identification - server extracts persistentID from it
+  // persistentID should never be exposed to other clients
+  const token = await getPlayToken();
+  try {
+    // No worker prefix and no id: nginx (prod) / the vite dev proxy randomly
+    // routes to a worker, which mints a self-owned id and returns it.
+    const response = await fetch(`/api/create_game`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Server error response:", errorText);
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log("Success:", data);
+
+    return data as GameInfo;
+  } catch (error) {
+    console.error("Error creating lobby:", error);
+    throw error;
+  }
+}
