@@ -466,7 +466,7 @@
     "not_enough_money": "Ni dovolj denarja"
   },
   "win_modal": {
-    "support_ClosedFronts": "Podprite ClosedFronts!",
+    "support_openfront": "Podprite ClosedFronts!",
     "territory_pattern": "Kupite vzorec teritorija, da podprete ClosedFronts!",
     "died": "Umrl si",
     "your_team": "Vaša ekipa je zmagala!",
@@ -624,7 +624,7 @@
       "cursor": "Kazalnik",
       "hand": "Roka",
       "radiation": "Radiacija",
-      "ClosedFronts_qr": "ClosedFronts QR koda",
+      "openfront_qr": "ClosedFronts QR koda",
       "ClosedFronts": "ClosedFronts",
       "t_rex": "T-Rex",
       "embelem": "Grb",

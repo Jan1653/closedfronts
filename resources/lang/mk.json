@@ -461,7 +461,7 @@
     "not_enough_money": "Нема доволно пари"
   },
   "win_modal": {
-    "support_ClosedFronts": "Поддржи го ClosedFronts!",
+    "support_openfront": "Поддржи го ClosedFronts!",
     "territory_pattern": "Купи шаблон за територија за да го поддржиш ClosedFronts!",
     "died": "Умре",
     "your_team": "Твојот тим победи!",
@@ -618,7 +618,7 @@
       "cursor": "Курсор",
       "hand": "Рака",
       "radiation": "Зрачење",
-      "ClosedFronts_qr": "ClosedFronts QR код",
+      "openfront_qr": "ClosedFronts QR код",
       "ClosedFronts": "ClosedFronts",
       "t_rex": "Т-Рекс",
       "embelem": "Амблем",

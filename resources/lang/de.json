@@ -522,7 +522,7 @@
     "not_enough_money": "Nicht genug Geld"
   },
   "win_modal": {
-    "support_ClosedFronts": "Unterstütze ClosedFronts!",
+    "support_openfront": "Unterstütze ClosedFronts!",
     "territory_pattern": "Kaufe ein Gebietsmuster, um werbefrei zu spielen!",
     "died": "Du bist gestorben",
     "your_team": "Dein Team hat gewonnen!",

@@ -461,7 +461,7 @@
     "not_enough_money": "Ei tarpeeksi rahaa"
   },
   "win_modal": {
-    "support_ClosedFronts": "Tue ClosedFrontsia!",
+    "support_openfront": "Tue ClosedFrontsia!",
     "territory_pattern": "Osta aluekuvio tukeaksesi ClosedFrontsia!",
     "died": "Sinä kuolit",
     "your_team": "Joukkueesi voitti!",
@@ -618,7 +618,7 @@
       "cursor": "Kursori",
       "hand": "Käsi",
       "radiation": "Säteily",
-      "ClosedFronts_qr": "ClosedFronts:n QR-koodi",
+      "openfront_qr": "ClosedFronts:n QR-koodi",
       "ClosedFronts": "ClosedFronts",
       "t_rex": "T-Rex",
       "embelem": "Tunnus",

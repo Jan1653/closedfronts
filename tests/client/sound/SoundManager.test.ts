@@ -95,8 +95,9 @@ describe("SoundManager", () => {
   it("lazy-loads a sound effect once and reuses it", () => {
     eventBus.emit(new PlaySoundEffectEvent("click"));
     eventBus.emit(new PlaySoundEffectEvent("click"));
-    // 3 background music Howls + 1 Click Howl = 4
-    expect(howlCtor).toHaveBeenCalledTimes(4);
+    // Background music (proprietary) was removed, so only the Click Howl is
+    // created — and reused on the second emit.
+    expect(howlCtor).toHaveBeenCalledTimes(1);
   });
 
   it("plays a sound effect when PlaySoundEffectEvent is emitted", () => {

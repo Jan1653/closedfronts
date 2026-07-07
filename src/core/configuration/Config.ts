@@ -179,8 +179,9 @@ export class Config {
     return 90;
   }
 
-  defensePostRange(): number {
-    return 30;
+  // Defense-post radius grows with each upgrade level, up to a hard cap.
+  defensePostRange(level: number = 1): number {
+    return Math.min(60, 30 + (Math.max(1, level) - 1) * 10);
   }
 
   defensePostDefenseBonus(): number {
@@ -395,10 +396,11 @@ export class Config {
       case UnitType.DefensePost:
         info = {
           cost: this.costWrapper(
-            (numUnits: number) => Math.min(250_000, (numUnits + 1) * 50_000),
+            (numUnits: number) => Math.min(500_000, (numUnits + 1) * 100_000),
             UnitType.DefensePost,
           ),
           constructionDuration: this.instantBuild() ? 0 : 5 * 10,
+          upgradable: true,
         };
         break;
       case UnitType.SAMLauncher:
@@ -640,12 +642,15 @@ export class Config {
         throw new Error(`terrain type ${type} not supported`);
     }
     if (defender.isPlayer()) {
+      // Query with the maximum possible defense-post radius, then keep only
+      // posts whose own (level-scaled) radius actually reaches this tile.
       for (const dp of gm.nearbyUnits(
         tileToConquer,
-        gm.config().defensePostRange(),
+        this.defensePostRange(Number.MAX_SAFE_INTEGER),
         UnitType.DefensePost,
       )) {
-        if (dp.unit.owner() === defender) {
+        const range = this.defensePostRange(dp.unit.level());
+        if (dp.unit.owner() === defender && dp.distSquared <= range * range) {
           mag *= this.defensePostDefenseBonus();
           speed *= this.defensePostSpeedBonus();
           break;

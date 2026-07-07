@@ -681,7 +681,7 @@
     "not_enough_money": "Pole piisavalt raha"
   },
   "win_modal": {
-    "support_ClosedFronts": "Toeta ClosedFronts'i!",
+    "support_openfront": "Toeta ClosedFronts'i!",
     "territory_pattern": "Osta territooriumi skin, et minna reklaami-vabaks!",
     "died": "Sa said surma",
     "your_team": "Sinu tiim võitis!",

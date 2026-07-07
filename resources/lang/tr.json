@@ -633,7 +633,7 @@
     "not_enough_money": "Yeterli para yok"
   },
   "win_modal": {
-    "support_ClosedFronts": "ClosedFronts'u Destekle!",
+    "support_openfront": "ClosedFronts'u Destekle!",
     "territory_pattern": "Bir toprak kaplaması alarak reklamlardan kurtul!",
     "died": "Öldün",
     "your_team": "Takımınız kazandı!",

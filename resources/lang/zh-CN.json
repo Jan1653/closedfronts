@@ -777,7 +777,7 @@
     "not_enough_money": "金钱不足"
   },
   "win_modal": {
-    "support_ClosedFronts": "支持 ClosedFronts！",
+    "support_openfront": "支持 ClosedFronts！",
     "territory_pattern": "购买皮肤即可去除广告！",
     "died": "你已经死了",
     "your_team": "你的队伍获胜了！",

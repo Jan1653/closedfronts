@@ -26,8 +26,8 @@ Querschnittsregel für ALLES: **muss auch auf der Handy-/Mobile-UI funktionieren
 
 ## 2. Verteidigungsposten (Defense Post) — Umbau
 
-- [ ] **Kosten verdoppeln** (2× aktueller Preis)
-- [ ] **Upgradebar/stackbar:** pro Level steigt der **Radius** bis zu einem Limit
+- [x] **Kosten verdoppeln** (2× aktueller Preis)
+- [x] **Upgradebar/stackbar:** pro Level steigt der **Radius** bis zu einem Limit (30 → 60, getestet)
 - [ ] **Pixel-Sperrfeuer bei Angriff:** feuert viele kleine „Mini-Granaten" (Pixel), **sehr schnell**; wo eine Granate explodiert, wird die getroffene Kachel **eingenommen**
 - [ ] Balancing: viele Posten nebeneinander = starke, kaum durchdringbare Front
 - [ ] Mobile-UI geprüft
