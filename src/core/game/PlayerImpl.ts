@@ -54,6 +54,7 @@ import {
   PlayerUpdate,
 } from "./GameUpdates";
 import { ReadonlyTileSet, TileSet } from "./TileSet";
+import { tollStationConnections } from "./TollStationUtils";
 import {
   bestShoreDeploymentSource,
   canBuildTransportShip,
@@ -1410,6 +1411,8 @@ export class PlayerImpl implements Player {
       case UnitType.City:
       case UnitType.Factory:
         return this.landBasedStructureSpawn(targetTile, validTiles);
+      case UnitType.WaterTollStation:
+        return this.waterTollStationSpawn(targetTile);
       default:
         assertNever(unitType);
     }
@@ -1504,6 +1507,20 @@ export class PlayerImpl implements Player {
     );
 
     return bestPort?.tile() ?? false;
+  }
+
+  waterTollStationSpawn(tile: TileRef): TileRef | false {
+    const mg = this.mg;
+    if (!mg.isValidRef(tile)) return false;
+    if (!mg.isWater(tile)) return false;
+    if (mg.isImpassable(tile)) return false;
+    // Don't stack toll stations on top of each other.
+    if (mg.nearbyUnits(tile, 2, [UnitType.WaterTollStation]).length > 0) {
+      return false;
+    }
+    // Must genuinely bridge two distinct landmasses within range.
+    if (tollStationConnections(mg, tile).length < 2) return false;
+    return tile;
   }
 
   landBasedUnitSpawn(tile: TileRef): TileRef | false {

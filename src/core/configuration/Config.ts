@@ -442,6 +442,16 @@ export class Config {
           cost: () => 0n,
         };
         break;
+      case UnitType.WaterTollStation:
+        info = {
+          cost: this.costWrapper(
+            (numUnits: number) => Math.min(500_000, (numUnits + 1) * 100_000),
+            UnitType.WaterTollStation,
+          ),
+          constructionDuration: this.instantBuild() ? 0 : 5 * 10,
+          maxHealth: 1000,
+        };
+        break;
       default:
         assertNever(type);
     }

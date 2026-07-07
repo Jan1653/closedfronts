@@ -9,6 +9,7 @@ import { NukeExecution } from "./NukeExecution";
 import { PortExecution } from "./PortExecution";
 import { SAMLauncherExecution } from "./SAMLauncherExecution";
 import { WarshipExecution } from "./WarshipExecution";
+import { WaterTollStationExecution } from "./WaterTollStationExecution";
 
 export class ConstructionExecution implements Execution {
   private structure: Unit | null = null;
@@ -144,6 +145,9 @@ export class ConstructionExecution implements Execution {
       case UnitType.Factory:
         this.mg.addExecution(new FactoryExecution(this.structure!));
         break;
+      case UnitType.WaterTollStation:
+        this.mg.addExecution(new WaterTollStationExecution(this.structure!));
+        break;
       default:
         console.warn(
           `unit type ${this.constructionType} cannot be constructed`,
@@ -160,6 +164,7 @@ export class ConstructionExecution implements Execution {
       case UnitType.SAMLauncher:
       case UnitType.City:
       case UnitType.Factory:
+      case UnitType.WaterTollStation:
         return true;
       default:
         return false;

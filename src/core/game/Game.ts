@@ -184,6 +184,7 @@ export enum UnitType {
   MIRVWarhead = "MIRV Warhead",
   Train = "Train",
   Factory = "Factory",
+  WaterTollStation = "Water Toll Station",
 }
 
 export enum TrainType {
@@ -213,6 +214,7 @@ export const Structures = unitTypeGroup([
   UnitType.MissileSilo,
   UnitType.Port,
   UnitType.Factory,
+  UnitType.WaterTollStation,
 ] as const);
 
 export const BuildMenus = unitTypeGroup([
@@ -281,6 +283,8 @@ export interface UnitParamsMap {
   [UnitType.SAMLauncher]: Record<string, never>;
 
   [UnitType.City]: Record<string, never>;
+
+  [UnitType.WaterTollStation]: Record<string, never>;
 
   [UnitType.MIRV]: {
     targetTile?: number;
