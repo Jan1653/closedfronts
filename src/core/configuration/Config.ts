@@ -188,6 +188,13 @@ export class Config {
     return 5;
   }
 
+  // Multiplier on attack cost when conquering a walled tile. Walls are meant to
+  // be very hard to break through with normal attacks (bombs / defense-post
+  // barrages remain the easy answers).
+  wallDefenseBonus(): number {
+    return 50;
+  }
+
   defensePostSpeedBonus(): number {
     return 3;
   }
@@ -454,6 +461,12 @@ export class Config {
           maxHealth: 1000,
         };
         break;
+      case UnitType.Wall:
+        info = {
+          cost: this.costWrapper(() => 20_000, UnitType.Wall),
+          constructionDuration: this.instantBuild() ? 0 : 2 * 10,
+        };
+        break;
       default:
         assertNever(type);
     }
@@ -653,6 +666,18 @@ export class Config {
         if (dp.unit.owner() === defender && dp.distSquared <= range * range) {
           mag *= this.defensePostDefenseBonus();
           speed *= this.defensePostSpeedBonus();
+          break;
+        }
+      }
+    }
+
+    if (defender.isPlayer()) {
+      // A wall on the exact tile makes it very hard to conquer. (Query range 1
+      // then filter to distSquared 0 — a 0-range unit-grid query has a
+      // cell-boundary edge case.)
+      for (const w of gm.nearbyUnits(tileToConquer, 1, UnitType.Wall)) {
+        if (w.distSquared === 0) {
+          mag *= this.wallDefenseBonus();
           break;
         }
       }

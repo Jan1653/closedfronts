@@ -70,6 +70,7 @@
       "missile_silo": "Used to launch nukes",
       "port": "Sends trade ships to generate gold",
       "sam_launcher": "Defends against incoming nukes",
+      "wall": "Very hard to break by attacking; use bombs or defense-post fire",
       "warship": "Captures trade ships, destroys ships and boats",
       "water_toll_station": "Charges enemy boats a gold toll to pass; capturable by warships"
     },
@@ -1404,6 +1405,7 @@
     "missile_silo": "Missile Silo",
     "port": "Port",
     "sam_launcher": "SAM Launcher",
+    "wall": "Wall",
     "warship": "Warship",
     "water_toll_station": "Water Toll Station"
   },

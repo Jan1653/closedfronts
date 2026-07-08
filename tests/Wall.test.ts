@@ -1,0 +1,66 @@
+import path from "path";
+import { WallExecution } from "../src/core/execution/WallExecution";
+import {
+  Game,
+  Player,
+  PlayerInfo,
+  PlayerType,
+  UnitType,
+} from "../src/core/game/Game";
+import { setup } from "./util/Setup";
+import { UseRealAttackLogic } from "./util/TestConfig";
+import { executeTicks } from "./util/utils";
+
+describe("Wall", () => {
+  let game: Game;
+  let attacker: Player;
+  let defender: Player;
+  let cx: number;
+  let cy: number;
+
+  beforeEach(async () => {
+    game = await setup(
+      "big_plains",
+      { infiniteGold: true, instantBuild: true },
+      [
+        new PlayerInfo("atk", PlayerType.Human, null, "atk"),
+        new PlayerInfo("def", PlayerType.Human, null, "def"),
+      ],
+      path.join(__dirname, "util"),
+      UseRealAttackLogic,
+    );
+    attacker = game.player("atk");
+    defender = game.player("def");
+    cx = Math.floor(game.width() / 2);
+    cy = Math.floor(game.height() / 2);
+    for (let dx = -2; dx <= 2; dx++) {
+      for (let dy = -2; dy <= 2; dy++)
+        defender.conquer(game.ref(cx + dx, cy + dy));
+    }
+  });
+
+  test("makes its tile far harder to conquer", () => {
+    const walled = game.ref(cx, cy);
+    const plain = game.ref(cx + 2, cy);
+    defender.buildUnit(UnitType.Wall, walled, {});
+    executeTicks(game, 5); // let the unit grid index the wall
+
+    const loss = (t: number) =>
+      game.config().attackLogic(game, 1000, attacker, defender, t)
+        .attackerTroopLoss;
+
+    expect(loss(walled)).toBeGreaterThan(loss(plain));
+  });
+
+  test("is taken over when its tile is captured", () => {
+    const w = game.ref(cx, cy);
+    const wall = defender.buildUnit(UnitType.Wall, w, {});
+    game.addExecution(new WallExecution(wall));
+    expect(wall.owner()).toBe(defender);
+
+    attacker.conquer(w); // the tile changes hands (broken through / grenaded)
+    executeTicks(game, 2);
+
+    expect(wall.owner()).toBe(attacker);
+  });
+});

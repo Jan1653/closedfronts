@@ -38,6 +38,7 @@ const portIcon = assetUrl("images/PortIcon.svg");
 const samlauncherIcon = assetUrl("images/SamLauncherIconWhite.svg");
 const shieldIcon = assetUrl("images/ShieldIconWhite.svg");
 const tollStationIcon = assetUrl("images/TollStationIconWhite.svg");
+const wallIcon = assetUrl("images/WallIconWhite.svg");
 
 export interface BuildItemDisplay {
   unitType: PlayerBuildableUnitType;
@@ -124,6 +125,13 @@ export const buildTable: BuildItemDisplay[][] = [
       icon: tollStationIcon,
       description: "build_menu.desc.water_toll_station",
       key: "unit_type.water_toll_station",
+      countable: true,
+    },
+    {
+      unitType: UnitType.Wall,
+      icon: wallIcon,
+      description: "build_menu.desc.wall",
+      key: "unit_type.wall",
       countable: true,
     },
   ],

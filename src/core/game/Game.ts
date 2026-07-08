@@ -185,6 +185,7 @@ export enum UnitType {
   Train = "Train",
   Factory = "Factory",
   WaterTollStation = "Water Toll Station",
+  Wall = "Wall",
 }
 
 export enum TrainType {
@@ -215,6 +216,7 @@ export const Structures = unitTypeGroup([
   UnitType.Port,
   UnitType.Factory,
   UnitType.WaterTollStation,
+  UnitType.Wall,
 ] as const);
 
 export const BuildMenus = unitTypeGroup([
@@ -285,6 +287,8 @@ export interface UnitParamsMap {
   [UnitType.City]: Record<string, never>;
 
   [UnitType.WaterTollStation]: Record<string, never>;
+
+  [UnitType.Wall]: Record<string, never>;
 
   [UnitType.MIRV]: {
     targetTile?: number;

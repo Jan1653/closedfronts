@@ -1413,6 +1413,8 @@ export class PlayerImpl implements Player {
         return this.landBasedStructureSpawn(targetTile, validTiles);
       case UnitType.WaterTollStation:
         return this.waterTollStationSpawn(targetTile);
+      case UnitType.Wall:
+        return this.landBasedStructureSpawn(targetTile, validTiles);
       default:
         assertNever(unitType);
     }

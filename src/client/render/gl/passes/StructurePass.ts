@@ -22,6 +22,7 @@ import {
   UT_MISSILE_SILO,
   UT_PORT,
   UT_SAM_LAUNCHER,
+  UT_WALL,
   UT_WATER_TOLL_STATION,
 } from "../../types";
 import { DynamicInstanceBuffer } from "../DynamicBuffer";
@@ -157,6 +158,12 @@ export class StructurePass {
     const portCol = this.typeToAtlasCol.get(UT_PORT);
     if (portCol !== undefined) {
       this.typeToAtlasCol.set(UT_WATER_TOLL_STATION, portCol);
+    }
+    // Wall has no dedicated atlas icon yet either; reuse the defense-post icon
+    // as a placeholder so walls still show on the map.
+    const defenseCol = this.typeToAtlasCol.get(UT_DEFENSE_POST);
+    if (defenseCol !== undefined) {
+      this.typeToAtlasCol.set(UT_WALL, defenseCol);
     }
 
     // Compile shaders

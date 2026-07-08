@@ -37,13 +37,13 @@ Querschnittsregel für ALLES: **muss auch auf der Handy-/Mobile-UI funktionieren
 
 ## 3. Wände (Walls)
 
-- [ ] Baubar und als **Linie „ziehbar"** (drag-to-draw über mehrere Kacheln)
-- [ ] Übernehmbar (Besitzwechsel wie andere Strukturen)
-- [ ] **Sehr schwer zu durchbrechen:** braucht sehr viele Truppen — soll sich wirklich schwer anfühlen
-- [ ] Leichter zu durchbrechen mit: **Verteidigungsposten-Granaten** oder einer **Bombe** darauf
-- [ ] Normales Durchbrechen per Klick möglich, aber **langsam** (dauert)
-- [ ] **Timer über der Wand** anzeigen, während sie durchbrochen wird
-- [ ] Wand nur durchbrechen, wenn das angeklickte Ziel **wirklich nur hinter der Wand** erreichbar ist. Gibt es einen Weg drumherum (z. B. Wasser), stattdessen **ein Boot senden** statt die Wand zu brechen
+- [x] Baubar (Einzelkachel via Build-Menü) + auf der Karte sichtbar (Platzhalter-Icon)
+- [ ] Als **Linie „ziehbar"** (drag-to-draw über mehrere Kacheln) — Nachtrag (Client)
+- [x] Übernehmbar (wer die Kachel hält, bekommt die Wand)
+- [x] **Sehr schwer zu durchbrechen:** 50× Angriffskosten auf einer Wand-Kachel (getestet)
+- [x] Leichter zu durchbrechen mit **Verteidigungsposten-Granaten** (kapern die Kachel) oder einer **Bombe** (Nuke zerstört Strukturen)
+- [ ] **Timer über der Wand** anzeigen, während sie durchbrochen wird — Nachtrag (Client)
+- [ ] „Nur brechen, wenn kein Weg drumherum — sonst Boot senden" — Nachtrag (Pathfinding)
 - [ ] Mobile-UI geprüft
 
 ---
