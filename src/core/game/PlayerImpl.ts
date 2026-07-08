@@ -1461,9 +1461,9 @@ export class PlayerImpl implements Player {
       case UnitType.WaterTollStation:
         return this.waterTollStationSpawn(targetTile);
       case UnitType.Wall:
-        return this.landBasedStructureSpawn(targetTile, validTiles);
+        return this.wallSpawn(targetTile);
       case UnitType.OilPump:
-        return this.landBasedStructureSpawn(targetTile, validTiles);
+        return this.oilPumpSpawn(targetTile);
       default:
         assertNever(unitType);
     }
@@ -1571,6 +1571,30 @@ export class PlayerImpl implements Player {
     }
     // Must genuinely bridge two distinct landmasses within range.
     if (tollStationConnections(mg, tile).length < 2) return false;
+    return tile;
+  }
+
+  // Walls are placed on your own land with no structure-spacing requirement, so
+  // they can be built next to each other to form a continuous line.
+  wallSpawn(tile: TileRef): TileRef | false {
+    const mg = this.mg;
+    if (!mg.isValidRef(tile)) return false;
+    if (!mg.isLand(tile) || mg.isImpassable(tile)) return false;
+    if (mg.owner(tile) !== this) return false;
+    // Don't stack two walls on the same tile.
+    for (const w of mg.nearbyUnits(tile, 1, UnitType.Wall)) {
+      if (w.distSquared === 0) return false;
+    }
+    return tile;
+  }
+
+  // Oil pumps sit on your own land; multiple may share a spot, so there is no
+  // spacing or dedupe requirement.
+  oilPumpSpawn(tile: TileRef): TileRef | false {
+    const mg = this.mg;
+    if (!mg.isValidRef(tile)) return false;
+    if (!mg.isLand(tile) || mg.isImpassable(tile)) return false;
+    if (mg.owner(tile) !== this) return false;
     return tile;
   }
 

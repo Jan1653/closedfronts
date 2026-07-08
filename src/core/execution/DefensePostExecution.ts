@@ -42,10 +42,16 @@ export class DefensePostExecution implements Execution {
     let scanned = 0;
     for (const t of this.mg.bfs(postTile, manhattanDistFN(postTile, range))) {
       if (++scanned > MAX_SCAN || targets.length >= GRENADES_PER_TICK) break;
+      // Only conquerable land (conquer() throws on water / impassable).
+      if (!this.mg.isLand(t) || this.mg.isImpassable(t)) continue;
       const tileOwner = this.mg.owner(t);
-      if (!tileOwner.isPlayer()) continue;
-      const p = tileOwner as Player;
-      if (p === owner || p.isFriendly(owner) || p.isOnSameTeam(owner)) continue;
+      if (tileOwner.isPlayer()) {
+        const p = tileOwner as Player;
+        // Own and allied tiles are never hit.
+        if (p === owner || p.isFriendly(owner) || p.isOnSameTeam(owner))
+          continue;
+      }
+      // Enemy tile or unowned wilderness — grenade it and take it.
       targets.push(t);
     }
 

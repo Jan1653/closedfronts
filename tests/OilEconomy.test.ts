@@ -56,6 +56,20 @@ describe("Oil economy", () => {
     expect(player.oilSpeedFactor()).toBe(1);
   });
 
+  test("oil pumps can be stacked close together", () => {
+    player.addGold(10_000_000n);
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++)
+        player.conquer(game.ref(cx + dx, cy + dy));
+    }
+    const t1 = game.ref(cx, cy);
+    const t2 = game.ref(cx + 1, cy);
+    expect(player.canBuild(UnitType.OilPump, t1)).toBe(t1);
+    player.buildUnit(UnitType.OilPump, t1, {});
+    // A pump right next to it is still allowed.
+    expect(player.canBuild(UnitType.OilPump, t2)).toBe(t2);
+  });
+
   test("running out of oil slows movement (more ticks per step)", () => {
     const config = game.config();
     // Full tank: base movement speed.

@@ -63,4 +63,14 @@ describe("Wall", () => {
 
     expect(wall.owner()).toBe(attacker);
   });
+
+  test("walls can be placed right next to each other (no spacing)", () => {
+    defender.addGold(10_000_000n);
+    const t1 = game.ref(cx, cy);
+    const t2 = game.ref(cx + 1, cy);
+    expect(defender.canBuild(UnitType.Wall, t1)).toBe(t1);
+    defender.buildUnit(UnitType.Wall, t1, {});
+    // The adjacent tile is still buildable — walls form continuous lines.
+    expect(defender.canBuild(UnitType.Wall, t2)).toBe(t2);
+  });
 });

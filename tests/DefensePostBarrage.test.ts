@@ -58,12 +58,15 @@ describe("DefensePost barrage", () => {
     expect(enemyTiles.some((t) => game.owner(t) === owner)).toBe(true);
   });
 
-  test("does not fire (or crash) when no enemies are in range", () => {
-    owner.conquer(game.ref(cx, cy));
-    const post = owner.buildUnit(UnitType.DefensePost, game.ref(cx, cy), {});
+  test("captures unowned wilderness around it", () => {
+    const d = game.ref(cx, cy);
+    owner.conquer(d);
+    const post = owner.buildUnit(UnitType.DefensePost, d, {});
     game.addExecution(new DefensePostExecution(post));
 
-    executeTicks(game, 3);
-    expect(post.isActive()).toBe(true);
+    const before = owner.numTilesOwned();
+    executeTicks(game, 5);
+    // The barrage eats the neutral land around the post.
+    expect(owner.numTilesOwned()).toBeGreaterThan(before);
   });
 });
