@@ -33,12 +33,12 @@ Alles aus der letzten Sprachnachricht, damit nichts vergessen wird.
 - [x] Kürzel-Hinweis auf jedem Button (inkl. „Alt 1/2/3") + im Tooltip.
 - [x] Alt statt Strg (Browser reserviert Strg+Zahl für Tab-Wechsel).
 
-### 0.4 Öl-Verbrauch beim Vergrößern in die Wildnis
+### 0.4 Öl-Verbrauch beim Vergrößern in die Wildnis — ERLEDIGT
 
-- [ ] „Es kostet kein Öl, wenn man sich in die Natur vergrößert." Prüfen —
-      evtl. Nebeneffekt der Produktions-Erhöhung (Tank bleibt voll). Ggf.
-      Expansion in Wildnis **explizit Öl kosten** lassen oder Verbrauch spürbarer
-      an Wachstum koppeln. (Nutzer war unsicher, ob schon gefixt.)
+- [x] **Expansion kostet Öl:** `oilExpansionCostPerTile` (= 5) zieht Öl pro neu
+      eroberter Kachel ab (Delta seit letztem Tick; lazy Baseline, damit
+      Spawn-/Setup-Land nicht belastet wird). Aktives Erobern drainiert jetzt den
+      Tank zusätzlich zum passiven Größen-Verbrauch. Getestet.
 
 ### 0.5 Wände dürfen sich NICHT stapeln — ERLEDIGT
 
@@ -112,7 +112,7 @@ Alles aus der letzten Sprachnachricht, damit nichts vergessen wird.
 - [ ] Faktor auf **Kampfschiffe** (braucht Bewegungs-Gate im Warship)
 - [x] Öl-Anzeige im HUD
 - [ ] **Eigenes Icon** statt Fabrik-Platzhalter → siehe 0.1
-- [ ] **Öl-Verbrauch beim Vergrößern** prüfen (0.4)
+- [x] **Öl-Kosten beim Vergrößern** (`oilExpansionCostPerTile`, 0.4)
 - [ ] Nur an validen Öl-Vorkommen platzierbar; Sea-Build im Meer
 - [x] Mehrere Ölpumpen am selben Ort möglich
 - [x] Bombe → Explosion in Pump-Radius-Größe (getestet)

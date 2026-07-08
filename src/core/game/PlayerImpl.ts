@@ -107,6 +107,10 @@ export class PlayerImpl implements Player {
   private _gold: bigint;
   private _troops: bigint;
   private _oil: number = 0;
+  // Tiles owned at the previous updateOil, to charge oil for expansion. -1 means
+  // "not yet baselined" (first update just records the count, no charge — so the
+  // spawn/setup territory isn't billed, only ongoing growth).
+  private _lastTilesOwned: number = -1;
 
   // Rücksender: captured bombs, keyed by nuke UnitType. Each entry lets the
   // player launch one bomb of that type for free (see buildUnit).
@@ -1197,9 +1201,22 @@ export class PlayerImpl implements Player {
     ).length;
     const production = pumps * config.oilProductionPerPump();
     const consumption = config.oilConsumptionRate(this);
+
+    // Expanding burns fuel: charge oil for tiles gained since the last tick.
+    // The first update just records the baseline so spawn/setup land isn't
+    // billed — only ongoing conquest of wilderness/enemy tiles.
+    const tiles = this.numTilesOwned();
+    if (this._lastTilesOwned < 0) this._lastTilesOwned = tiles;
+    const gained = Math.max(0, tiles - this._lastTilesOwned);
+    this._lastTilesOwned = tiles;
+    const expansion = gained * config.oilExpansionCostPerTile();
+
     this._oil = Math.max(
       0,
-      Math.min(config.maxOil(), this._oil + production - consumption),
+      Math.min(
+        config.maxOil(),
+        this._oil + production - consumption - expansion,
+      ),
     );
   }
 

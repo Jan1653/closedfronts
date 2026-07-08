@@ -128,6 +128,27 @@ describe("Oil economy", () => {
     expect(slowed).toBeGreaterThanOrEqual(1);
   });
 
+  test("expanding into new tiles costs oil", () => {
+    // First update records the baseline (spawn/setup land isn't billed).
+    player.conquer(game.ref(cx, cy));
+    player.updateOil();
+    const before = player.oil();
+
+    // Grow by a block, then one update bills the gained tiles.
+    for (let x = cx - 5; x <= cx + 5; x++) {
+      for (let y = cy - 5; y <= cy + 5; y++) player.conquer(game.ref(x, y));
+    }
+    const gained = player.numTilesOwned() - 1;
+    expect(gained).toBeGreaterThan(0);
+    player.updateOil();
+
+    // No pump: oil dropped by (at least) the expansion cost of the new tiles.
+    expect(player.oil()).toBeLessThan(before);
+    expect(before - player.oil()).toBeGreaterThanOrEqual(
+      gained * game.config().oilExpansionCostPerTile(),
+    );
+  });
+
   test("the construction path yields a real, counted, completed pump", () => {
     // The user's bug: building a pump the normal way (via the build intent /
     // ConstructionExecution) never seemed to add oil. Prove that path actually

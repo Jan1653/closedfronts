@@ -926,6 +926,13 @@ export class Config {
     return Math.floor(player.numTilesOwned() / 200);
   }
 
+  // Oil burned per tile conquered (expansion into wilderness / enemy land).
+  // Makes actively growing cost fuel on top of the passive size upkeep, so a
+  // war machine has to keep pumping to keep advancing.
+  oilExpansionCostPerTile(): number {
+    return 5;
+  }
+
   maxOil(): number {
     return 5000;
   }
