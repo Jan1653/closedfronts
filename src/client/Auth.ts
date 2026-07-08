@@ -3,7 +3,9 @@ import { UserSettings } from "src/core/game/UserSettings";
 import { z } from "zod";
 import { TokenPayload, TokenPayloadSchema } from "../core/ApiSchemas";
 import { base64urlToUuid } from "../core/Base64";
+import { GameEnv } from "../core/configuration/Config";
 import { getApiBase, getAudience } from "./Api";
+import { ClientEnv } from "./ClientEnv";
 import { generateCryptoRandomUUID } from "./Utils";
 
 export type UserAuth = { jwt: string; claims: TokenPayload } | false;
@@ -246,6 +248,13 @@ export async function sendMagicLink(email: string): Promise<boolean> {
 
 // WARNING: DO NOT EXPOSE THIS ID
 export async function getPlayToken(): Promise<string> {
+  // Dev has no external API, so account auth (userAuth -> refreshJwt ->
+  // fetch(api.<domain>/auth/refresh)) only ever hangs until the request times
+  // out, delaying private-lobby creation. Skip it and play anonymously via the
+  // persistentID, which the server accepts in dev (see jwt.ts verifyClientToken).
+  if (ClientEnv.env() === GameEnv.Dev) {
+    return getPersistentIDFromLocalStorage();
+  }
   const result = await userAuth();
   if (result !== false) return result.jwt;
   return getPersistentIDFromLocalStorage();
