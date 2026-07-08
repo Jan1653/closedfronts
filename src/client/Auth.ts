@@ -3,9 +3,7 @@ import { UserSettings } from "src/core/game/UserSettings";
 import { z } from "zod";
 import { TokenPayload, TokenPayloadSchema } from "../core/ApiSchemas";
 import { base64urlToUuid } from "../core/Base64";
-import { GameEnv } from "../core/configuration/Config";
-import { getApiBase, getAudience } from "./Api";
-import { ClientEnv } from "./ClientEnv";
+import { getApiBase, getAudience, invalidateUserMe } from "./Api";
 import { generateCryptoRandomUUID } from "./Utils";
 
 export type UserAuth = { jwt: string; claims: TokenPayload } | false;
@@ -248,16 +246,60 @@ export async function sendMagicLink(email: string): Promise<boolean> {
 
 // WARNING: DO NOT EXPOSE THIS ID
 export async function getPlayToken(): Promise<string> {
-  // Dev has no external API, so account auth (userAuth -> refreshJwt ->
-  // fetch(api.<domain>/auth/refresh)) only ever hangs until the request times
-  // out, delaying private-lobby creation. Skip it and play anonymously via the
-  // persistentID, which the server accepts in dev (see jwt.ts verifyClientToken).
-  if (ClientEnv.env() === GameEnv.Dev) {
-    return getPersistentIDFromLocalStorage();
-  }
   const result = await userAuth();
   if (result !== false) return result.jwt;
   return getPersistentIDFromLocalStorage();
+}
+
+export type AuthResult = { ok: true } | { ok: false; error: string };
+
+// Register a new email/password account (localapi). On success the server sets
+// the session cookie and returns a short-lived JWT, which we cache in-memory so
+// userAuth() works immediately without a round-trip.
+export async function registerAccount(
+  email: string,
+  password: string,
+): Promise<AuthResult> {
+  return authRequest("/auth/register", email, password);
+}
+
+// Log in with an existing email/password account (localapi).
+export async function loginAccount(
+  email: string,
+  password: string,
+): Promise<AuthResult> {
+  return authRequest("/auth/login", email, password);
+}
+
+async function authRequest(
+  path: string,
+  email: string,
+  password: string,
+): Promise<AuthResult> {
+  try {
+    const response = await fetch(`${getApiBase()}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ email, password }),
+    });
+    const body = await response.json().catch(() => null);
+    if (!response.ok) {
+      return { ok: false, error: body?.error ?? "failed" };
+    }
+    const jwt = body?.jwt;
+    const expiresIn = body?.expiresIn;
+    if (typeof jwt === "string") {
+      __jwt = jwt;
+      __expiresAt =
+        Date.now() + (typeof expiresIn === "number" ? expiresIn : 3600) * 1000;
+    }
+    invalidateUserMe();
+    return { ok: true };
+  } catch (e) {
+    console.error("authRequest failed", e);
+    return { ok: false, error: "network" };
+  }
 }
 
 // WARNING: DO NOT EXPOSE THIS ID

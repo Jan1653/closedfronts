@@ -1,3 +1,4 @@
+import fs from "fs";
 import { JWK } from "jose";
 import { z } from "zod";
 import { GameEnv, parseGameEnv } from "../core/configuration/Config";
@@ -84,13 +85,39 @@ export class ServerEnv {
     return process.env.CDN_BASE ?? "";
   }
   static jwtIssuer(): string {
-    const audience = ServerEnv.jwtAudience();
-    return audience === "localhost"
-      ? "http://localhost:8787"
-      : `https://api.${audience}`;
+    // Self-hosted: tokens are issued by the same-origin localapi under
+    // /localapi (see src/server/localapi). Must match the client's getApiBase()
+    // and the localapi's ISSUER.
+    const domain = ServerEnv.jwtAudience();
+    return domain === "localhost"
+      ? "http://localhost:8090/localapi"
+      : `https://${domain}/localapi`;
   }
   static async jwkPublicKey(): Promise<JWK> {
     if (ServerEnv.publicKey) return ServerEnv.publicKey;
+    // Prefer reading the public key straight from the localapi key file on the
+    // shared volume — avoids an HTTP self-fetch of our own JWKS endpoint.
+    const keyPath = process.env.LOCALAPI_KEY_PATH;
+    if (keyPath) {
+      try {
+        const privateJwk = JSON.parse(fs.readFileSync(keyPath, "utf-8"));
+        const { d: _d, ...pub } = privateJwk;
+        void _d;
+        const parsed = JwksSchema.safeParse({
+          keys: [{ ...pub, alg: "EdDSA" }],
+        });
+        if (parsed.success) {
+          ServerEnv.publicKey = parsed.data.keys[0];
+          return ServerEnv.publicKey;
+        }
+        console.error("LOCALAPI_KEY_PATH did not yield a valid public JWK");
+      } catch (e) {
+        console.warn(
+          `Failed to read LOCALAPI_KEY_PATH (${keyPath}); falling back to JWKS fetch`,
+          e,
+        );
+      }
+    }
     const jwksUrl = ServerEnv.jwtIssuer() + "/.well-known/jwks.json";
     console.log(`Fetching JWKS from ${jwksUrl}`);
     const response = await fetch(jwksUrl);

@@ -404,24 +404,23 @@ export async function setLobbyListed(
   }
 }
 
+// Self-hosted: the auth/data API (accounts, JWKS, later leaderboard/clans) is
+// served same-origin under /localapi by the localapi service (see
+// src/server/localapi), routed there by nginx. Overridable via localStorage
+// ("apiHost") for local development against a separately-run localapi.
 export function getApiBase() {
-  const domainname = getAudience();
-
-  if (domainname === "localhost") {
-    const apiDomain = process?.env?.API_DOMAIN;
-    if (apiDomain) {
-      return `https://${apiDomain}`;
-    }
-    return localStorage.getItem("apiHost") ?? "http://localhost:8787";
+  const override = localStorage.getItem("apiHost");
+  if (override) {
+    return override;
   }
-
-  return `https://api.${domainname}`;
+  return `${window.location.origin}/localapi`;
 }
 
+// Audience the JWT is issued for and checked against. Must match the game
+// server's ServerEnv.jwtAudience() (= DOMAIN, the full host) and the audience
+// the localapi stamps into tokens.
 export function getAudience() {
-  const { hostname } = new URL(window.location.href);
-  const domainname = hostname.split(".").slice(-2).join(".");
-  return domainname;
+  return new URL(window.location.href).hostname;
 }
 
 // Check if the user's account is linked to a Discord, Google, or email account.
