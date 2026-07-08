@@ -107,6 +107,23 @@ describe("WaterTollStation", () => {
     expect(stations[0].tile()).toBe(strait);
   });
 
+  test("a nearby toll station counts as a connection anchor (chaining)", () => {
+    const strait = findStraitTile();
+    expect(strait).not.toBeNull();
+    // Build station A at a genuine two-landmass spot.
+    p1.buildUnit(UnitType.WaterTollStation, strait!, {});
+
+    // A water tile within range of station A.
+    const near = game.neighbors(strait!).find((n) => game.isWater(n));
+    expect(near).toBeDefined();
+    const conns = tollStationConnections(game, near!);
+
+    // The spot is valid and station A's tile is one of its two anchors — i.e.
+    // stations can be chained, not only bridged between landmasses.
+    expect(conns.length).toBe(2);
+    expect(conns).toContain(strait);
+  });
+
   test("enemy warship captures the station after holding position", () => {
     const strait = findStraitTile();
     expect(strait).not.toBeNull();

@@ -64,11 +64,12 @@ Alles aus der letzten Sprachnachricht, damit nichts vergessen wird.
 - [x] Maut kassieren: Feinde & Neutrale zahlen, eigene/verbündete frei (getestet)
 - [x] Build-Menü-Eintrag + Radius-Vorschau + auf Karte sichtbar (Platzhalter)
 - [x] Überlebt den echten Baupfad in der Simulation (Regressionstest)
-- [ ] **Eigenes Icon** statt Hafen-Platzhalter → siehe 0.1
-- [ ] **Grüne Vorschau, wenn gültig:** Umkreis wird grün, sobald Landmasse(n) im
-      Umkreis; bei **zwei** Landmassen die zwei nächsten verbinden. **Verketten:**
-      Verbindung auch zu **einer Landmasse + einer anderen Zollstation** im
-      Umkreis erlaubt (so über lange Strecken bauen).
+- [x] **Eigenes Icon** (Zoll-Tor) statt Hafen-Platzhalter → 0.1
+- [x] **Grüne Vorschau, wenn gültig:** Umkreis-Ring wird grün bei gültig, rot bei
+      ungültig (RangeCirclePass, nach `canBuild`).
+- [x] **Verkettung:** Ankerpunkt kann Landmasse **oder** andere Zollstation im
+      Umkreis sein (`tollStationConnections`); so über lange Strecken bauen
+      (getestet).
 - [ ] Die zwei „Straßen"-Verbindungslinien zeichnen (Client)
 - [ ] Sea-Build via Truppen-Transportschiff (ungestört bauen)
 - [ ] Umgehung im Boot-Pathfinding (Aufpreis-Ebene im Wasser-A\*)
