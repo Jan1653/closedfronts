@@ -1,3 +1,4 @@
+import { ConstructionExecution } from "../src/core/execution/ConstructionExecution";
 import { OilExplosionExecution } from "../src/core/execution/OilExplosionExecution";
 import {
   Game,
@@ -7,6 +8,7 @@ import {
   UnitType,
 } from "../src/core/game/Game";
 import { setup } from "./util/Setup";
+import { executeTicks } from "./util/utils";
 
 describe("Oil economy", () => {
   let game: Game;
@@ -124,5 +126,29 @@ describe("Oil economy", () => {
     const slowed = config.oilAdjustedSpeed(2, player);
     expect(slowed).toBeLessThan(2);
     expect(slowed).toBeGreaterThanOrEqual(1);
+  });
+
+  test("the construction path yields a real, counted, completed pump", () => {
+    // The user's bug: building a pump the normal way (via the build intent /
+    // ConstructionExecution) never seemed to add oil. Prove that path actually
+    // produces a live OilPump unit that updateOil then counts.
+    player.conquer(game.ref(cx, cy));
+    game.addExecution(
+      new ConstructionExecution(player, UnitType.OilPump, game.ref(cx, cy)),
+    );
+    executeTicks(game, 20); // build (and, in this instant game, complete) it
+
+    const pumps = player.units(UnitType.OilPump);
+    expect(pumps.length).toBe(1);
+    expect(pumps[0].isActive()).toBe(true);
+    expect(pumps[0].isUnderConstruction()).toBe(false);
+
+    // With the completed pump present, a single production tick from a drained
+    // tank refills it — i.e. the pump is genuinely counted by updateOil.
+    for (let i = 0; i < 100; i++) player.updateOil();
+    const before = player.oil();
+    player.updateOil();
+    expect(player.oil()).toBeGreaterThanOrEqual(before);
+    expect(player.oil()).toBeGreaterThan(0);
   });
 });

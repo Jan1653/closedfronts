@@ -891,7 +891,10 @@ export class Config {
 
   // ── Oil economy ──────────────────────────────────────────────────────────
   oilProductionPerPump(): number {
-    return 50;
+    // A single pump must clearly out-produce a sizeable empire's consumption
+    // (numTilesOwned / 200), otherwise building one feels like it does nothing.
+    // At 250/tick one pump covers a 50k-tile empire; stack more for bigger ones.
+    return 250;
   }
 
   oilConsumptionRate(player: Player | PlayerView): number {
