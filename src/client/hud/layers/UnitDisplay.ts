@@ -161,27 +161,6 @@ export class UnitDisplay extends LitElement implements Controller {
             this.keybinds["buildDefensePost"]?.key ?? "4",
           )}
           ${this.renderUnitItem(
-            wallIcon,
-            this._wall,
-            UnitType.Wall,
-            "wall",
-            this.keybinds["buildWall"]?.key ?? "",
-          )}
-          ${this.renderUnitItem(
-            oilPumpIcon,
-            this._oilPump,
-            UnitType.OilPump,
-            "oil_pump",
-            this.keybinds["buildOilPump"]?.key ?? "",
-          )}
-          ${this.renderUnitItem(
-            tollStationIcon,
-            this._waterTollStation,
-            UnitType.WaterTollStation,
-            "water_toll_station",
-            this.keybinds["buildWaterTollStation"]?.key ?? "",
-          )}
-          ${this.renderUnitItem(
             missileSiloIcon,
             this._missileSilo,
             UnitType.MissileSilo,
@@ -222,6 +201,27 @@ export class UnitDisplay extends LitElement implements Controller {
             UnitType.MIRV,
             "mirv",
             this.keybinds["buildMIRV"]?.key ?? "0",
+          )}
+          ${this.renderUnitItem(
+            wallIcon,
+            this._wall,
+            UnitType.Wall,
+            "wall",
+            "Alt 1",
+          )}
+          ${this.renderUnitItem(
+            oilPumpIcon,
+            this._oilPump,
+            UnitType.OilPump,
+            "oil_pump",
+            "Alt 2",
+          )}
+          ${this.renderUnitItem(
+            tollStationIcon,
+            this._waterTollStation,
+            UnitType.WaterTollStation,
+            "water_toll_station",
+            "Alt 3",
           )}
         </div>
       </div>
