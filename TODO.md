@@ -123,7 +123,9 @@ Alles aus der letzten Sprachnachricht, damit nichts vergessen wird.
 - [x] Nur an **validen Öl-Vorkommen** platzierbar (`isOilDeposit`, deterministischer
       Karten-Hash; grün/rot-Vorschau-Ring; getestet)
 - [ ] Öl-Vorkommen sichtbar overlayen (Client-Politur, damit man sie leichter findet)
-- [ ] Sea-Build im Meer (siehe unten)
+- [x] **Meer-Ölpumpen:** Ölpumpe an Meer-Vorkommen per Sea-Build (Transportschiff),
+      `oilPumpSpawn` erlaubt Wasser-Vorkommen ohne Land-Besitz; produziert wie eine
+      Land-Pumpe. Getestet.
 - [x] Mehrere Ölpumpen am selben Ort möglich
 - [x] Bombe → Explosion in Pump-Radius-Größe (getestet)
 - [ ] Mobile-UI geprüft

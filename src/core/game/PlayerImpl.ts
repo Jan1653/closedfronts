@@ -1606,15 +1606,22 @@ export class PlayerImpl implements Player {
     return tile;
   }
 
-  // Oil pumps sit on your own land, only on an oil deposit. Multiple may share a
-  // spot, so there is no spacing or dedupe requirement.
+  // Oil pumps sit on an oil deposit. On land it must be your own tile; a sea
+  // deposit is built out at sea (via a transport ship, like the toll station)
+  // so it needs no land ownership. Multiple may share a spot, so there is no
+  // spacing or dedupe requirement.
   oilPumpSpawn(tile: TileRef): TileRef | false {
     const mg = this.mg;
     if (!mg.isValidRef(tile)) return false;
-    if (!mg.isLand(tile) || mg.isImpassable(tile)) return false;
-    if (mg.owner(tile) !== this) return false;
+    if (mg.isImpassable(tile)) return false;
     if (!mg.config().isOilDeposit(mg, tile)) return false;
-    return tile;
+    if (mg.isLand(tile)) {
+      return mg.owner(tile) === this ? tile : false;
+    }
+    if (mg.isWater(tile)) {
+      return tile; // sea deposit — placed via sea-build
+    }
+    return false;
   }
 
   landBasedUnitSpawn(tile: TileRef): TileRef | false {

@@ -96,11 +96,15 @@ export class Executor {
         return new EmbargoExecution(player, intent.targetID, intent.action);
       case "embargo_all":
         return new EmbargoAllExecution(player, intent.action);
-      case "build_unit":
+      case "build_unit": {
         // Water structures are built out at sea by a transport ship that must
-        // sail there first (and can be sunk en route). Land structures build
+        // sail there first (and can be sunk en route): the toll station always,
+        // and an oil pump when it sits on a sea deposit. Land structures build
         // in place as usual.
-        if (intent.unit === UnitType.WaterTollStation) {
+        const atSea =
+          intent.unit === UnitType.WaterTollStation ||
+          (intent.unit === UnitType.OilPump && this.mg.isWater(intent.tile));
+        if (atSea) {
           return new SeaBuildExecution(player, intent.unit, intent.tile);
         }
         return new ConstructionExecution(
@@ -109,6 +113,7 @@ export class Executor {
           intent.tile,
           intent.rocketDirectionUp,
         );
+      }
       case "allianceExtension": {
         return new AllianceExtensionExecution(player, intent.recipient);
       }

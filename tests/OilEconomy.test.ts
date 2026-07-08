@@ -1,5 +1,6 @@
 import { ConstructionExecution } from "../src/core/execution/ConstructionExecution";
 import { OilExplosionExecution } from "../src/core/execution/OilExplosionExecution";
+import { SeaBuildExecution } from "../src/core/execution/SeaBuildExecution";
 import {
   Game,
   Player,
@@ -197,5 +198,72 @@ describe("Oil economy", () => {
     player.updateOil();
     expect(player.oil()).toBeGreaterThanOrEqual(before);
     expect(player.oil()).toBeGreaterThan(0);
+  });
+
+  test("oil pumps can be placed on a sea deposit", async () => {
+    // Needs a map with water. Deposits are the same coordinate hash on water.
+    const g = await setup("world", { infiniteGold: true, instantBuild: true }, [
+      new PlayerInfo("p", PlayerType.Human, null, "p"),
+    ]);
+    const p = g.player("p");
+    const config = g.config();
+    let seaDep: number | null = null;
+    let seaNonDep: number | null = null;
+    let land: number | null = null;
+    for (let y = 0; y < g.height(); y++) {
+      for (let x = 0; x < g.width(); x++) {
+        const t = g.ref(x, y);
+        if (g.isLand(t) && !g.isImpassable(t)) land ??= t;
+        if (!g.isWater(t) || g.isImpassable(t)) continue;
+        if (config.isOilDeposit(g, t)) seaDep ??= t;
+        else seaNonDep ??= t;
+      }
+    }
+    expect(seaDep).not.toBeNull();
+    expect(seaNonDep).not.toBeNull();
+    p.conquer(land!); // canBuild needs the player to own some territory
+
+    // A sea deposit is buildable (no land ownership needed); open water is not.
+    expect(p.canBuild(UnitType.OilPump, seaDep!)).toBe(seaDep);
+    expect(p.canBuild(UnitType.OilPump, seaNonDep!)).toBe(false);
+  });
+
+  test("a sea oil pump is sea-built by a transport ship", async () => {
+    const g = await setup("world", { infiniteGold: true, instantBuild: true }, [
+      new PlayerInfo("p", PlayerType.Human, null, "p"),
+    ]);
+    const p = g.player("p");
+    const config = g.config();
+
+    // A coastal sea deposit (water deposit with a land neighbor for the port).
+    let seaDep: number | null = null;
+    let portLand: number | null = null;
+    outer: for (let y = 0; y < g.height(); y++) {
+      for (let x = 0; x < g.width(); x++) {
+        const t = g.ref(x, y);
+        if (!g.isWater(t) || g.isImpassable(t)) continue;
+        if (!config.isOilDeposit(g, t)) continue;
+        const land = g
+          .neighbors(t)
+          .find((n) => g.isLand(n) && !g.isImpassable(n));
+        if (land !== undefined) {
+          seaDep = t;
+          portLand = land;
+          break outer;
+        }
+      }
+    }
+    expect(seaDep).not.toBeNull();
+
+    p.conquer(portLand!);
+    p.buildUnit(UnitType.Port, portLand!, {});
+    g.addExecution(new SeaBuildExecution(p, UnitType.OilPump, seaDep!));
+    expect(p.units(UnitType.OilPump).length).toBe(0); // ship must arrive first
+
+    executeTicks(g, 60);
+
+    const pumps = p.units(UnitType.OilPump);
+    expect(pumps.length).toBe(1);
+    expect(pumps[0].tile()).toBe(seaDep);
   });
 });
