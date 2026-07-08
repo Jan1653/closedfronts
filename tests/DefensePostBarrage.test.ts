@@ -58,6 +58,19 @@ describe("DefensePost barrage", () => {
     expect(enemyTiles.some((t) => game.owner(t) === owner)).toBe(true);
   });
 
+  test("fires slower at level 1 and faster/harder when upgraded", () => {
+    const c = game.config();
+    // Base level fires every 2nd tick (half the old every-tick rate)...
+    expect(c.defensePostFireInterval(1)).toBe(2);
+    // ...upgrading speeds it up to every tick.
+    expect(c.defensePostFireInterval(2)).toBe(1);
+    // And each level captures more tiles per burst.
+    expect(c.defensePostGrenadesPerBurst(1)).toBe(3);
+    expect(c.defensePostGrenadesPerBurst(3)).toBeGreaterThan(
+      c.defensePostGrenadesPerBurst(1),
+    );
+  });
+
   test("captures unowned wilderness around it", () => {
     const d = game.ref(cx, cy);
     owner.conquer(d);

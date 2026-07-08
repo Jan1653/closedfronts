@@ -184,6 +184,18 @@ export class Config {
     return Math.min(60, 30 + (Math.max(1, level) - 1) * 10);
   }
 
+  // Ticks between grenade bursts. Level 1 is deliberately slow (every 2nd tick,
+  // i.e. half the old rate); each upgrade speeds it up to every tick.
+  defensePostFireInterval(level: number = 1): number {
+    return Math.max(1, level) <= 1 ? 2 : 1;
+  }
+
+  // Tiles captured per burst; grows with level so a stacked post hits both
+  // harder and (via the shorter interval) more often.
+  defensePostGrenadesPerBurst(level: number = 1): number {
+    return 3 + Math.max(0, Math.max(1, level) - 1);
+  }
+
   defensePostDefenseBonus(): number {
     return 5;
   }
@@ -403,7 +415,7 @@ export class Config {
       case UnitType.DefensePost:
         info = {
           cost: this.costWrapper(
-            (numUnits: number) => Math.min(500_000, (numUnits + 1) * 100_000),
+            (numUnits: number) => Math.min(750_000, (numUnits + 1) * 150_000),
             UnitType.DefensePost,
           ),
           constructionDuration: this.instantBuild() ? 0 : 5 * 10,
