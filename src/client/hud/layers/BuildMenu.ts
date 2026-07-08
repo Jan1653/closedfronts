@@ -39,6 +39,7 @@ const samlauncherIcon = assetUrl("images/SamLauncherIconWhite.svg");
 const shieldIcon = assetUrl("images/ShieldIconWhite.svg");
 const tollStationIcon = assetUrl("images/TollStationIconWhite.svg");
 const wallIcon = assetUrl("images/WallIconWhite.svg");
+const oilPumpIcon = assetUrl("images/OilPumpIconWhite.svg");
 
 export interface BuildItemDisplay {
   unitType: PlayerBuildableUnitType;
@@ -132,6 +133,13 @@ export const buildTable: BuildItemDisplay[][] = [
       icon: wallIcon,
       description: "build_menu.desc.wall",
       key: "unit_type.wall",
+      countable: true,
+    },
+    {
+      unitType: UnitType.OilPump,
+      icon: oilPumpIcon,
+      description: "build_menu.desc.oil_pump",
+      key: "unit_type.oil_pump",
       countable: true,
     },
   ],

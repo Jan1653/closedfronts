@@ -467,6 +467,15 @@ export class Config {
           constructionDuration: this.instantBuild() ? 0 : 2 * 10,
         };
         break;
+      case UnitType.OilPump:
+        info = {
+          cost: this.costWrapper(
+            (numUnits: number) => Math.min(1_000_000, (numUnits + 1) * 200_000),
+            UnitType.OilPump,
+          ),
+          constructionDuration: this.instantBuild() ? 0 : 3 * 10,
+        };
+        break;
       default:
         assertNever(type);
     }
@@ -860,6 +869,29 @@ export class Config {
       default:
         assertNever(this._gameConfig.difficulty);
     }
+  }
+
+  // ── Oil economy ──────────────────────────────────────────────────────────
+  oilProductionPerPump(): number {
+    return 50;
+  }
+
+  oilConsumptionRate(player: Player | PlayerView): number {
+    // The bigger you are, the more oil you burn each tick.
+    return Math.floor(player.numTilesOwned() / 200);
+  }
+
+  maxOil(): number {
+    return 5000;
+  }
+
+  startingOil(): number {
+    return this.maxOil();
+  }
+
+  // Speed multiplier applied to movement when a player has run out of oil.
+  oilShortageSpeedFactor(): number {
+    return 0.3;
   }
 
   troopIncreaseRate(player: Player | PlayerView): number {

@@ -152,6 +152,9 @@ export class ConstructionExecution implements Execution {
       case UnitType.Wall:
         this.mg.addExecution(new WallExecution(this.structure!));
         break;
+      case UnitType.OilPump:
+        // Passive producer; oil is aggregated per tick in PlayerExecution.
+        break;
       default:
         console.warn(
           `unit type ${this.constructionType} cannot be constructed`,
@@ -170,6 +173,7 @@ export class ConstructionExecution implements Execution {
       case UnitType.Factory:
       case UnitType.WaterTollStation:
       case UnitType.Wall:
+      case UnitType.OilPump:
         return true;
       default:
         return false;

@@ -106,6 +106,7 @@ export class PlayerImpl implements Player {
 
   private _gold: bigint;
   private _troops: bigint;
+  private _oil: number = 0;
 
   markedTraitorTick = -1;
   markedDoomsdayClockTick = -1;
@@ -158,6 +159,7 @@ export class PlayerImpl implements Player {
   ) {
     this._troops = toInt(startTroops);
     this._gold = mg.config().startingGold(playerInfo);
+    this._oil = mg.config().startingOil();
     this._pseudo_random = new PseudoRandom(simpleHash(this.playerInfo.id));
   }
 
@@ -1171,6 +1173,27 @@ export class PlayerImpl implements Player {
     return actualRemoved;
   }
 
+  oil(): number {
+    return this._oil;
+  }
+
+  updateOil(): void {
+    const config = this.mg.config();
+    const pumps = this.units(UnitType.OilPump).filter(
+      (u) => u.isActive() && !u.isUnderConstruction(),
+    ).length;
+    const production = pumps * config.oilProductionPerPump();
+    const consumption = config.oilConsumptionRate(this);
+    this._oil = Math.max(
+      0,
+      Math.min(config.maxOil(), this._oil + production - consumption),
+    );
+  }
+
+  oilSpeedFactor(): number {
+    return this._oil > 0 ? 1 : this.mg.config().oilShortageSpeedFactor();
+  }
+
   troops(): number {
     return Number(this._troops);
   }
@@ -1414,6 +1437,8 @@ export class PlayerImpl implements Player {
       case UnitType.WaterTollStation:
         return this.waterTollStationSpawn(targetTile);
       case UnitType.Wall:
+        return this.landBasedStructureSpawn(targetTile, validTiles);
+      case UnitType.OilPump:
         return this.landBasedStructureSpawn(targetTile, validTiles);
       default:
         assertNever(unitType);

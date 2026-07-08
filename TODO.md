@@ -50,16 +50,16 @@ Querschnittsregel für ALLES: **muss auch auf der Handy-/Mobile-UI funktionieren
 
 ## 4. Ölpumpen (Oil Pumps) + Öl-Ökonomie
 
-- [ ] Neues Gebäude „Ölpumpe"; nur an **bestimmten validen Orten** (Öl-Vorkommen) an Land platzierbar
-- [ ] Auch **im Meer** an validen Meer-Vorkommen platzierbar
-- [ ] Sea-Build wie bei der Zollstation: Truppen-Transportschiff fährt hin und baut ungestört
-- [ ] **Mehrere Ölpumpen am selben Ort** möglich
-- [ ] Effekt: erhöht die **Geschwindigkeit aller Schiffstypen**
-- [ ] Effekt: erhöht die **Geschwindigkeit der Züge/Busse** zwischen Fabriken
-- [ ] **Neue Öl-Anzeige** (wie die Gold-Anzeige)
-- [ ] **Öl-Verbrauch steigt mit Spielergröße** (je größer, desto mehr Öl nötig)
-- [ ] **Öl leer → alles läuft sehr langsam**
-- [ ] Ölpumpe von einer **Bombe getroffen → große Explosion** in Größe einer Wasserstoffbombe
+- [x] Neues Gebäude „Ölpumpe" (an Land baubar, auf der Karte sichtbar via Platzhalter-Icon)
+- [x] **Öl-Ressource:** Pumpen produzieren, **Verbrauch steigt mit Spielergröße**, Startvorrat + Deckel (getestet)
+- [x] **Öl leer → Verlangsamungs-Faktor** (`oilSpeedFactor`) vorhanden (getestet)
+- [ ] Faktor auf **Geschwindigkeit aller Schiffstypen** anwenden — Nachtrag
+- [ ] Faktor auf **Geschwindigkeit der Züge/Busse** zwischen Fabriken anwenden — Nachtrag
+- [ ] **Neue Öl-Anzeige** (wie die Gold-Anzeige) — Client-Nachtrag
+- [ ] Nur an **validen Öl-Vorkommen** (Land) platzierbar — Nachtrag
+- [ ] Auch **im Meer** an Meer-Vorkommen + **Sea-Build** (Truppenschiff fährt hin, baut ungestört) — Nachtrag
+- [ ] **Mehrere Ölpumpen am selben Ort** möglich — Nachtrag (Abstandsprüfung lockern)
+- [ ] Ölpumpe von einer **Bombe getroffen → große Explosion** (Wasserstoffbomben-Größe) — Nachtrag
 - [ ] Mobile-UI geprüft
 
 ---

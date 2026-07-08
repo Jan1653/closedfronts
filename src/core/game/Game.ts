@@ -186,6 +186,7 @@ export enum UnitType {
   Factory = "Factory",
   WaterTollStation = "Water Toll Station",
   Wall = "Wall",
+  OilPump = "Oil Pump",
 }
 
 export enum TrainType {
@@ -217,6 +218,7 @@ export const Structures = unitTypeGroup([
   UnitType.Factory,
   UnitType.WaterTollStation,
   UnitType.Wall,
+  UnitType.OilPump,
 ] as const);
 
 export const BuildMenus = unitTypeGroup([
@@ -289,6 +291,8 @@ export interface UnitParamsMap {
   [UnitType.WaterTollStation]: Record<string, never>;
 
   [UnitType.Wall]: Record<string, never>;
+
+  [UnitType.OilPump]: Record<string, never>;
 
   [UnitType.MIRV]: {
     targetTile?: number;
@@ -587,6 +591,9 @@ export interface Player {
   gold(): Gold;
   addGold(toAdd: Gold, tile?: TileRef): void;
   removeGold(toRemove: Gold): Gold;
+  oil(): number;
+  updateOil(): void;
+  oilSpeedFactor(): number;
   troops(): number;
   setTroops(troops: number): void;
   addTroops(troops: number): void;

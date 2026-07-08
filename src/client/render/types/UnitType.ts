@@ -31,6 +31,7 @@ export const UT_SAM_LAUNCHER = "SAM Launcher" as const;
 export const UT_MISSILE_SILO = "Missile Silo" as const;
 export const UT_WATER_TOLL_STATION = "Water Toll Station" as const;
 export const UT_WALL = "Wall" as const;
+export const UT_OIL_PUMP = "Oil Pump" as const;
 
 // ---------------------------------------------------------------------------
 // Derived sets
@@ -45,6 +46,7 @@ export const STRUCTURE_TYPES: ReadonlySet<string> = new Set([
   UT_MISSILE_SILO,
   UT_WATER_TOLL_STATION,
   UT_WALL,
+  UT_OIL_PUMP,
 ]);
 
 export const NUKE_TYPES: ReadonlySet<string> = new Set([
@@ -96,4 +98,5 @@ export const ALL_UNIT_TYPES = [
   UT_TRAIN,
   UT_WATER_TOLL_STATION,
   UT_WALL,
+  UT_OIL_PUMP,
 ] as const;

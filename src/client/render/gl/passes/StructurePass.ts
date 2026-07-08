@@ -20,6 +20,7 @@ import {
   UT_DEFENSE_POST,
   UT_FACTORY,
   UT_MISSILE_SILO,
+  UT_OIL_PUMP,
   UT_PORT,
   UT_SAM_LAUNCHER,
   UT_WALL,
@@ -164,6 +165,11 @@ export class StructurePass {
     const defenseCol = this.typeToAtlasCol.get(UT_DEFENSE_POST);
     if (defenseCol !== undefined) {
       this.typeToAtlasCol.set(UT_WALL, defenseCol);
+    }
+    // Oil pump reuses the factory icon as a placeholder until it gets its own.
+    const factoryCol = this.typeToAtlasCol.get(UT_FACTORY);
+    if (factoryCol !== undefined) {
+      this.typeToAtlasCol.set(UT_OIL_PUMP, factoryCol);
     }
 
     // Compile shaders
