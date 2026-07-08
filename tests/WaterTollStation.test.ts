@@ -1,4 +1,5 @@
 import { ConstructionExecution } from "../src/core/execution/ConstructionExecution";
+import { SeaBuildExecution } from "../src/core/execution/SeaBuildExecution";
 import { WaterTollStationExecution } from "../src/core/execution/WaterTollStationExecution";
 import {
   Game,
@@ -175,5 +176,63 @@ describe("WaterTollStation", () => {
     const p1Before = p1.gold();
     executeTicks(game, 1);
     expect(p1.gold()).toBe(p1Before);
+  });
+
+  test("sea-build: a transport ship sails out and builds the station", () => {
+    const strait = findStraitTile();
+    expect(strait).not.toBeNull();
+    // Give the player a coastal port near the strait to launch the builder from.
+    const conns = tollStationConnections(game, strait!);
+    expect(conns.length).toBe(2);
+    p1.conquer(conns[0]);
+    p1.buildUnit(UnitType.Port, conns[0], {});
+
+    game.addExecution(
+      new SeaBuildExecution(p1, UnitType.WaterTollStation, strait!),
+    );
+    // Nothing built yet — the transport ship has to get there first.
+    expect(p1.units(UnitType.WaterTollStation).length).toBe(0);
+
+    executeTicks(game, 80);
+
+    const stations = p1.units(UnitType.WaterTollStation);
+    expect(stations.length).toBe(1);
+    expect(stations[0].tile()).toBe(strait);
+  });
+
+  test("sea-build is cancelled if the builder ship is sunk", async () => {
+    // Non-instant so the build takes time and can be interrupted mid-way.
+    const g = await setup("world", { infiniteGold: true }, [
+      new PlayerInfo("a", PlayerType.Human, null, "a"),
+    ]);
+    const a = g.player("a");
+    a.addGold(10_000_000n);
+
+    let strait2: TileRef | null = null;
+    for (let y = 0; y < g.height() && strait2 === null; y++) {
+      for (let x = 0; x < g.width(); x++) {
+        const t = g.ref(x, y);
+        if (g.isWater(t) && tollStationConnections(g, t).length === 2) {
+          strait2 = t;
+          break;
+        }
+      }
+    }
+    expect(strait2).not.toBeNull();
+    const conns = tollStationConnections(g, strait2!);
+    a.conquer(conns[0]);
+    a.buildUnit(UnitType.Port, conns[0], {});
+
+    const exec = new SeaBuildExecution(a, UnitType.WaterTollStation, strait2!);
+    g.addExecution(exec);
+    g.executeNextTick(); // init: the builder ship spawns
+    const builder = a.units(UnitType.TransportShip)[0];
+    expect(builder).toBeDefined();
+    builder.delete(false); // an enemy warship sinks it
+
+    executeTicks(g, 40);
+
+    expect(a.units(UnitType.WaterTollStation).length).toBe(0);
+    expect(exec.isActive()).toBe(false);
   });
 });

@@ -71,7 +71,9 @@ Alles aus der letzten Sprachnachricht, damit nichts vergessen wird.
       Umkreis sein (`tollStationConnections`); so über lange Strecken bauen
       (getestet).
 - [ ] Die zwei „Straßen"-Verbindungslinien zeichnen (Client)
-- [ ] Sea-Build via Truppen-Transportschiff (ungestört bauen)
+- [x] **Sea-Build:** Zollstation wird per Truppen-Transportschiff im Meer gebaut
+      (`SeaBuildExecution`): Schiff fährt vom Hafen zum Ziel, baut nach Bauzeit;
+      wird es versenkt → kein Bau, nichts berechnet. Getestet.
 - [ ] Umgehung im Boot-Pathfinding (Aufpreis-Ebene im Wasser-A\*)
 - [ ] Mobile-UI geprüft
 

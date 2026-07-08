@@ -964,6 +964,13 @@ export class Config {
     return 20;
   }
 
+  // Ticks a sea-build transport ship must hold position on the target tile
+  // (after sailing there) before the water structure is finished. It stays
+  // vulnerable the whole time; sinking it cancels the build.
+  seaBuildTicks(): number {
+    return this.instantBuild() ? 0 : 3 * 10;
+  }
+
   // Ticks between movement steps, stretched when the owner is out of oil (so
   // low oil => the unit moves less often => slower).
   oilAdjustedTicksPerMove(baseTicksPerStep: number, player: Player): number {

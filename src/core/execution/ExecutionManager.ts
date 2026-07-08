@@ -1,4 +1,4 @@
-import { Execution, Game } from "../game/Game";
+import { Execution, Game, UnitType } from "../game/Game";
 import { PseudoRandom } from "../PseudoRandom";
 import { ClientID, GameID, StampedIntent, Turn } from "../Schemas";
 import { simpleHash } from "../Util";
@@ -22,6 +22,7 @@ import { NoOpExecution } from "./NoOpExecution";
 import { PauseExecution } from "./PauseExecution";
 import { QuickChatExecution } from "./QuickChatExecution";
 import { RetreatExecution } from "./RetreatExecution";
+import { SeaBuildExecution } from "./SeaBuildExecution";
 import { SpawnExecution } from "./SpawnExecution";
 import { TargetPlayerExecution } from "./TargetPlayerExecution";
 import { TransportShipExecution } from "./TransportShipExecution";
@@ -96,6 +97,12 @@ export class Executor {
       case "embargo_all":
         return new EmbargoAllExecution(player, intent.action);
       case "build_unit":
+        // Water structures are built out at sea by a transport ship that must
+        // sail there first (and can be sunk en route). Land structures build
+        // in place as usual.
+        if (intent.unit === UnitType.WaterTollStation) {
+          return new SeaBuildExecution(player, intent.unit, intent.tile);
+        }
         return new ConstructionExecution(
           player,
           intent.unit,
