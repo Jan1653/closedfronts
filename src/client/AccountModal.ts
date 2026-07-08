@@ -2,16 +2,9 @@ import { html, TemplateResult } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { ClientEnv } from "src/client/ClientEnv";
 import { PlayerStatsTree, UserMeResponse } from "../core/ApiSchemas";
-import { assetUrl } from "../core/AssetUrls";
 import { Cosmetics } from "../core/CosmeticSchemas";
 import { fetchPlayerById, getUserMe } from "./Api";
-import {
-  discordLogin,
-  googleLogin,
-  linkGoogle,
-  logOut,
-  sendMagicLink,
-} from "./Auth";
+import { loginAccount, logOut, registerAccount } from "./Auth";
 import "./components/baseComponents/stats/DiscordUserHeader";
 import "./components/baseComponents/stats/PlayerGameHistoryView";
 import type { PlayerGameHistoryCache } from "./components/baseComponents/stats/PlayerGameHistoryView";
@@ -32,6 +25,9 @@ export class AccountModal extends BaseModal {
   protected routerName = "account";
 
   @state() private email: string = "";
+  @state() private password: string = "";
+  @state() private authError: string = "";
+  @state() private authBusy: boolean = false;
   @state() private isLoadingUser: boolean = false;
 
   private userMeResponse: UserMeResponse | null = null;
@@ -259,82 +255,18 @@ export class AccountModal extends BaseModal {
 
   private renderLoggedInAs(): TemplateResult {
     const me = this.userMeResponse?.user;
-    if (me?.discord) {
-      return html`
-        <div class="flex flex-col items-center gap-3 w-full">
-          ${this.renderCurrency()} ${this.renderGoogleLink()}
-          ${this.renderLogoutButton()}
-        </div>
-      `;
-    } else if (me?.google) {
-      return html`
-        <div class="flex flex-col items-center gap-3 w-full">
-          <div class="text-white text-lg font-medium">
-            ${translateText("account_modal.linked_account", {
-              account_name: me.google.email,
-            })}
-          </div>
-          ${this.renderCurrency()} ${this.renderLogoutButton()}
-        </div>
-      `;
-    } else if (me?.email) {
-      return html`
-        <div class="flex flex-col items-center gap-3 w-full">
-          <div class="text-white text-lg font-medium">
-            ${translateText("account_modal.linked_account", {
-              account_name: me.email,
-            })}
-          </div>
-          ${this.renderCurrency()} ${this.renderGoogleLink()}
-          ${this.renderLogoutButton()}
-        </div>
-      `;
-    }
-    return html``;
-  }
-
-  // Show the Google link state: a confirmation line when a Google account is
-  // already linked, otherwise the button to link one.
-  private renderGoogleLink(): TemplateResult {
-    const google = this.userMeResponse?.user?.google;
-    if (google) {
-      const label = google.email
-        ? translateText("account_modal.linked_to_google_email", {
-            email: google.email,
-          })
-        : translateText("account_modal.linked_to_google");
-      return html`
-        <div class="flex items-center gap-2 text-white/70 text-sm">
-          <img
-            src=${assetUrl("images/GoogleLogo.svg")}
-            alt=${translateText("account_modal.google_alt")}
-            class="w-4 h-4"
-          />
-          <span>${label}</span>
-        </div>
-      `;
-    }
-    return this.renderLinkGoogleButton();
-  }
-
-  // Shown when logged in without a Google identity yet. Lets the user attach
-  // Google to their existing account (we never auto-merge by email).
-  private renderLinkGoogleButton(): TemplateResult {
-    if (this.userMeResponse?.user?.google) return html``;
+    const accountName = me?.email ?? me?.google?.email ?? "";
     return html`
-      <button
-        @click=${this.handleLinkGoogle}
-        class="w-full px-6 py-3 text-[#1f1f1f] bg-white hover:bg-[#f7f8f8] border border-[#dadce0] rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#4285F4] transition-colors duration-200 flex items-center justify-center gap-3 shadow-lg"
-      >
-        <img
-          src=${assetUrl("images/GoogleLogo.svg")}
-          alt=${translateText("account_modal.google_alt")}
-          class="w-5 h-5"
-        />
-        <span class="font-bold tracking-wide"
-          >${translateText("account_modal.link_google")}</span
-        >
-      </button>
+      <div class="flex flex-col items-center gap-3 w-full">
+        ${accountName
+          ? html`<div class="text-white text-lg font-medium">
+              ${translateText("account_modal.linked_account", {
+                account_name: accountName,
+              })}
+            </div>`
+          : ""}
+        ${this.renderCurrency()} ${this.renderLogoutButton()}
+      </div>
     `;
   }
 
@@ -391,74 +323,57 @@ export class AccountModal extends BaseModal {
             ${this.renderCurrency()}
           </div>
 
-          <div class="space-y-6">
-            <!-- Discord Login Button -->
-            <button
-              @click="${this.handleDiscordLogin}"
-              class="w-full px-6 py-4 text-white bg-[#5865F2] hover:bg-[#4752C4] border border-transparent rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#5865F2] transition-colors duration-200 flex items-center justify-center gap-3 group relative overflow-hidden shadow-lg hover:shadow-[#5865F2]/20"
-            >
-              <img
-                src=${assetUrl("images/DiscordLogo.svg")}
-                alt="Discord"
-                class="w-6 h-6 relative z-10"
+          <div class="space-y-4">
+            <div class="relative group">
+              <input
+                type="email"
+                id="email"
+                name="email"
+                autocomplete="email"
+                .value="${this.email}"
+                @input="${this.handleEmailInput}"
+                class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-malibu-blue/50 focus:border-malibu-blue/50 transition-all font-medium hover:bg-white/10"
+                placeholder="${translateText("account_modal.email_placeholder")}"
+                required
               />
-              <span class="font-bold relative z-10 tracking-wide"
-                >${translateText("main.login_discord") ||
-                translateText("account_modal.link_discord")}</span
-              >
-            </button>
-
-            <!-- Google Login Button (Google brand guidelines: white surface,
-                 dark text, the multicolor "G" mark) -->
-            <button
-              @click="${this.handleGoogleLogin}"
-              class="w-full px-6 py-4 text-[#1f1f1f] bg-white hover:bg-[#f7f8f8] border border-[#dadce0] rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#4285F4] transition-colors duration-200 flex items-center justify-center gap-3 group relative overflow-hidden shadow-lg"
-            >
-              <img
-                src=${assetUrl("images/GoogleLogo.svg")}
-                alt=${translateText("account_modal.google_alt")}
-                class="w-6 h-6 relative z-10"
+            </div>
+            <div class="relative group">
+              <input
+                type="password"
+                id="password"
+                name="password"
+                autocomplete="current-password"
+                .value="${this.password}"
+                @input="${this.handlePasswordInput}"
+                @keydown="${this.handleAuthKeydown}"
+                class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-malibu-blue/50 focus:border-malibu-blue/50 transition-all font-medium hover:bg-white/10"
+                placeholder="${translateText(
+                  "account_modal.password_placeholder",
+                )}"
+                required
               />
-              <span class="font-bold relative z-10 tracking-wide"
-                >${translateText("main.login_google")}</span
-              >
-            </button>
-
-            <!-- Divider -->
-            <div class="flex items-center gap-4 py-2">
-              <div class="h-px bg-white/10 flex-1"></div>
-              <span
-                class="text-[10px] uppercase tracking-widest text-white/30 font-bold"
-              >
-                ${translateText("account_modal.or")}
-              </span>
-              <div class="h-px bg-white/10 flex-1"></div>
             </div>
-
-            <!-- Email Recovery -->
-            <div class="space-y-3">
-              <div class="relative group">
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  .value="${this.email}"
-                  @input="${this.handleEmailInput}"
-                  class="w-full pl-4 pr-12 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-malibu-blue/50 focus:border-malibu-blue/50 transition-all font-medium hover:bg-white/10"
-                  placeholder="${translateText(
-                    "account_modal.email_placeholder",
-                  )}"
-                  required
-                />
-              </div>
-              <o-button
-                variant="primary"
-                width="block"
-                size="md"
-                translationKey="account_modal.get_magic_link"
-                @click=${this.handleSubmit}
-              ></o-button>
-            </div>
+            ${this.authError
+              ? html`<p class="text-red-400 text-sm text-center">
+                  ${this.authError}
+                </p>`
+              : ""}
+            <o-button
+              variant="primary"
+              width="block"
+              size="md"
+              ?disable=${this.authBusy}
+              translationKey="account_modal.sign_in_button"
+              @click=${this.handleLogin}
+            ></o-button>
+            <o-button
+              variant="ghost"
+              width="block"
+              size="md"
+              ?disable=${this.authBusy}
+              translationKey="account_modal.register_button"
+              @click=${this.handleRegister}
+            ></o-button>
           </div>
 
           <div class="mt-8 text-center border-t border-white/10 pt-6">
@@ -475,86 +390,67 @@ export class AccountModal extends BaseModal {
   }
 
   private handleEmailInput(e: Event) {
-    const target = e.target as HTMLInputElement;
-    this.email = target.value;
+    this.email = (e.target as HTMLInputElement).value;
+    this.authError = "";
   }
 
-  private async handleSubmit() {
-    if (!this.email) {
-      alert(translateText("account_modal.enter_email_address"));
+  private handlePasswordInput(e: Event) {
+    this.password = (e.target as HTMLInputElement).value;
+    this.authError = "";
+  }
+
+  private handleAuthKeydown(e: KeyboardEvent) {
+    if (e.key === "Enter") void this.handleLogin();
+  }
+
+  private async handleLogin(): Promise<void> {
+    await this.submitAuth("login");
+  }
+
+  private async handleRegister(): Promise<void> {
+    await this.submitAuth("register");
+  }
+
+  private async submitAuth(mode: "login" | "register"): Promise<void> {
+    if (this.authBusy) return;
+    const email = this.email.trim();
+    if (!email || !this.password) {
+      this.authError = translateText("account_modal.enter_email_and_password");
       return;
     }
+    this.authBusy = true;
+    this.authError = "";
+    const result =
+      mode === "login"
+        ? await loginAccount(email, this.password)
+        : await registerAccount(email, this.password);
+    this.authBusy = false;
+    if (result.ok) {
+      // Reload so the app picks up the new session (mirrors handleLogout).
+      window.location.reload();
+      return;
+    }
+    this.authError = this.authErrorMessage(result.error);
+    this.requestUpdate();
+  }
 
-    const success = await sendMagicLink(this.email);
-    if (success) {
-      alert(
-        translateText("account_modal.recovery_email_sent", {
-          email: this.email,
-        }),
-      );
-    } else {
-      alert(translateText("account_modal.failed_to_send_recovery_email"));
+  private authErrorMessage(code: string): string {
+    switch (code) {
+      case "email_taken":
+        return translateText("account_modal.error_email_taken");
+      case "invalid_credentials":
+        return translateText("account_modal.error_invalid_credentials");
+      case "invalid_email":
+        return translateText("account_modal.error_invalid_email");
+      case "invalid_password":
+        return translateText("account_modal.error_invalid_password");
+      default:
+        return translateText("account_modal.error_auth_failed");
     }
   }
 
-  private handleDiscordLogin() {
-    discordLogin();
-  }
-
-  private handleGoogleLogin() {
-    googleLogin();
-  }
-
-  private async handleLinkGoogle(): Promise<void> {
-    // On success linkGoogle navigates to Google; the result comes back as a
-    // `link=...` router arg handled in handleLinkResult. A false return means we
-    // couldn't start it.
-    const started = await linkGoogle();
-    if (!started) {
-      alert(translateText("account_modal.link_google_failed"));
-    }
-  }
-
-  // The Google link callback returns us to #modal=account&link=<result>, so the
-  // router reopens this modal with a `link` arg. Surface the outcome, then strip
-  // the one-shot param from the URL so a refresh/re-open doesn't replay it.
-  private handleLinkResult(args?: Record<string, unknown>): void {
-    const link = typeof args?.link === "string" ? args.link : undefined;
-    if (link === undefined) return;
-
-    // replaceState doesn't fire hashchange, so removing the param won't re-route.
-    const params = new URLSearchParams(window.location.hash.slice(1));
-    params.delete("link");
-    const rest = params.toString();
-    history.replaceState(
-      null,
-      "",
-      rest ? `#${rest}` : window.location.pathname + window.location.search,
-    );
-
-    // Defer so the modal paints before the (blocking) alert. "cancel" needs no
-    // feedback — the user chose to back out.
-    if (link === "google") {
-      setTimeout(
-        () => alert(translateText("account_modal.link_google_success")),
-        0,
-      );
-    } else if (link === "already_linked") {
-      setTimeout(
-        () => alert(translateText("account_modal.link_google_already_linked")),
-        0,
-      );
-    } else if (link === "error") {
-      setTimeout(
-        () => alert(translateText("account_modal.link_google_error")),
-        0,
-      );
-    }
-  }
-
-  protected onOpen(args?: Record<string, unknown>): void {
+  protected onOpen(_args?: Record<string, unknown>): void {
     this.isLoadingUser = true;
-    this.handleLinkResult(args);
 
     void fetchCosmetics().then((cosmetics) => {
       this.cosmetics = cosmetics;
