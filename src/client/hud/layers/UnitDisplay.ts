@@ -26,6 +26,9 @@ const atomBombIcon = assetUrl("images/NukeIconWhite.svg");
 const portIcon = assetUrl("images/PortIcon.svg");
 const samLauncherIcon = assetUrl("images/SamLauncherIconWhite.svg");
 const defensePostIcon = assetUrl("images/ShieldIconWhite.svg");
+const wallIcon = assetUrl("images/WallIconWhite.svg");
+const oilPumpIcon = assetUrl("images/OilPumpIconWhite.svg");
+const tollStationIcon = assetUrl("images/TollStationIconWhite.svg");
 
 @customElement("unit-display")
 export class UnitDisplay extends LitElement implements Controller {
@@ -41,6 +44,9 @@ export class UnitDisplay extends LitElement implements Controller {
   private _port = 0;
   private _defensePost = 0;
   private _samLauncher = 0;
+  private _wall = 0;
+  private _oilPump = 0;
+  private _waterTollStation = 0;
   private allDisabled = false;
   private _hoveredUnit: PlayerBuildableUnitType | null = null;
 
@@ -101,6 +107,9 @@ export class UnitDisplay extends LitElement implements Controller {
     this._samLauncher = player.totalUnitLevels(UnitType.SAMLauncher);
     this._factories = player.totalUnitLevels(UnitType.Factory);
     this._warships = player.totalUnitLevels(UnitType.Warship);
+    this._wall = player.totalUnitLevels(UnitType.Wall);
+    this._oilPump = player.totalUnitLevels(UnitType.OilPump);
+    this._waterTollStation = player.totalUnitLevels(UnitType.WaterTollStation);
     this.requestUpdate();
   }
 
@@ -150,6 +159,27 @@ export class UnitDisplay extends LitElement implements Controller {
             UnitType.DefensePost,
             "defense_post",
             this.keybinds["buildDefensePost"]?.key ?? "4",
+          )}
+          ${this.renderUnitItem(
+            wallIcon,
+            this._wall,
+            UnitType.Wall,
+            "wall",
+            this.keybinds["buildWall"]?.key ?? "",
+          )}
+          ${this.renderUnitItem(
+            oilPumpIcon,
+            this._oilPump,
+            UnitType.OilPump,
+            "oil_pump",
+            this.keybinds["buildOilPump"]?.key ?? "",
+          )}
+          ${this.renderUnitItem(
+            tollStationIcon,
+            this._waterTollStation,
+            UnitType.WaterTollStation,
+            "water_toll_station",
+            this.keybinds["buildWaterTollStation"]?.key ?? "",
           )}
           ${this.renderUnitItem(
             missileSiloIcon,
@@ -233,9 +263,9 @@ export class UnitDisplay extends LitElement implements Controller {
                 class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 text-gray-200 text-center w-max text-xs bg-gray-800/90 backdrop-blur-xs rounded-sm p-1 z-[100] shadow-lg pointer-events-none"
               >
                 <div class="font-bold text-sm mb-1">
-                  ${translateText(
-                    "unit_type." + structureKey,
-                  )}${` [${displayHotkey}]`}
+                  ${translateText("unit_type." + structureKey)}${hotkey
+                    ? ` [${displayHotkey}]`
+                    : ""}
                 </div>
                 <div class="p-2">
                   ${translateText("build_menu.desc." + structureKey)}
@@ -291,9 +321,13 @@ export class UnitDisplay extends LitElement implements Controller {
           @mouseleave=${() =>
             this.eventBus?.emit(new ToggleStructureEvent(null))}
         >
-          ${html`<div class="ml-0.5 text-[10px] relative -top-1 text-gray-400">
-            ${displayHotkey}
-          </div>`}
+          ${hotkey
+            ? html`<div
+                class="ml-0.5 text-[10px] relative -top-1 text-gray-400"
+              >
+                ${displayHotkey}
+              </div>`
+            : html`<div class="ml-0.5"></div>`}
           <div class="flex items-center gap-0.5 pt-0.5">
             <img src=${icon} alt=${structureKey} class="align-middle size-5" />
             ${number !== null
