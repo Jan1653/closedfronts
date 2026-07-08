@@ -15,6 +15,7 @@ import { ParabolaUniversalPathFinder } from "../pathfinding/PathFinder.Parabola"
 import { PathStatus } from "../pathfinding/types";
 import { PseudoRandom } from "../PseudoRandom";
 import { NukeType } from "../StatsSchemas";
+import { OilExplosionExecution } from "./OilExplosionExecution";
 import { listNukeBreakAlliance } from "./Util";
 
 const SPRITE_RADIUS = 16;
@@ -422,6 +423,7 @@ export class NukeExecution implements Execution {
     const outer2 = magnitude.outer * magnitude.outer;
     const dst = this.dst;
     const destroyer = this.player;
+    const explodingOilPumps: TileRef[] = [];
     for (const unit of mg.units()) {
       const type = unit.type();
       if (
@@ -434,8 +436,14 @@ export class NukeExecution implements Execution {
         continue;
       }
       if (mg.euclideanDistSquared(dst, unit.tile()) < outer2) {
+        if (type === UnitType.OilPump) explodingOilPumps.push(unit.tile());
         unit.delete(true, destroyer);
       }
+    }
+    // An oil pump caught in the blast goes up in a hydrogen-bomb-sized
+    // secondary explosion.
+    for (const pumpTile of explodingOilPumps) {
+      mg.addExecution(new OilExplosionExecution(pumpTile));
     }
 
     this.redrawBuildings(magnitude.outer + SPRITE_RADIUS);

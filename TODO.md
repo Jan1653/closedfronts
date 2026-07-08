@@ -59,7 +59,7 @@ Querschnittsregel für ALLES: **muss auch auf der Handy-/Mobile-UI funktionieren
 - [ ] Nur an **validen Öl-Vorkommen** (Land) platzierbar — Nachtrag
 - [ ] Auch **im Meer** an Meer-Vorkommen + **Sea-Build** (Truppenschiff fährt hin, baut ungestört) — Nachtrag
 - [x] **Mehrere Ölpumpen am selben Ort** möglich (eigene Platzierung ohne Abstandsregel; getestet)
-- [ ] Ölpumpe von einer **Bombe getroffen → große Explosion** (Wasserstoffbomben-Größe) — Nachtrag
+- [x] Ölpumpe von einer **Bombe getroffen → große Explosion** (Wasserstoffbomben-Größe): zerstört Units + Land-Krater im Radius, kettet nicht (getestet)
 - [ ] Mobile-UI geprüft
 
 ---

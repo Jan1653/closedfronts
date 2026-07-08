@@ -1,3 +1,4 @@
+import { OilExplosionExecution } from "../src/core/execution/OilExplosionExecution";
 import {
   Game,
   Player,
@@ -68,6 +69,21 @@ describe("Oil economy", () => {
     player.buildUnit(UnitType.OilPump, t1, {});
     // A pump right next to it is still allowed.
     expect(player.canBuild(UnitType.OilPump, t2)).toBe(t2);
+  });
+
+  test("an oil-pump explosion wipes out units and land at the blast", () => {
+    const c = game.ref(cx, cy);
+    player.conquer(c);
+    const victim = player.buildUnit(UnitType.City, c, {});
+    expect(game.owner(c)).toBe(player);
+
+    game.addExecution(new OilExplosionExecution(c));
+    game.executeNextTick();
+    game.executeNextTick();
+
+    // The blast strips ownership from the land and destroys units at ground zero.
+    expect(game.owner(c).isPlayer()).toBe(false);
+    expect(victim.isActive()).toBe(false);
   });
 
   test("running out of oil slows movement (more ticks per step)", () => {
