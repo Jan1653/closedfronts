@@ -56,6 +56,12 @@ const STRUCTURE_ORDER = [
   UT_DEFENSE_POST,
   UT_SAM_LAUNCHER,
   UT_MISSILE_SILO,
+  // ClosedFronts structures get their own atlas columns (see
+  // scripts/gen-icon-atlas.mjs). Order here must match the column order the
+  // generator writes: Oil Pump, Wall, Water Toll Station.
+  UT_OIL_PUMP,
+  UT_WALL,
+  UT_WATER_TOLL_STATION,
 ] as const;
 
 const ATLAS_COLS = STRUCTURE_ORDER.length;
@@ -153,24 +159,8 @@ export class StructurePass {
       }
     }
 
-    // The water toll station has no dedicated atlas icon yet, so render it with
-    // the port icon as a placeholder (a dedicated icon needs the icon atlas
-    // regenerated with an extra column).
-    const portCol = this.typeToAtlasCol.get(UT_PORT);
-    if (portCol !== undefined) {
-      this.typeToAtlasCol.set(UT_WATER_TOLL_STATION, portCol);
-    }
-    // Wall has no dedicated atlas icon yet either; reuse the defense-post icon
-    // as a placeholder so walls still show on the map.
-    const defenseCol = this.typeToAtlasCol.get(UT_DEFENSE_POST);
-    if (defenseCol !== undefined) {
-      this.typeToAtlasCol.set(UT_WALL, defenseCol);
-    }
-    // Oil pump reuses the factory icon as a placeholder until it gets its own.
-    const factoryCol = this.typeToAtlasCol.get(UT_FACTORY);
-    if (factoryCol !== undefined) {
-      this.typeToAtlasCol.set(UT_OIL_PUMP, factoryCol);
-    }
+    // Oil Pump, Wall and Water Toll Station now have their own atlas columns
+    // (STRUCTURE_ORDER above), so no placeholder column aliasing is needed.
 
     // Compile shaders
     this.program = createProgram(

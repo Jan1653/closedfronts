@@ -148,6 +148,18 @@
       "Missile Silo": {
         "scale": 1.55,
         "iconFill": 0.85
+      },
+      "Oil Pump": {
+        "scale": 1.1,
+        "iconFill": 0.85
+      },
+      "Wall": {
+        "scale": 1.2,
+        "iconFill": 0.85
+      },
+      "Water Toll Station": {
+        "scale": 1.1,
+        "iconFill": 0.85
       }
     },
     "highlightOutlineWidth": 0.04,
