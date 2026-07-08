@@ -924,6 +924,13 @@ export class Config {
     return Math.max(1, Math.round(baseTicksPerStep / player.oilSpeedFactor()));
   }
 
+  // Tiles advanced per tick, shrunk when the owner is out of oil (so low oil =>
+  // fewer tiles per tick => slower). Used by units that move several tiles at
+  // once, like trains. Always at least 1 so a unit never freezes.
+  oilAdjustedSpeed(baseSpeed: number, player: Player): number {
+    return Math.max(1, Math.round(baseSpeed * player.oilSpeedFactor()));
+  }
+
   troopIncreaseRate(player: Player | PlayerView): number {
     const max = this.maxTroops(player);
 

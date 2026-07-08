@@ -55,7 +55,9 @@ Querschnittsregel für ALLES: **muss auch auf der Handy-/Mobile-UI funktionieren
 - [x] **Öl leer → Verlangsamungs-Faktor** (`oilSpeedFactor`) vorhanden (getestet)
 - [x] Faktor auf **Transportschiffe** angewandt (leerer Tank = langsamer; getestet)
 - [x] Faktor auf **Landangriffe** angewandt (leerer Tank = Angriff erobert Kacheln langsamer; getestet)
-- [ ] Faktor auf andere Schiffe (Handel/Kampf) + **Züge/Busse** zwischen Fabriken — Nachtrag
+- [x] Faktor auf **Handelsschiffe** angewandt (leerer Tank = seltenere Schritte; getestet)
+- [x] Faktor auf **Züge** zwischen Fabriken angewandt (leerer Tank = weniger Kacheln/Tick, min. 1; getestet)
+- [ ] Faktor auf **Kampfschiffe** — Nachtrag (Warship bewegt sich pro Tick direkt ohne `ticksPerStep`, braucht Bewegungs-Gate)
 - [x] **Öl-Anzeige im HUD** neben Gold (im Spiel verifiziert)
 - [ ] Nur an **validen Öl-Vorkommen** (Land) platzierbar — Nachtrag
 - [ ] Auch **im Meer** an Meer-Vorkommen + **Sea-Build** (Truppenschiff fährt hin, baut ungestört) — Nachtrag

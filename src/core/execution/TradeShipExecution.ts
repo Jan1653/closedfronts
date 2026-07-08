@@ -21,6 +21,8 @@ export class TradeShipExecution implements Execution {
   private tilesTraveled = 0;
   private motionPlanId = 1;
   private motionPlanDst: TileRef | null = null;
+  private ticksPerMove = 1;
+  private lastMove = 0;
 
   private static _staggerCounter = 0;
 
@@ -130,6 +132,23 @@ export class TradeShipExecution implements Execution {
       return;
     }
 
+    // Oil shortage slows the ship: recompute the cadence and, if it changed,
+    // force the motion plan to be re-recorded so the client interpolates at the
+    // new speed.
+    const newTicksPerMove = this.mg
+      .config()
+      .oilAdjustedTicksPerMove(1, tradeShipOwner);
+    if (newTicksPerMove !== this.ticksPerMove) {
+      this.ticksPerMove = newTicksPerMove;
+      this.motionPlanDst = null;
+    }
+
+    // Only step every ticksPerMove ticks (an empty tank stretches the interval).
+    if (ticks - this.lastMove < this.ticksPerMove) {
+      return;
+    }
+    this.lastMove = ticks;
+
     const dst = this._dstPort.tile();
     const result = this.pathFinder.next(curTile, dst);
 
@@ -147,8 +166,8 @@ export class TradeShipExecution implements Execution {
             kind: "grid",
             unitId: this.tradeShip.id(),
             planId: this.motionPlanId,
-            startTick: ticks + 1,
-            ticksPerStep: 1,
+            startTick: ticks + this.ticksPerMove,
+            ticksPerStep: this.ticksPerMove,
             path,
           });
           this.motionPlanDst = dst;

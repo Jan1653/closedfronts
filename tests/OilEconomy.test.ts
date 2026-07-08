@@ -104,4 +104,25 @@ describe("Oil economy", () => {
     // Empty tank: a movement step now takes more ticks (slower).
     expect(config.oilAdjustedTicksPerMove(1, player)).toBeGreaterThan(1);
   });
+
+  test("oil shortage shrinks train speed but never below 1", () => {
+    const config = game.config();
+    // Full tank: base train speed is unchanged.
+    expect(config.oilAdjustedSpeed(2, player)).toBe(2);
+
+    // Grow and drain the tank dry.
+    for (let x = cx - 15; x <= cx + 15; x++) {
+      for (let y = cy - 15; y <= cy + 15; y++) player.conquer(game.ref(x, y));
+    }
+    const drain = Math.ceil(
+      config.maxOil() / config.oilConsumptionRate(player),
+    );
+    for (let i = 0; i < drain + 2; i++) player.updateOil();
+    expect(player.oil()).toBe(0);
+
+    // Empty tank: the train advances fewer tiles per tick, but never freezes.
+    const slowed = config.oilAdjustedSpeed(2, player);
+    expect(slowed).toBeLessThan(2);
+    expect(slowed).toBeGreaterThanOrEqual(1);
+  });
 });

@@ -33,6 +33,7 @@ describe("TradeShipExecution", () => {
       id: vi.fn(() => 1),
       clientID: vi.fn(() => 1),
       canTrade: vi.fn(() => true),
+      oilSpeedFactor: vi.fn(() => 1),
     } as any;
 
     dstOwner = {
@@ -52,6 +53,7 @@ describe("TradeShipExecution", () => {
       units: vi.fn(() => [piratePort, piratePort2]),
       unitCount: vi.fn(() => 2),
       canTrade: vi.fn(() => true),
+      oilSpeedFactor: vi.fn(() => 1),
     } as any;
 
     piratePort = {
@@ -153,6 +155,21 @@ describe("TradeShipExecution", () => {
     tradeShipExecution.tick(1);
     tradeShipExecution.tick(2);
     expect(game.displayMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it("moves less often when the owner is out of oil", () => {
+    // Empty tank => oilSpeedFactor 0.3 => ticksPerMove = round(1 / 0.3) = 3.
+    origOwner.oilSpeedFactor = vi.fn(() => 0.3);
+
+    tradeShipExecution.tick(10); // first eligible step: moves
+    expect(tradeShip.move).toHaveBeenCalledTimes(1);
+
+    tradeShipExecution.tick(11); // within the interval: held
+    tradeShipExecution.tick(12); // still within: held
+    expect(tradeShip.move).toHaveBeenCalledTimes(1);
+
+    tradeShipExecution.tick(13); // 13 - 10 = 3 >= 3: steps again
+    expect(tradeShip.move).toHaveBeenCalledTimes(2);
   });
 
   it("should complete trade and award gold", () => {

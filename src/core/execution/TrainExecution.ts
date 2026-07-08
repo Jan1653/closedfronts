@@ -44,6 +44,8 @@ export class TrainExecution implements Execution {
 
   init(mg: Game, ticks: number): void {
     this.mg = mg;
+    // Out of oil? The train runs slower (fewer tiles per tick, at least 1).
+    this.speed = mg.config().oilAdjustedSpeed(this.speed, this.player);
     const stations = this.railNetwork.findStationsPath(
       this.source,
       this.destination,
