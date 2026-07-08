@@ -53,9 +53,9 @@ Querschnittsregel für ALLES: **muss auch auf der Handy-/Mobile-UI funktionieren
 - [x] Neues Gebäude „Ölpumpe" (an Land baubar, auf der Karte sichtbar via Platzhalter-Icon)
 - [x] **Öl-Ressource:** Pumpen produzieren, **Verbrauch steigt mit Spielergröße**, Startvorrat + Deckel (getestet)
 - [x] **Öl leer → Verlangsamungs-Faktor** (`oilSpeedFactor`) vorhanden (getestet)
-- [ ] Faktor auf **Geschwindigkeit aller Schiffstypen** anwenden — Nachtrag
-- [ ] Faktor auf **Geschwindigkeit der Züge/Busse** zwischen Fabriken anwenden — Nachtrag
-- [ ] **Neue Öl-Anzeige** (wie die Gold-Anzeige) — Client-Nachtrag
+- [x] Faktor auf **Transportschiffe** angewandt (leerer Tank = langsamer; getestet)
+- [ ] Faktor auf andere Schiffe (Handel/Kampf) + **Züge/Busse** zwischen Fabriken — Nachtrag
+- [x] **Öl-Anzeige im HUD** neben Gold (im Spiel verifiziert)
 - [ ] Nur an **validen Öl-Vorkommen** (Land) platzierbar — Nachtrag
 - [ ] Auch **im Meer** an Meer-Vorkommen + **Sea-Build** (Truppenschiff fährt hin, baut ungestört) — Nachtrag
 - [ ] **Mehrere Ölpumpen am selben Ort** möglich — Nachtrag (Abstandsprüfung lockern)
