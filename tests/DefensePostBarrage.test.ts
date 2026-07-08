@@ -1,0 +1,69 @@
+import { DefensePostExecution } from "../src/core/execution/DefensePostExecution";
+import {
+  Game,
+  Player,
+  PlayerInfo,
+  PlayerType,
+  UnitType,
+} from "../src/core/game/Game";
+import { TileRef } from "../src/core/game/GameMap";
+import { setup } from "./util/Setup";
+import { executeTicks } from "./util/utils";
+
+describe("DefensePost barrage", () => {
+  let game: Game;
+  let owner: Player;
+  let enemy: Player;
+  let cx: number;
+  let cy: number;
+
+  beforeEach(async () => {
+    game = await setup(
+      "big_plains",
+      { infiniteGold: true, instantBuild: true },
+      [
+        new PlayerInfo("own", PlayerType.Human, null, "own"),
+        new PlayerInfo("enemy", PlayerType.Human, null, "enemy"),
+      ],
+    );
+    owner = game.player("own");
+    enemy = game.player("enemy");
+    cx = Math.floor(game.width() / 2);
+    cy = Math.floor(game.height() / 2);
+  });
+
+  test("captures nearby enemy tiles when the front is near", () => {
+    // Owner holds a block; the enemy holds an adjacent block within range.
+    for (let x = cx - 2; x <= cx + 1; x++) {
+      for (let y = cy - 2; y <= cy + 2; y++) owner.conquer(game.ref(x, y));
+    }
+    const enemyTiles: TileRef[] = [];
+    for (let x = cx + 2; x <= cx + 4; x++) {
+      for (let y = cy - 2; y <= cy + 2; y++) {
+        const t = game.ref(x, y);
+        enemy.conquer(t);
+        enemyTiles.push(t);
+      }
+    }
+
+    const post = owner.buildUnit(UnitType.DefensePost, game.ref(cx, cy), {});
+    game.addExecution(new DefensePostExecution(post));
+
+    const heldBefore = enemyTiles.filter((t) => game.owner(t) === enemy).length;
+    executeTicks(game, 6);
+    const heldAfter = enemyTiles.filter((t) => game.owner(t) === enemy).length;
+
+    // The barrage captured enemy tiles for the post owner.
+    expect(heldAfter).toBeLessThan(heldBefore);
+    expect(enemyTiles.some((t) => game.owner(t) === owner)).toBe(true);
+  });
+
+  test("does not fire (or crash) when no enemies are in range", () => {
+    owner.conquer(game.ref(cx, cy));
+    const post = owner.buildUnit(UnitType.DefensePost, game.ref(cx, cy), {});
+    game.addExecution(new DefensePostExecution(post));
+
+    executeTicks(game, 3);
+    expect(post.isActive()).toBe(true);
+  });
+});

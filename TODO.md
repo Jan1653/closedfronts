@@ -28,7 +28,8 @@ Querschnittsregel für ALLES: **muss auch auf der Handy-/Mobile-UI funktionieren
 
 - [x] **Kosten verdoppeln** (2× aktueller Preis)
 - [x] **Upgradebar/stackbar:** pro Level steigt der **Radius** bis zu einem Limit (30 → 60, getestet)
-- [ ] **Pixel-Sperrfeuer bei Angriff:** feuert viele kleine „Mini-Granaten" (Pixel), **sehr schnell**; wo eine Granate explodiert, wird die getroffene Kachel **eingenommen**
+- [x] **Pixel-Sperrfeuer (Mechanik):** der Posten nimmt bei Feindkontakt schnell die nächsten Feind-Kacheln im Radius ein — „wo es explodiert, wird eingenommen" (getestet)
+- [ ] **Pixel-Sperrfeuer (Optik):** die kleinen Granaten-Projektile sichtbar fliegen lassen (Client-Rendering, Nachtrag)
 - [ ] Balancing: viele Posten nebeneinander = starke, kaum durchdringbare Front
 - [ ] Mobile-UI geprüft
 

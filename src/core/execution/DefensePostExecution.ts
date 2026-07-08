@@ -1,14 +1,17 @@
-import { Execution, Game, Unit } from "../game/Game";
-import { ShellExecution } from "./ShellExecution";
+import { Execution, Game, Player, Unit } from "../game/Game";
+import { manhattanDistFN, TileRef } from "../game/GameMap";
+
+// A defense post under pressure fires a rapid barrage of "grenades" that
+// capture the nearest enemy tiles within its range each tick. Many posts
+// together form a strong, aggressive front.
+const GRENADES_PER_TICK = 3;
+// Cap on tiles scanned per tick, so a post sitting deep in friendly territory
+// (no enemies in range) stays cheap.
+const MAX_SCAN = 2500;
 
 export class DefensePostExecution implements Execution {
   private mg: Game;
   private active: boolean = true;
-
-  private target: Unit | null = null;
-  private lastShellAttack = 0;
-
-  private alreadySentShell = new Set<Unit>();
 
   constructor(private post: Unit) {}
 
@@ -16,86 +19,39 @@ export class DefensePostExecution implements Execution {
     this.mg = mg;
   }
 
-  private shoot() {
-    if (this.target === null) return;
-    const shellAttackRate = this.mg.config().defensePostShellAttackRate();
-    if (this.mg.ticks() - this.lastShellAttack > shellAttackRate) {
-      this.lastShellAttack = this.mg.ticks();
-      this.mg.addExecution(
-        new ShellExecution(
-          this.post.tile(),
-          this.post.owner(),
-          this.post,
-          this.target,
-        ),
-      );
-      if (!this.target.hasHealth()) {
-        // Don't send multiple shells to target that can be oneshotted
-        this.alreadySentShell.add(this.target);
-        this.target = null;
-        return;
-      }
-    }
-  }
-
   tick(ticks: number): void {
     if (!this.post.isActive()) {
       this.active = false;
       return;
     }
-
-    // Do nothing while the structure is under construction
+    // Do nothing while the structure is under construction.
     if (this.post.isUnderConstruction()) {
       return;
     }
+    this.fireBarrage();
+  }
 
-    if (this.target !== null && !this.target.isActive()) {
-      this.target = null;
+  // Capture up to GRENADES_PER_TICK of the nearest enemy tiles within the
+  // post's (level-scaled) range. Own and allied tiles are never targeted.
+  private fireBarrage(): void {
+    const owner = this.post.owner();
+    const range = this.mg.config().defensePostRange(this.post.level());
+    const postTile = this.post.tile();
+
+    const targets: TileRef[] = [];
+    let scanned = 0;
+    for (const t of this.mg.bfs(postTile, manhattanDistFN(postTile, range))) {
+      if (++scanned > MAX_SCAN || targets.length >= GRENADES_PER_TICK) break;
+      const tileOwner = this.mg.owner(t);
+      if (!tileOwner.isPlayer()) continue;
+      const p = tileOwner as Player;
+      if (p === owner || p.isFriendly(owner) || p.isOnSameTeam(owner)) continue;
+      targets.push(t);
     }
 
-    // TODO: Reconsider how/if defense posts target ships.
-    // const ships = this.mg
-    //   .nearbyUnits(
-    //     this.post.tile(),
-    //     this.mg.config().defensePostTargettingRange(),
-    //     [UnitType.TransportShip, UnitType.Warship],
-    //   )
-    //   .filter(
-    //     ({ unit }) =>
-    //       this.post !== null &&
-    //       unit.owner() !== this.post.owner() &&
-    //       !unit.owner().isFriendly(this.post.owner()) &&
-    //       !this.alreadySentShell.has(unit),
-    //   );
-    //
-    // this.target =
-    //   ships.sort((a, b) => {
-    //     const { unit: unitA, distSquared: distA } = a;
-    //     const { unit: unitB, distSquared: distB } = b;
-    //
-    //     // Prioritize TransportShip
-    //     if (
-    //       unitA.type() === UnitType.TransportShip &&
-    //       unitB.type() !== UnitType.TransportShip
-    //     )
-    //       return -1;
-    //     if (
-    //       unitA.type() !== UnitType.TransportShip &&
-    //       unitB.type() === UnitType.TransportShip
-    //     )
-    //       return 1;
-    //
-    //     // If both are the same type, sort by distance (lower `distSquared` means closer)
-    //     return distA - distB;
-    //   })[0]?.unit ?? null;
-    //
-    // if (this.target === null || !this.target.isActive()) {
-    //   this.target = null;
-    //   return;
-    // } else {
-    //   this.shoot();
-    //   return;
-    // }
+    for (const t of targets) {
+      owner.conquer(t);
+    }
   }
 
   isActive(): boolean {
