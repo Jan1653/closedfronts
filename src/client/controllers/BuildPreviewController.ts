@@ -461,7 +461,10 @@ export class BuildPreviewController implements Controller {
       radiusTileY = this.game.y(upgradeTargetTile);
     }
 
-    const cost = u.cost;
+    // Reflect the Shift+wheel build quantity in the cursor: total cost scales
+    // with how many copies a single click will place.
+    const quantity = this.multiPlaceCount(u.type);
+    const cost = u.cost * BigInt(quantity);
     return {
       ghostType: u.type,
       tileX: this.game.x(tileRef),
@@ -521,13 +524,15 @@ export class BuildPreviewController implements Controller {
         unitType === UnitType.AtomBomb || unitType === UnitType.HydrogenBomb
           ? this.uiState.rocketDirectionUp
           : undefined;
-      this.eventBus.emit(
-        new BuildUnitIntentEvent(
-          unitType,
-          this.game.ref(tile.x, tile.y),
-          rocketDirectionUp,
-        ),
-      );
+      const tileRef = this.game.ref(tile.x, tile.y);
+      // Shift+wheel can raise the build quantity: place several copies at once,
+      // stacked on the tile (e.g. many cities to level it up quickly).
+      const count = this.multiPlaceCount(unitType);
+      for (let i = 0; i < count; i++) {
+        this.eventBus.emit(
+          new BuildUnitIntentEvent(unitType, tileRef, rocketDirectionUp),
+        );
+      }
       if (!shouldPreserveGhostAfterBuild(unitType)) {
         this.removeGhostStructure();
       }
@@ -568,6 +573,23 @@ export class BuildPreviewController implements Controller {
   private removeGhostStructure() {
     this.clearGhostStructure();
     this.uiState.ghostStructure = null;
+    this.uiState.buildQuantity = 1;
+  }
+
+  /**
+   * How many copies of a structure to place per click. Shift+wheel sets
+   * uiState.buildQuantity; attack units (nukes / warship) are always single.
+   */
+  private multiPlaceCount(unitType: UnitType): number {
+    switch (unitType) {
+      case UnitType.AtomBomb:
+      case UnitType.HydrogenBomb:
+      case UnitType.MIRV:
+      case UnitType.Warship:
+        return 1;
+      default:
+        return Math.max(1, this.uiState.buildQuantity);
+    }
   }
 
   private resolveGhostRangeLevel(

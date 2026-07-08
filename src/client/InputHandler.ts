@@ -393,7 +393,11 @@ export class InputHandler {
       this.addKeybindAndEvent(
         i,
         (e: KeyboardEvent) => {
-          const matchedBuild = this.resolveBuildKeybind(e.code, e.shiftKey);
+          const matchedBuild = this.resolveBuildKeybind(
+            e.code,
+            e.shiftKey,
+            e.altKey,
+          );
 
           if (matchedBuild !== null) {
             this.setGhostStructure(matchedBuild);
@@ -401,7 +405,7 @@ export class InputHandler {
         },
         () => this.canUseBuildKeybinds(),
         (e: KeyboardEvent) =>
-          this.resolveBuildKeybind(e.code, e.shiftKey) !== null,
+          this.resolveBuildKeybind(e.code, e.shiftKey, e.altKey) !== null,
       );
     }
     // Listen for warship selection to change cursor
@@ -838,12 +842,25 @@ export class InputHandler {
   }
 
   private onShiftScroll(event: WheelEvent) {
-    if (event.shiftKey) {
-      const scrollValue = event.deltaY === 0 ? event.deltaX : event.deltaY;
-      const increment = this.userSettings.attackRatioIncrement();
-      const ratio = scrollValue > 0 ? -increment : increment;
-      this.eventBus.emit(new AttackRatioEvent(ratio));
+    if (!event.shiftKey) return;
+    const scrollValue = event.deltaY === 0 ? event.deltaX : event.deltaY;
+
+    // While a build ghost is active, Shift + wheel sets how many copies to
+    // place per click (stacked on the tile) instead of nudging the attack
+    // ratio. Scroll up = more.
+    if (this.uiState.ghostStructure !== null) {
+      const MAX_BUILD_QUANTITY = 25;
+      const step = scrollValue > 0 ? -1 : 1;
+      this.uiState.buildQuantity = Math.max(
+        1,
+        Math.min(MAX_BUILD_QUANTITY, this.uiState.buildQuantity + step),
+      );
+      return;
     }
+
+    const increment = this.userSettings.attackRatioIncrement();
+    const ratio = scrollValue > 0 ? -increment : increment;
+    this.eventBus.emit(new AttackRatioEvent(ratio));
   }
 
   private onPointerMove(event: PointerEvent) {
@@ -1013,7 +1030,23 @@ export class InputHandler {
   private resolveBuildKeybind(
     code: string,
     shiftKey: boolean,
+    altKey: boolean = false,
   ): PlayerBuildableUnitType | null {
+    if (altKey) {
+      // Second hotkey layer (Alt+digit) for the structures that no longer fit
+      // the primary 1..0 row. Alt is used instead of Ctrl because browsers
+      // reserve Ctrl+digit for tab switching and won't let the page keep it.
+      switch (this.digitFromKeyCode(code)) {
+        case "1":
+          return UnitType.Wall;
+        case "2":
+          return UnitType.OilPump;
+        case "3":
+          return UnitType.WaterTollStation;
+        default:
+          return null;
+      }
+    }
     const buildKeybinds: ReadonlyArray<{
       key: string;
       type: PlayerBuildableUnitType;
