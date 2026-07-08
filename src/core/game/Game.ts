@@ -599,6 +599,12 @@ export interface Player {
   addTroops(troops: number): void;
   removeTroops(troops: number): number;
 
+  // Rücksender: captured-nuke stockpile. A high-level SAM (see
+  // Config.samCaptureChancePercent) may bank an intercepted bomb here; the
+  // owner can then launch one of that type for free (see PlayerImpl.buildUnit).
+  nukeStockpile(type: UnitType): number;
+  addNukeToStockpile(type: UnitType): void;
+
   // Units
   // Fixed-arity + array overloads instead of a rest parameter: the rest array
   // would be allocated on every call, and this is one of the hottest calls in
@@ -883,6 +889,9 @@ export interface BuildableUnit {
   cost: Gold;
   overlappingRailroads: TileRef[];
   ghostRailPaths: TileRef[][];
+  // Number of captured bombs of this type held in the Rücksender stockpile
+  // (0 for non-nuke types). When > 0 the next build of this type is free.
+  stockpile: number;
 }
 
 export interface PlayerProfile {

@@ -108,6 +108,10 @@ export class PlayerImpl implements Player {
   private _troops: bigint;
   private _oil: number = 0;
 
+  // Rücksender: captured bombs, keyed by nuke UnitType. Each entry lets the
+  // player launch one bomb of that type for free (see buildUnit).
+  private _nukeStockpile = new Map<UnitType, number>();
+
   markedTraitorTick = -1;
   markedDoomsdayClockTick = -1;
   private _betrayalCount: number = 0;
@@ -324,6 +328,7 @@ export class PlayerImpl implements Player {
       tilesOwned: this.numTilesOwned(),
       gold: this._gold,
       troops: this.troops(),
+      oil: this._oil,
       allies: allies,
       embargoes: embargoes,
       isTraitor: this.isTraitor(),
@@ -1151,6 +1156,14 @@ export class PlayerImpl implements Player {
     return this._gold;
   }
 
+  nukeStockpile(type: UnitType): number {
+    return this._nukeStockpile.get(type) ?? 0;
+  }
+
+  addNukeToStockpile(type: UnitType): void {
+    this._nukeStockpile.set(type, this.nukeStockpile(type) + 1);
+  }
+
   addGold(toAdd: Gold, tile?: TileRef): void {
     this._gold += toAdd;
     if (tile) {
@@ -1232,7 +1245,17 @@ export class PlayerImpl implements Player {
       );
     }
 
-    const cost = this.mg.unitInfo(type).cost(this.mg, this);
+    let cost = this.mg.unitInfo(type).cost(this.mg, this);
+    // Rücksender: launching a captured bomb spends a stockpile credit instead
+    // of gold. The cost function already returns 0 while a credit is held (see
+    // Config.nukeCost); consume exactly one here as the bomb is built.
+    if (
+      (type === UnitType.AtomBomb || type === UnitType.HydrogenBomb) &&
+      this.nukeStockpile(type) > 0
+    ) {
+      this._nukeStockpile.set(type, this.nukeStockpile(type) - 1);
+      cost = 0n;
+    }
     const b = new UnitImpl(
       type,
       this.mg,
@@ -1381,6 +1404,7 @@ export class PlayerImpl implements Player {
         ghostRailPaths: buildNew
           ? rail.computeGhostRailPaths(u, canBuild as TileRef)
           : [],
+        stockpile: this.nukeStockpile(u),
       };
     }
 

@@ -79,6 +79,7 @@ function stateFromUpdate(pu: PlayerUpdate): PlayerState {
     tilesOwned: pu.tilesOwned!,
     gold: Number(pu.gold!),
     troops: pu.troops!,
+    oil: pu.oil ?? 0,
     isTraitor: pu.isTraitor!,
     traitorRemainingTicks: Math.max(0, pu.traitorRemainingTicks ?? 0),
     inDoomsdayClock: pu.inDoomsdayClock ?? false,
@@ -478,6 +479,10 @@ export class PlayerView {
 
   troops(): number {
     return this.state.troops;
+  }
+
+  oil(): number {
+    return this.state.oil ?? 0;
   }
 
   totalUnitLevels(type: UnitType): number {

@@ -362,12 +362,12 @@ export class Config {
         break;
       case UnitType.AtomBomb:
         info = {
-          cost: this.costWrapper(() => 750_000, UnitType.AtomBomb),
+          cost: this.nukeCost(750_000, UnitType.AtomBomb),
         };
         break;
       case UnitType.HydrogenBomb:
         info = {
-          cost: this.costWrapper(() => 5_000_000, UnitType.HydrogenBomb),
+          cost: this.nukeCost(5_000_000, UnitType.HydrogenBomb),
         };
         break;
       case UnitType.MIRV:
@@ -553,6 +553,23 @@ export class Config {
         0,
       );
       return BigInt(costFn(numUnits));
+    };
+  }
+
+  /**
+   * Nuke build cost that is free while the player holds a captured bomb of this
+   * type in their Rücksender stockpile (see samCaptureChancePercent). The
+   * stockpile is decremented in PlayerImpl.buildUnit when the free bomb is
+   * actually launched.
+   */
+  private nukeCost(
+    baseCost: number,
+    type: UnitType,
+  ): (g: Game, p: Player) => bigint {
+    const base = this.costWrapper(() => baseCost, type);
+    return (game: Game, player: Player) => {
+      if (player.nukeStockpile(type) > 0) return 0n;
+      return base(game, player);
     };
   }
 
@@ -980,6 +997,26 @@ export class Config {
 
   maxSamRange(): number {
     return 150;
+  }
+
+  /**
+   * Rücksender: chance (0–100, integer percent) that a SAM launcher of the
+   * given level captures an intercepted nuke instead of merely destroying it,
+   * banking a free nuke of the same type for the SAM's owner. Atom bombs become
+   * capturable from level 5 (10%, +10%/level); hydrogen bombs only from
+   * level 10 (20%, +20%/level). Both reach a guaranteed 100% by level 15.
+   * Integer percent keeps the interception roll deterministic across platforms.
+   */
+  samCaptureChancePercent(nukeType: UnitType, level: number): number {
+    if (nukeType === UnitType.AtomBomb) {
+      if (level < 5) return 0;
+      return Math.min(100, (level - 4) * 10);
+    }
+    if (nukeType === UnitType.HydrogenBomb) {
+      if (level < 10) return 0;
+      return Math.min(100, (level - 9) * 20);
+    }
+    return 0;
   }
 
   defaultSamMissileSpeed(): number {

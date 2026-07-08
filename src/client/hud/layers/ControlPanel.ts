@@ -23,6 +23,7 @@ import { PlayerView } from "../../view/PlayerView";
 const goldCoinIcon = assetUrl("images/GoldCoinIcon.svg");
 const soldierIcon = assetUrl("images/SoldierIcon.svg");
 const swordIcon = assetUrl("images/SwordIcon.svg");
+const oilIcon = assetUrl("images/OilPumpIconWhite.svg");
 
 @customElement("control-panel")
 export class ControlPanel extends LitElement implements Controller {
@@ -52,6 +53,9 @@ export class ControlPanel extends LitElement implements Controller {
 
   @state()
   private _gold: Gold;
+
+  @state()
+  private _oil: number = 0;
 
   @state()
   private _attackingTroops: number = 0;
@@ -115,6 +119,7 @@ export class ControlPanel extends LitElement implements Controller {
     const config = this.game.config();
     this._maxTroops = config.maxTroops(player);
     this._gold = player.gold();
+    this._oil = player.oil();
     this._troops = player.troops();
     this._attackingTroops = player
       .outgoingAttacks()
@@ -509,6 +514,15 @@ export class ControlPanel extends LitElement implements Controller {
           <img src=${goldCoinIcon} width="13" height="13" class="shrink-0" />
           <span class="tabular-nums">${renderNumber(this._gold)}</span>
         </div>
+        <!-- Oil -->
+        <div
+          class="flex items-center gap-1 shrink-0 border rounded-md border-sky-400 font-bold text-sky-400 text-sm py-0.5 px-1 w-[4.5rem]"
+          translate="no"
+          title="Oil"
+        >
+          <img src=${oilIcon} width="13" height="13" class="shrink-0" />
+          <span class="tabular-nums">${renderNumber(this._oil)}</span>
+        </div>
       </div>
       <!-- Row 2: attack ratio | slider -->
       <div class="flex items-center gap-1.5" translate="no">
@@ -563,6 +577,15 @@ export class ControlPanel extends LitElement implements Controller {
             : ""}
           <img src=${goldCoinIcon} width="13" height="13" />
           <span class="px-0.5">${renderNumber(this._gold)}</span>
+        </div>
+        <!-- Oil -->
+        <div
+          class="flex items-center justify-center p-1 gap-0.5 border rounded-md border-sky-400 font-bold text-sky-400 text-xs w-1/5 shrink-0"
+          translate="no"
+          title="Oil"
+        >
+          <img src=${oilIcon} width="13" height="13" />
+          <span class="px-0.5">${renderNumber(this._oil)}</span>
         </div>
         <!-- Troop bar -->
         <div class="w-[40%] shrink-0 flex items-center">

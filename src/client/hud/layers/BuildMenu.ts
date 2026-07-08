@@ -485,7 +485,13 @@ export class BuildMenu extends LitElement implements Controller {
                       ? html`<div class="build-count-chip">
                           <span class="build-count">${this.count(item)}</span>
                         </div>`
-                      : ""}
+                      : buildableUnit.stockpile > 0
+                        ? html`<div class="build-count-chip">
+                            <span class="build-count"
+                              >${buildableUnit.stockpile}</span
+                            >
+                          </div>`
+                        : ""}
                   </button>
                 `;
               })}

@@ -9,6 +9,7 @@ import {
 import { TileRef } from "../game/GameMap";
 import { PathFinding } from "../pathfinding/PathFinder";
 import { PathStatus, SteppingPathFinder } from "../pathfinding/types";
+import { PseudoRandom } from "../PseudoRandom";
 import { NukeType } from "../StatsSchemas";
 
 export class SAMMissileExecution implements Execution {
@@ -17,6 +18,7 @@ export class SAMMissileExecution implements Execution {
   private SAMMissile: Unit | undefined;
   private mg: Game;
   private speed: number = 0;
+  private pseudoRandom: PseudoRandom | undefined;
 
   constructor(
     private spawn: TileRef,
@@ -72,6 +74,8 @@ export class SAMMissileExecution implements Execution {
           { unit: this.target.type() },
         );
         this.active = false;
+        // Rücksender: a high-level SAM may capture the bomb before destroying it.
+        this.maybeCaptureNuke();
         this.target.delete(true, this._owner);
         this.SAMMissile.delete(false);
 
@@ -84,6 +88,37 @@ export class SAMMissileExecution implements Execution {
         this.SAMMissile.move(result.node);
       }
     }
+  }
+
+  /**
+   * Rücksender: with a level-scaled chance (Config.samCaptureChancePercent),
+   * bank the intercepted bomb in the SAM owner's stockpile as a free nuke of
+   * the same type instead of only destroying it. Rolled once, at interception.
+   */
+  private maybeCaptureNuke(): void {
+    const nukeType = this.target.type();
+    if (nukeType !== UnitType.AtomBomb && nukeType !== UnitType.HydrogenBomb) {
+      return;
+    }
+    const chance = this.mg
+      .config()
+      .samCaptureChancePercent(nukeType, this.ownerUnit.level());
+    if (chance <= 0) {
+      return;
+    }
+    this.pseudoRandom ??= new PseudoRandom(this.SAMMissile!.id());
+    if (this.pseudoRandom.nextInt(0, 100) >= chance) {
+      return;
+    }
+    const owner = this.ownerUnit.owner();
+    owner.addNukeToStockpile(nukeType);
+    this.mg.displayMessage(
+      nukeType === UnitType.AtomBomb
+        ? "events_display.atom_bomb_captured"
+        : "events_display.hydrogen_bomb_captured",
+      MessageType.SAM_HIT,
+      owner.id(),
+    );
   }
 
   isActive(): boolean {

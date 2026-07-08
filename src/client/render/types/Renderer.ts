@@ -60,6 +60,7 @@ export interface PlayerState {
   tilesOwned: number;
   gold: number;
   troops: number;
+  oil?: number;
   isTraitor: boolean;
   traitorRemainingTicks: number;
   inDoomsdayClock: boolean;

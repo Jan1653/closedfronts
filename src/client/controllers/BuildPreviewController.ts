@@ -552,6 +552,7 @@ export class BuildPreviewController implements Controller {
         cost: 0n,
         overlappingRailroads: [],
         ghostRailPaths: [],
+        stockpile: 0,
       },
     };
   }
