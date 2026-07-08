@@ -4,6 +4,7 @@ import { parse } from "node-html-parser";
 import path from "path";
 import type { Logger } from "winston";
 import { z } from "zod";
+import { GameEnv } from "../core/configuration/Config";
 import { GAME_ID_REGEX, GameInfo } from "../core/Schemas";
 import { replacer } from "../core/Util";
 import type { GameManager } from "./GameManager";
@@ -92,10 +93,19 @@ export function registerGamePreviewRoute(opts: {
     const lobby: GameInfo | null = game ? game.gameInfo() : null;
 
     try {
-      const publicInfo = await fetchPublicGameInfo(gameID); // Fetch from central API (DB/Auth)
+      // No external API in dev, so fetchPublicGameInfo only ever times out
+      // (~1.5s) before returning null. Skip it to keep link opens instant.
+      const publicInfo =
+        ServerEnv.env() === GameEnv.Dev
+          ? null
+          : await fetchPublicGameInfo(gameID); // Fetch from central API (DB/Auth)
 
-      // If we have neither live lobby info nor archived public info, we can't show anything
-      if (!lobby && !publicInfo) {
+      // If we have neither live lobby info nor archived public info, we can't
+      // show anything. But in dev there is no API to confirm a game is truly
+      // gone, and the client recomputes the join target from the id anyway, so
+      // serve the app shell and let the client attempt the join instead of
+      // bouncing to the main menu.
+      if (!lobby && !publicInfo && ServerEnv.env() !== GameEnv.Dev) {
         return res.redirect(302, "/");
       }
 
