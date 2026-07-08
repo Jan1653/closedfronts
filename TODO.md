@@ -28,7 +28,7 @@ Querschnittsregel für ALLES: **muss auch auf der Handy-/Mobile-UI funktionieren
 
 - [x] **Kosten verdoppeln** (2× aktueller Preis)
 - [x] **Upgradebar/stackbar:** pro Level steigt der **Radius** bis zu einem Limit (30 → 60, getestet)
-- [x] **Pixel-Sperrfeuer (Mechanik):** der Posten nimmt bei Feindkontakt schnell die nächsten Feind-Kacheln im Radius ein — „wo es explodiert, wird eingenommen" (getestet)
+- [x] **Pixel-Sperrfeuer (Mechanik):** der Posten nimmt schnell die nächsten Feind-Kacheln **und Wildnis** im Radius ein — „wo es explodiert, wird eingenommen" (getestet)
 - [ ] **Pixel-Sperrfeuer (Optik):** die kleinen Granaten-Projektile sichtbar fliegen lassen (Client-Rendering, Nachtrag)
 - [ ] Balancing: viele Posten nebeneinander = starke, kaum durchdringbare Front
 - [ ] Mobile-UI geprüft
@@ -58,7 +58,7 @@ Querschnittsregel für ALLES: **muss auch auf der Handy-/Mobile-UI funktionieren
 - [x] **Öl-Anzeige im HUD** neben Gold (im Spiel verifiziert)
 - [ ] Nur an **validen Öl-Vorkommen** (Land) platzierbar — Nachtrag
 - [ ] Auch **im Meer** an Meer-Vorkommen + **Sea-Build** (Truppenschiff fährt hin, baut ungestört) — Nachtrag
-- [ ] **Mehrere Ölpumpen am selben Ort** möglich — Nachtrag (Abstandsprüfung lockern)
+- [x] **Mehrere Ölpumpen am selben Ort** möglich (eigene Platzierung ohne Abstandsregel; getestet)
 - [ ] Ölpumpe von einer **Bombe getroffen → große Explosion** (Wasserstoffbomben-Größe) — Nachtrag
 - [ ] Mobile-UI geprüft
 
