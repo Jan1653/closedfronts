@@ -10,6 +10,7 @@ import {
   PlayerType,
   TerrainType,
   TerraNullius,
+  UnitType,
 } from "../game/Game";
 import { GameMap, TileRef } from "../game/GameMap";
 import { PseudoRandom } from "../PseudoRandom";
@@ -37,6 +38,14 @@ export class AttackExecution implements Execution {
   // Reusable neighbor buffers to avoid closures/allocation in hot loops.
   private nbuf: TileRef[] = [0, 0, 0, 0];
   private nbuf2: TileRef[] = [0, 0, 0, 0];
+
+  // Walls are conquered only as a last resort: their border tiles get this huge
+  // priority penalty so the attack flows around them first (and only breaks
+  // through when the whole frontier is walled). Cached per tick to skip the
+  // wall lookup entirely in the common wall-free game.
+  private static readonly WALL_ATTACK_DEFER = 1e9;
+  private wallsCheckedTick = -1;
+  private wallsExist = false;
 
   constructor(
     private startTroops: number | null = null,
@@ -374,12 +383,36 @@ export class AttackExecution implements Execution {
           break;
       }
 
-      const priority =
+      let priority =
         (this.random.nextInt(0, 7) + 10) * (1 - numOwnedByMe * 0.5 + mag / 2) +
         tickNow;
 
+      // Defer walled tiles: go around the wall first, break through only if the
+      // frontier leaves no other tile.
+      if (this.anyWallsThisTick() && this.isWalled(neighbor)) {
+        priority += AttackExecution.WALL_ATTACK_DEFER;
+      }
+
       this.toConquer.enqueue(neighbor, priority);
     }
+  }
+
+  // Are there any walls on the map this tick? Cached so the common wall-free
+  // game pays a single cheap lookup per tick instead of one per border tile.
+  private anyWallsThisTick(): boolean {
+    const t = this.mg.ticks();
+    if (t !== this.wallsCheckedTick) {
+      this.wallsCheckedTick = t;
+      this.wallsExist = this.mg.units(UnitType.Wall).length > 0;
+    }
+    return this.wallsExist;
+  }
+
+  private isWalled(tile: TileRef): boolean {
+    for (const w of this.mg.nearbyUnits(tile, 1, UnitType.Wall)) {
+      if (w.distSquared === 0) return true;
+    }
+    return false;
   }
 
   private handleDeadDefender() {

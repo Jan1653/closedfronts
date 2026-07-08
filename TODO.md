@@ -100,7 +100,11 @@ Alles aus der letzten Sprachnachricht, damit nichts vergessen wird.
 - [x] **Kein Stapeln, Mindestabstand** (`wallMinSpacing`)
 - [x] **Umkreis + Auto-Verbindung** zu naher Wand als kostenlose Wand-Linie
 - [ ] Timer über der Wand beim Durchbrechen (Client)
-- [ ] „Nur brechen, wenn kein Weg drumherum" (Pathfinding)
+- [x] **„Nur brechen, wenn kein Weg drumherum":** Angriffe deferieren Wand-Kacheln
+      in der Eroberungs-Priorität (`AttackExecution`) → gehen zuerst drumherum,
+      brechen die Wand erst, wenn kein anderer Rand frei ist. Getestet. (Wirkt bei
+      Verteidigern ≥100 Kacheln; kleinere fallen ohnehin per Dead-Defender-Shortcut.)
+- [ ] „…sonst Boot senden" (amphibische KI-Umgehung) — Nachtrag
 - [ ] Mobile-UI geprüft
 
 ---
