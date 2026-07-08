@@ -8,7 +8,7 @@
  */
 
 import type { GhostPreviewData } from "../../types";
-import { UT_WATER_TOLL_STATION } from "../../types";
+import { UT_OIL_PUMP, UT_WATER_TOLL_STATION } from "../../types";
 import { createProgram } from "../utils/GlUtils";
 
 import fragSrc from "../shaders/range-circle/range-circle.frag.glsl?raw";
@@ -63,7 +63,9 @@ export class RangeCirclePass {
       this.centerY = data.radiusTileY;
       this.radius = data.rangeRadius;
       this.warning = data.rangeWarning;
-      this.validityRing = data.ghostType === UT_WATER_TOLL_STATION;
+      this.validityRing =
+        data.ghostType === UT_WATER_TOLL_STATION ||
+        data.ghostType === UT_OIL_PUMP;
       this.valid = data.canBuild;
     } else {
       this.radius = 0;

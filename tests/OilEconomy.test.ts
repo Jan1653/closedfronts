@@ -27,6 +27,26 @@ describe("Oil economy", () => {
     cy = Math.floor(game.height() / 2);
   });
 
+  // Nearest land tile to the center that is (or isn't) an oil deposit.
+  function findLand(wantDeposit: boolean): number {
+    const config = game.config();
+    for (let r = 0; r < 60; r++) {
+      for (let dx = -r; dx <= r; dx++) {
+        for (let dy = -r; dy <= r; dy++) {
+          const x = cx + dx;
+          const y = cy + dy;
+          if (x < 0 || y < 0 || x >= game.width() || y >= game.height()) {
+            continue;
+          }
+          const t = game.ref(x, y);
+          if (!game.isLand(t) || game.isImpassable(t)) continue;
+          if (config.isOilDeposit(game, t) === wantDeposit) return t;
+        }
+      }
+    }
+    throw new Error(`no ${wantDeposit ? "" : "non-"}deposit land found`);
+  }
+
   test("burns oil as you grow, runs out without pumps, and a pump refills it", () => {
     // Grow the player so it consumes oil each tick.
     for (let x = cx - 15; x <= cx + 15; x++) {
@@ -59,18 +79,23 @@ describe("Oil economy", () => {
     expect(player.oilSpeedFactor()).toBe(1);
   });
 
-  test("oil pumps can be stacked close together", () => {
+  test("oil pumps can be stacked on the same deposit", () => {
     player.addGold(10_000_000n);
-    for (let dx = -1; dx <= 1; dx++) {
-      for (let dy = -1; dy <= 1; dy++)
-        player.conquer(game.ref(cx + dx, cy + dy));
-    }
-    const t1 = game.ref(cx, cy);
-    const t2 = game.ref(cx + 1, cy);
-    expect(player.canBuild(UnitType.OilPump, t1)).toBe(t1);
-    player.buildUnit(UnitType.OilPump, t1, {});
-    // A pump right next to it is still allowed.
-    expect(player.canBuild(UnitType.OilPump, t2)).toBe(t2);
+    const dep = findLand(true);
+    player.conquer(dep);
+    expect(player.canBuild(UnitType.OilPump, dep)).toBe(dep);
+    player.buildUnit(UnitType.OilPump, dep, {});
+    // Another pump on the same deposit is still allowed (stacking).
+    expect(player.canBuild(UnitType.OilPump, dep)).toBe(dep);
+  });
+
+  test("oil pumps can only be built on an oil deposit", () => {
+    const dep = findLand(true);
+    const nonDep = findLand(false);
+    player.conquer(dep);
+    player.conquer(nonDep);
+    expect(player.canBuild(UnitType.OilPump, dep)).toBe(dep);
+    expect(player.canBuild(UnitType.OilPump, nonDep)).toBe(false);
   });
 
   test("an oil-pump explosion wipes out units and land at the blast", () => {
@@ -153,9 +178,10 @@ describe("Oil economy", () => {
     // The user's bug: building a pump the normal way (via the build intent /
     // ConstructionExecution) never seemed to add oil. Prove that path actually
     // produces a live OilPump unit that updateOil then counts.
-    player.conquer(game.ref(cx, cy));
+    const dep = findLand(true);
+    player.conquer(dep);
     game.addExecution(
-      new ConstructionExecution(player, UnitType.OilPump, game.ref(cx, cy)),
+      new ConstructionExecution(player, UnitType.OilPump, dep),
     );
     executeTicks(game, 20); // build (and, in this instant game, complete) it
 

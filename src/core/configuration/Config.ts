@@ -933,6 +933,18 @@ export class Config {
     return 5;
   }
 
+  // Oil pumps can only sit on an oil deposit. Deposits are a fixed, sparse,
+  // seed-independent property of map coordinates (deterministic integer hash,
+  // no floating point), scattered so a player usually has a few within reach.
+  isOilDeposit(mg: Game, tile: TileRef): boolean {
+    const x = mg.x(tile);
+    const y = mg.y(tile);
+    let h = (Math.imul(x, 73856093) ^ Math.imul(y, 19349663)) >>> 0;
+    h = (h ^ (h >>> 13)) >>> 0;
+    h = Math.imul(h, 0x5bd1e995) >>> 0;
+    return h % 11 === 0;
+  }
+
   maxOil(): number {
     return 5000;
   }

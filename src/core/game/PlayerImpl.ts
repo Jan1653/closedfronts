@@ -1606,13 +1606,14 @@ export class PlayerImpl implements Player {
     return tile;
   }
 
-  // Oil pumps sit on your own land; multiple may share a spot, so there is no
-  // spacing or dedupe requirement.
+  // Oil pumps sit on your own land, only on an oil deposit. Multiple may share a
+  // spot, so there is no spacing or dedupe requirement.
   oilPumpSpawn(tile: TileRef): TileRef | false {
     const mg = this.mg;
     if (!mg.isValidRef(tile)) return false;
     if (!mg.isLand(tile) || mg.isImpassable(tile)) return false;
     if (mg.owner(tile) !== this) return false;
+    if (!mg.config().isOilDeposit(mg, tile)) return false;
     return tile;
   }
 

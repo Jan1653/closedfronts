@@ -114,7 +114,10 @@ Alles aus der letzten Sprachnachricht, damit nichts vergessen wird.
 - [x] Öl-Anzeige im HUD
 - [ ] **Eigenes Icon** statt Fabrik-Platzhalter → siehe 0.1
 - [x] **Öl-Kosten beim Vergrößern** (`oilExpansionCostPerTile`, 0.4)
-- [ ] Nur an validen Öl-Vorkommen platzierbar; Sea-Build im Meer
+- [x] Nur an **validen Öl-Vorkommen** platzierbar (`isOilDeposit`, deterministischer
+      Karten-Hash; grün/rot-Vorschau-Ring; getestet)
+- [ ] Öl-Vorkommen sichtbar overlayen (Client-Politur, damit man sie leichter findet)
+- [ ] Sea-Build im Meer (siehe unten)
 - [x] Mehrere Ölpumpen am selben Ort möglich
 - [x] Bombe → Explosion in Pump-Radius-Größe (getestet)
 - [ ] Mobile-UI geprüft

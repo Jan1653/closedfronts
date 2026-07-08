@@ -449,6 +449,11 @@ export class BuildPreviewController implements Controller {
       case UnitType.WaterTollStation:
         rangeRadius = WATER_TOLL_STATION_RADIUS;
         break;
+      case UnitType.OilPump:
+        // Shows the pump's radius, colored green/red by whether the tile is a
+        // valid oil deposit.
+        rangeRadius = this.game.config().oilPumpRadius();
+        break;
     }
     let radiusTileX = this.game.x(tileRef);
     let radiusTileY = this.game.y(tileRef);
