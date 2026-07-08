@@ -9,41 +9,28 @@ Handy-/Mobile-UI funktionieren.**
 
 Alles aus der letzten Sprachnachricht, damit nichts vergessen wird.
 
-### 0.1 Eigene Karten-Icons (Ölpumpe / Wand / Zollstation)
+### 0.1 Eigene Karten-Icons (Ölpumpe / Wand / Zollstation) — ERLEDIGT
 
-- [ ] **Die schönen Bar-Icons (SVG) auch auf der Karte + beim Platzieren nutzen.**
-      Nutzer mag die Hotbar-Icons (`OilPumpIconWhite.svg`, `WallIconWhite.svg`,
-      `TollStationIconWhite.svg`) und will sie als Karten-Icon.
-- [ ] **Umsetzung:** abhängigkeitsfreier PNG-Encoder (nur Node `zlib`), der die
-      3 Icons in je eine neue 64px-Spalte des `resources/atlases/icon-atlas.png`
-      backt (384×64 → 576×64, 6 → 9 Spalten). Nutzer hat den Encoder ausdrücklich
-      freigegeben. `node-canvas` ist NICHT nutzbar (native Binary via
-      `--ignore-scripts` nicht gebaut) → eigener Rasterizer:
-  - Wand + Zollstation = reine Rechtecke (weiß = opak, `#0a1628`-Details = Loch).
-  - Ölpumpe = Tropfen (Kreis r6.5 @ (12,14.5) ∪ Dreieck zur Spitze (12,2)).
-- [ ] **StructurePass:** `STRUCTURE_ORDER` auf 9 erweitern (UT_OIL_PUMP, UT_WALL,
-      UT_WATER_TOLL_STATION), die Platzhalter-Spalten-Zuweisungen entfernen.
-- [ ] **render-settings.json:** `shapes`-Einträge für die 3 neuen Typen ergänzen
-      (sonst falsche `uShapeScales`/`uIconFills`).
-- [ ] **Behebt zugleich den Hover-Cross-Highlight** (Hover über „Fabrik" hebt
-      aktuell auch die Ölpumpe hervor, weil beide dieselbe Atlas-Spalte teilen).
+- [x] **Bar-Icons als Karten-Icon** (Öltropfen/Wand/Zoll-Tor) — auch beim
+      Platzieren (Ghost zeigt das richtige Icon).
+- [x] **Abhängigkeitsfreier PNG-Encoder** (`scripts/gen-icon-atlas.mjs`, Node
+      `zlib`): Atlas 384×64 → 576×64 (6 → 9 Spalten), ASCII-validiert.
+- [x] **StructurePass** auf 9 Spalten, Platzhalter entfernt; **frag-Shader**
+      Hintergrundformen (Öl=Kreis, Wand=Quadrat, Zoll=Pentagon);
+      **render-settings.json** `shapes`-Einträge ergänzt.
+- [x] **Behebt den Hover-Cross-Highlight** (getrennte Atlas-Spalten).
 
 ### 0.2 „Explosion" der Zollstation beim Platzieren
 
 - [x] Core-Test beweist: die Station bleibt in der Simulation **aktiv/lebendig**,
       sie explodiert dort NICHT → reines **Client-Rendering-Thema**.
-- [ ] **Nach dem Icon-Fix erneut prüfen.** Screenshot zeigt Port-Platzhalter +
-      verstreute weiße Punkte an den Landmassen — vermutlich Platzhalter-Optik.
-      Falls es dann noch „explodiert": live diagnostizieren.
+- [ ] **Nach dem Icon-Fix erneut prüfen** (Ghost/Icon jetzt korrekt → sehr
+      wahrscheinlich behoben). Falls es dann noch „explodiert": live diagnostizieren.
 
-### 0.3 Hotkey-Reihenfolge + Beschriftung
+### 0.3 Hotkey-Reihenfolge + Beschriftung — ERLEDIGT
 
-- [ ] **Bar-Reihenfolge neu ordnen:** die ersten 10 Bauten belegen **1,2,3,4,5,6,
-      7,8,9,0** in Bar-Reihenfolge; die 3 Zusatzbauten (Wand/Ölpumpe/Zollstation)
-      wandern **ans Ende** und bekommen **Alt+1 / Alt+2 / Alt+3**.
-- [ ] **Hotkey-Hinweis auf JEDEM Button anzeigen** — auch „Alt 1", „Alt 2",
-      „Alt 3", damit man sieht, wie man sie drückt (aktuell fehlt der Hinweis
-      bei den Zusatzbauten komplett).
+- [x] Bar-Reihenfolge **1…0**, dann **Alt 1 / Alt 2 / Alt 3** (Zusatzbauten am Ende).
+- [x] Kürzel-Hinweis auf jedem Button (inkl. „Alt 1/2/3") + im Tooltip.
 - [x] Alt statt Strg (Browser reserviert Strg+Zahl für Tab-Wechsel).
 
 ### 0.4 Öl-Verbrauch beim Vergrößern in die Wildnis
@@ -53,21 +40,20 @@ Alles aus der letzten Sprachnachricht, damit nichts vergessen wird.
       Expansion in Wildnis **explizit Öl kosten** lassen oder Verbrauch spürbarer
       an Wachstum koppeln. (Nutzer war unsicher, ob schon gefixt.)
 
-### 0.5 Wände dürfen sich NICHT stapeln
+### 0.5 Wände dürfen sich NICHT stapeln — ERLEDIGT
 
-- [ ] Wände sollen **Mindestabstand** wie andere Strukturen haben (aktuelles
-      `wallSpawn` erlaubt Stapeln/Anreihen ohne Abstand → zurückbauen).
-- [ ] Stattdessen **Umkreis**: liegt eine andere Wand im Umkreis, **verbinden**
-      sich die zwei automatisch zu einer Wand-**Linie** dazwischen (gleiche Logik
-      wie Straße Stadt↔Fabrik). Siehe 3.
+- [x] **Mindestabstand** (`wallMinSpacing` = 3): `wallSpawn` lehnt zu nahe
+      Platzierung ab (kein Stapeln).
+- [x] **Umkreis-Auto-Verbindung** (`wallConnectRange` = 25): neue Wand nahe
+      einer eigenen Wand baut automatisch eine **kostenlose Wand-Linie**
+      (Bresenham) dazwischen; Segmente kaskadieren nicht. Getestet.
 
-### 0.6 Verteidigungsposten-Balancing
+### 0.6 Verteidigungsposten-Balancing — ERLEDIGT
 
-- [ ] **Halb so schnell angreifen** (Basis-Sperrfeuer-Rate halbieren).
-- [ ] **Beim Stacken/Upgraden schneller** angreifen (Level → höhere Feuerrate,
-      kompensiert die Halbierung).
-- [x] Radius wächst beim Stacken (funktioniert schon, beibehalten).
-- [ ] **Etwas teurer** machen.
+- [x] **Halb so schnell** auf Level 1 (feuert jede 2. Tick).
+- [x] **Schneller + stärker pro Level** (kürzeres Intervall + mehr Granaten/Burst).
+- [x] Radius wächst beim Stacken (beibehalten).
+- [x] **Teurer** (150k→750k statt 100k→500k).
 
 ---
 
@@ -107,10 +93,9 @@ Alles aus der letzten Sprachnachricht, damit nichts vergessen wird.
 - [x] Übernehmbar (wer die Kachel hält, bekommt die Wand)
 - [x] Sehr schwer zu durchbrechen (50× Angriffskosten, getestet)
 - [x] Brechbar durch Verteidigungsposten-Granaten oder Bombe
-- [ ] **Eigenes Icon** statt Verteidigungsposten-Platzhalter → siehe 0.1
-- [ ] **Kein Stapeln, Mindestabstand** (0.5)
-- [ ] **Umkreis + Auto-Verbindung** zu naher Wand als Wand-Linie (0.5, Straßen-
-      Logik)
+- [x] **Eigenes Icon** (Mauerwerk) statt Platzhalter
+- [x] **Kein Stapeln, Mindestabstand** (`wallMinSpacing`)
+- [x] **Umkreis + Auto-Verbindung** zu naher Wand als kostenlose Wand-Linie
 - [ ] Timer über der Wand beim Durchbrechen (Client)
 - [ ] „Nur brechen, wenn kein Weg drumherum" (Pathfinding)
 - [ ] Mobile-UI geprüft

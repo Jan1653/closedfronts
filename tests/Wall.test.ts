@@ -64,13 +64,34 @@ describe("Wall", () => {
     expect(wall.owner()).toBe(attacker);
   });
 
-  test("walls can be placed right next to each other (no spacing)", () => {
-    defender.addGold(10_000_000n);
+  test("walls keep a minimum spacing (no stacking)", () => {
     const t1 = game.ref(cx, cy);
-    const t2 = game.ref(cx + 1, cy);
+    const t2 = game.ref(cx + 1, cy); // adjacent
     expect(defender.canBuild(UnitType.Wall, t1)).toBe(t1);
     defender.buildUnit(UnitType.Wall, t1, {});
-    // The adjacent tile is still buildable — walls form continuous lines.
-    expect(defender.canBuild(UnitType.Wall, t2)).toBe(t2);
+    // Adjacent placement is now rejected — walls can't be stacked densely.
+    expect(defender.canBuild(UnitType.Wall, t2)).toBe(false);
+  });
+
+  test("placing a wall near another auto-builds a connecting line", () => {
+    // Own a horizontal strip so the line between the two walls is buildable land.
+    for (let x = cx; x <= cx + 8; x++) defender.conquer(game.ref(x, cy));
+    const a = game.ref(cx, cy);
+    const b = game.ref(cx + 8, cy); // within wallConnectRange, beyond spacing
+    defender.buildUnit(UnitType.Wall, a, {});
+    const wallB = defender.buildUnit(UnitType.Wall, b, {});
+
+    const before = defender.units(UnitType.Wall).length;
+    game.addExecution(new WallExecution(wallB)); // connect = true
+    executeTicks(game, 2); // init runs, filler segments bridge the gap
+    const after = defender.units(UnitType.Wall).length;
+
+    expect(after).toBeGreaterThan(before);
+    // A midpoint tile now carries a wall (checked via the unit list, which is
+    // updated immediately — the spatial grid is indexed a tick later).
+    const mid = game.ref(cx + 4, cy);
+    expect(defender.units(UnitType.Wall).some((w) => w.tile() === mid)).toBe(
+      true,
+    );
   });
 });

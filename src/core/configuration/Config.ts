@@ -207,6 +207,18 @@ export class Config {
     return 50;
   }
 
+  // Walls can't be stacked/placed densely: a new wall must be at least this many
+  // tiles from any existing wall (like other structures keep spacing).
+  wallMinSpacing(): number {
+    return 3;
+  }
+
+  // When a wall is placed within this range (tiles) of another of the player's
+  // walls, a wall line is auto-built between the two (free filler segments).
+  wallConnectRange(): number {
+    return 25;
+  }
+
   defensePostSpeedBonus(): number {
     return 3;
   }

@@ -1574,16 +1574,17 @@ export class PlayerImpl implements Player {
     return tile;
   }
 
-  // Walls are placed on your own land with no structure-spacing requirement, so
-  // they can be built next to each other to form a continuous line.
+  // Walls are placed on your own land and must keep a minimum spacing from other
+  // walls (no stacking/dense placement). Placing one near another of your walls
+  // auto-builds a wall line between the two (see WallExecution).
   wallSpawn(tile: TileRef): TileRef | false {
     const mg = this.mg;
     if (!mg.isValidRef(tile)) return false;
     if (!mg.isLand(tile) || mg.isImpassable(tile)) return false;
     if (mg.owner(tile) !== this) return false;
-    // Don't stack two walls on the same tile.
-    for (const w of mg.nearbyUnits(tile, 1, UnitType.Wall)) {
-      if (w.distSquared === 0) return false;
+    const spacing = mg.config().wallMinSpacing();
+    for (const w of mg.nearbyUnits(tile, spacing + 1, UnitType.Wall)) {
+      if (w.distSquared < spacing * spacing) return false;
     }
     return tile;
   }
