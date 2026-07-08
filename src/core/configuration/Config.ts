@@ -894,6 +894,12 @@ export class Config {
     return 0.3;
   }
 
+  // Ticks between movement steps, stretched when the owner is out of oil (so
+  // low oil => the unit moves less often => slower).
+  oilAdjustedTicksPerMove(baseTicksPerStep: number, player: Player): number {
+    return Math.max(1, Math.round(baseTicksPerStep / player.oilSpeedFactor()));
+  }
+
   troopIncreaseRate(player: Player | PlayerView): number {
     const max = this.maxTroops(player);
 

@@ -55,4 +55,23 @@ describe("Oil economy", () => {
     expect(player.oil()).toBe(game.config().maxOil());
     expect(player.oilSpeedFactor()).toBe(1);
   });
+
+  test("running out of oil slows movement (more ticks per step)", () => {
+    const config = game.config();
+    // Full tank: base movement speed.
+    expect(config.oilAdjustedTicksPerMove(1, player)).toBe(1);
+
+    // Grow and run without pumps until the tank is empty.
+    for (let x = cx - 15; x <= cx + 15; x++) {
+      for (let y = cy - 15; y <= cy + 15; y++) player.conquer(game.ref(x, y));
+    }
+    const drain = Math.ceil(
+      config.maxOil() / config.oilConsumptionRate(player),
+    );
+    for (let i = 0; i < drain + 2; i++) player.updateOil();
+    expect(player.oil()).toBe(0);
+
+    // Empty tank: a movement step now takes more ticks (slower).
+    expect(config.oilAdjustedTicksPerMove(1, player)).toBeGreaterThan(1);
+  });
 });

@@ -138,6 +138,9 @@ export class TransportShipExecution implements Execution {
       fullPath.unshift(this.src);
     }
 
+    this.ticksPerMove = this.mg
+      .config()
+      .oilAdjustedTicksPerMove(1, this.attacker);
     const motionPlan: MotionPlanRecord = {
       kind: "grid",
       unitId: this.boat.id(),
@@ -306,6 +309,9 @@ export class TransportShipExecution implements Execution {
         fullPath.unshift(this.boat.tile());
       }
 
+      this.ticksPerMove = this.mg
+        .config()
+        .oilAdjustedTicksPerMove(1, this.attacker);
       this.mg.recordMotionPlan({
         kind: "grid",
         unitId: this.boat.id(),
