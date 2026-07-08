@@ -82,4 +82,31 @@ describe("DefensePost upgrade", () => {
     defender.upgradeUnit(post); // level 2 → range 40 now reaches the far tile
     expect(loss(far)).toBeGreaterThan(farLossBefore);
   });
+
+  test("running out of oil slows the attacker's advance", () => {
+    const target = game.ref(cx, cy); // a defender-owned tile
+    const cost = () =>
+      game.config().attackLogic(game, 1000, attacker, defender, target)
+        .tilesPerTickUsed;
+
+    // Full tank: baseline per-tile cost.
+    expect(attacker.oil()).toBe(game.config().maxOil());
+    const costFull = cost();
+
+    // Grow the attacker away from the defender, then drain its tank dry.
+    for (let x = cx + 40; x <= cx + 70; x++) {
+      for (let y = cy - 15; y <= cy + 15; y++) {
+        attacker.conquer(game.ref(x, y));
+      }
+    }
+    const drain = Math.ceil(
+      game.config().maxOil() / game.config().oilConsumptionRate(attacker),
+    );
+    for (let i = 0; i < drain + 2; i++) attacker.updateOil();
+    expect(attacker.oil()).toBe(0);
+
+    // Empty tank: each conquered tile now eats more of the per-tick budget, so
+    // the attack advances more slowly.
+    expect(cost()).toBeGreaterThan(costFull);
+  });
 });

@@ -54,12 +54,13 @@ Querschnittsregel für ALLES: **muss auch auf der Handy-/Mobile-UI funktionieren
 - [x] **Öl-Ressource:** Pumpen produzieren, **Verbrauch steigt mit Spielergröße**, Startvorrat + Deckel (getestet)
 - [x] **Öl leer → Verlangsamungs-Faktor** (`oilSpeedFactor`) vorhanden (getestet)
 - [x] Faktor auf **Transportschiffe** angewandt (leerer Tank = langsamer; getestet)
+- [x] Faktor auf **Landangriffe** angewandt (leerer Tank = Angriff erobert Kacheln langsamer; getestet)
 - [ ] Faktor auf andere Schiffe (Handel/Kampf) + **Züge/Busse** zwischen Fabriken — Nachtrag
 - [x] **Öl-Anzeige im HUD** neben Gold (im Spiel verifiziert)
 - [ ] Nur an **validen Öl-Vorkommen** (Land) platzierbar — Nachtrag
 - [ ] Auch **im Meer** an Meer-Vorkommen + **Sea-Build** (Truppenschiff fährt hin, baut ungestört) — Nachtrag
 - [x] **Mehrere Ölpumpen am selben Ort** möglich (eigene Platzierung ohne Abstandsregel; getestet)
-- [x] Ölpumpe von einer **Bombe getroffen → große Explosion** (Wasserstoffbomben-Größe): zerstört Units + Land-Krater im Radius, kettet nicht (getestet)
+- [x] Ölpumpe von einer **Bombe getroffen → Explosion in Pump-Radius-Größe** (`oilPumpRadius`): zerstört Units + Land-Krater im Radius, kettet nicht (getestet)
 - [ ] Mobile-UI geprüft
 
 ---

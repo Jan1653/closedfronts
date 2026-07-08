@@ -767,23 +767,24 @@ export class Config {
       return {
         attackerTroopLoss,
         defenderTroopLoss,
+        // Out of oil, the attack crawls: each tile eats more of the per-tick
+        // budget (divide by the attacker's oil speed factor).
         tilesPerTickUsed:
-          within(defender.troops() / (5 * attackTroops), 0.2, 1.5) *
-          speed *
-          largeDefenderSpeedDebuff *
-          largeAttackerSpeedBonus *
-          (defender.isTraitor() ? this.traitorSpeedDebuff() : 1),
+          (within(defender.troops() / (5 * attackTroops), 0.2, 1.5) *
+            speed *
+            largeDefenderSpeedDebuff *
+            largeAttackerSpeedBonus *
+            (defender.isTraitor() ? this.traitorSpeedDebuff() : 1)) /
+          attacker.oilSpeedFactor(),
       };
     } else {
       return {
         attackerTroopLoss:
           attacker.type() === PlayerType.Bot ? mag / 10 : mag / 5,
         defenderTroopLoss: 0,
-        tilesPerTickUsed: within(
-          (2000 * Math.max(10, speed)) / attackTroops,
-          5,
-          100,
-        ),
+        tilesPerTickUsed:
+          within((2000 * Math.max(10, speed)) / attackTroops, 5, 100) /
+          attacker.oilSpeedFactor(),
       };
     }
   }
@@ -909,6 +910,12 @@ export class Config {
   // Speed multiplier applied to movement when a player has run out of oil.
   oilShortageSpeedFactor(): number {
     return 0.3;
+  }
+
+  // The radius an oil pump "pumps" over — also the radius of its explosion when
+  // the pump is hit by a bomb.
+  oilPumpRadius(): number {
+    return 20;
   }
 
   // Ticks between movement steps, stretched when the owner is out of oil (so

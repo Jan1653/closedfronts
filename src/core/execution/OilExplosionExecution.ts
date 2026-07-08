@@ -1,14 +1,11 @@
 import { Execution, Game, Player, UnitType } from "../game/Game";
 import { TileRef } from "../game/GameMap";
 
-// The blast is sized like a hydrogen bomb, per the feature request.
-const BLAST_TYPE = UnitType.HydrogenBomb;
-
 /**
  * A one-shot secondary explosion at an oil pump that was hit by a bomb: the
- * stored fuel goes up in a hydrogen-bomb-sized blast that wipes out units and
- * strips ownership from the land around it. It does not chain (it deletes other
- * pumps without re-triggering their explosions).
+ * stored fuel goes up in a blast the size of the pump's own radius, wiping out
+ * units and stripping ownership from the land around it. It does not chain (it
+ * deletes other pumps without re-triggering their explosions).
  */
 export class OilExplosionExecution implements Execution {
   private mg: Game;
@@ -22,7 +19,7 @@ export class OilExplosionExecution implements Execution {
 
   tick(ticks: number): void {
     const mg = this.mg;
-    const outer = mg.config().nukeMagnitudes(BLAST_TYPE).outer;
+    const outer = mg.config().oilPumpRadius();
     const outer2 = outer * outer;
 
     // Destroy units caught in the blast (but not other in-flight bombs).
