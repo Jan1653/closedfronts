@@ -66,6 +66,84 @@ describe("Warship", () => {
     expect(warship.health()).toBe(maxHealth - 9);
   });
 
+  test("an oil-starved warship repositions less often", async () => {
+    const TICKS = 40;
+    // Needs a large map (open ocean to move in + enough land to drain oil).
+    const g = await setup("world", { infiniteGold: true, instantBuild: true }, [
+      new PlayerInfo("a", PlayerType.Human, null, "a"),
+    ]);
+    const p = g.player("a");
+
+    // An open-ocean tile with no land nearby, so the warship has room to patrol.
+    let ocean: TileRef | null = null;
+    for (let y = 0; y < g.height() && ocean === null; y++) {
+      for (let x = 0; x < g.width(); x++) {
+        const t = g.ref(x, y);
+        if (!g.isWater(t)) continue;
+        let landNear = false;
+        for (let dy = -3; dy <= 3 && !landNear; dy++) {
+          for (let dx = -3; dx <= 3; dx++) {
+            const xx = x + dx,
+              yy = y + dy;
+            if (xx < 0 || yy < 0 || xx >= g.width() || yy >= g.height()) continue;
+            if (g.isLand(g.ref(xx, yy))) {
+              landNear = true;
+              break;
+            }
+          }
+        }
+        if (!landNear) {
+          ocean = t;
+          break;
+        }
+      }
+    }
+    expect(ocean).not.toBeNull();
+
+    const ws = p.buildUnit(UnitType.Warship, ocean!, { patrolTile: ocean! });
+    g.addExecution(new WarshipExecution(ws));
+
+    const countMoves = (): number => {
+      let last = ws.tile();
+      let moves = 0;
+      for (let i = 0; i < TICKS; i++) {
+        g.executeNextTick();
+        if (ws.tile() !== last) {
+          moves++;
+          last = ws.tile();
+        }
+      }
+      return moves;
+    };
+
+    // Phase 1: full tank (owns no land), full-speed movement.
+    const fullMoves = countMoves();
+    expect(p.oil()).toBeGreaterThan(0);
+    expect(fullMoves).toBeGreaterThan(0);
+
+    // Drain instantly via the expansion cost: baseline, grab a big land block,
+    // then one update bills it dry.
+    p.updateOil();
+    let conquered = 0;
+    for (let y = 0; y < g.height() && conquered < 1200; y++) {
+      for (let x = 0; x < g.width() && conquered < 1200; x++) {
+        const t = g.ref(x, y);
+        if (g.isLand(t) && !g.hasOwner(t)) {
+          p.conquer(t);
+          conquered++;
+        }
+      }
+    }
+    p.updateOil();
+    expect(p.oil()).toBe(0);
+
+    // Phase 2: empty tank — same warship, throttled to at most one move per
+    // oilAdjustedTicksPerMove (3) ticks.
+    const emptyMoves = countMoves();
+    expect(emptyMoves).toBeLessThan(fullMoves);
+    expect(emptyMoves).toBeLessThanOrEqual(Math.ceil(TICKS / 3) + 1);
+  });
+
   test("Warship does not heal while its owner is doomed (Doomsday Clock)", async () => {
     const maxHealth = game.config().unitInfo(UnitType.Warship).maxHealth;
     if (typeof maxHealth !== "number") {
