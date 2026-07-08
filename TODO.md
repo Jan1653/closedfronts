@@ -126,10 +126,13 @@ Alles aus der letzten Sprachnachricht, damit nichts vergessen wird.
 - [x] Alt+1/2/3 wählt die Zusatzbauten
 - [x] Shift+Mausrad bei aktivem Ghost = Stückzahl 1–25, gestapelt platzieren
 - [x] Leiste bricht um (flex-wrap) statt abgeschnitten zu werden
-- [ ] **Hotkey-Reihenfolge + Beschriftung** (0.3)
-- [ ] **Mobile-Lösung für Mehrfachbau** (kein Shift+Rad auf dem Handy) — eigene
-      Lösung überlegen (z. B. Mengen-Regler im Radial-/Baumenü)
-- [ ] Prüfen, dass alle neuen Bau-Buttons auf dem **Handy** (Radial-Menü) da sind
+- [x] **Hotkey-Reihenfolge + Beschriftung** (0.3)
+- [x] **Mobile-Lösung für Mehrfachbau:** Mengen-Stepper (− ×N +) im Baumenü,
+      setzt `buildQuantity`; `sendBuildOrUpgrade` platziert N (gestapelt).
+      Touch-tauglich, kein Shift+Rad nötig.
+- [x] Alle neuen Bau-Buttons erscheinen im Handy-Baumenü (kommt aus `buildTable`
+      + `buildableUnits`, enthält alle 3) — per Code bestätigt; **live noch gegen-
+      prüfen.**
 
 ---
 

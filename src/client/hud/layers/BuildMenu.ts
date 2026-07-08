@@ -273,6 +273,34 @@ export class BuildMenu extends LitElement implements Controller {
     .hidden {
       display: none !important;
     }
+    .build-quantity {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 6px;
+      color: white;
+    }
+    .build-quantity button {
+      width: 40px;
+      height: 40px;
+      border: 2px solid #444;
+      background-color: #2c2c2c;
+      color: white;
+      border-radius: 10px;
+      font-size: 22px;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .build-quantity button:active {
+      background-color: #4a4a4a;
+    }
+    .build-quantity .qty-value {
+      font-size: 18px;
+      font-weight: bold;
+      min-width: 48px;
+      text-align: center;
+    }
     .build-count-chip {
       position: absolute;
       top: -10px;
@@ -406,6 +434,29 @@ export class BuildMenu extends LitElement implements Controller {
     return player.totalUnitLevels(item.unitType).toString();
   }
 
+  // Quantity stepper: the touch-friendly alternative to Shift+wheel for placing
+  // several copies at once (works on mobile, where there is no scroll wheel).
+  private adjustQuantity(delta: number): void {
+    const MAX = 25;
+    this.uiState.buildQuantity = Math.max(
+      1,
+      Math.min(MAX, this.uiState.buildQuantity + delta),
+    );
+    this.requestUpdate();
+  }
+
+  private placeCount(type: UnitType): number {
+    switch (type) {
+      case UnitType.AtomBomb:
+      case UnitType.HydrogenBomb:
+      case UnitType.MIRV:
+      case UnitType.Warship:
+        return 1;
+      default:
+        return Math.max(1, this.uiState.buildQuantity);
+    }
+  }
+
   public sendBuildOrUpgrade(buildableUnit: BuildableUnit, tile: TileRef): void {
     if (buildableUnit.canUpgrade !== false) {
       this.eventBus.emit(
@@ -420,9 +471,13 @@ export class BuildMenu extends LitElement implements Controller {
         buildableUnit.type === UnitType.HydrogenBomb
           ? this.uiState.rocketDirectionUp
           : undefined;
-      this.eventBus.emit(
-        new BuildUnitIntentEvent(buildableUnit.type, tile, rocketDirectionUp),
-      );
+      // Place the chosen quantity, stacked on the tile.
+      const count = this.placeCount(buildableUnit.type);
+      for (let i = 0; i < count; i++) {
+        this.eventBus.emit(
+          new BuildUnitIntentEvent(buildableUnit.type, tile, rocketDirectionUp),
+        );
+      }
     }
     this.hideMenu();
   }
@@ -433,6 +488,21 @@ export class BuildMenu extends LitElement implements Controller {
         class="build-menu ${this._hidden ? "hidden" : ""}"
         @contextmenu=${(e: MouseEvent) => e.preventDefault()}
       >
+        <div class="build-quantity" translate="no">
+          <button
+            @click=${() => this.adjustQuantity(-1)}
+            aria-label="less"
+          >
+            −
+          </button>
+          <span class="qty-value">×${this.uiState.buildQuantity}</span>
+          <button
+            @click=${() => this.adjustQuantity(1)}
+            aria-label="more"
+          >
+            +
+          </button>
+        </div>
         ${this.filteredBuildTable.map(
           (row) => html`
             <div class="build-row">
@@ -510,6 +580,7 @@ export class BuildMenu extends LitElement implements Controller {
   showMenu(clickedTile: TileRef) {
     this.clickedTile = clickedTile;
     this._hidden = false;
+    this.uiState.buildQuantity = 1; // start each open at a single build
     this.refresh();
   }
 
