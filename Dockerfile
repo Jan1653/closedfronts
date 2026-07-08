@@ -7,7 +7,7 @@ FROM base AS build
 ENV HUSKY=0
 # Copy package files first for better caching
 COPY package*.json ./
-RUN --mount=type=cache,target=/root/.npm \
+RUN \
     npm ci
 
 # Copy only what's needed for build
@@ -16,7 +16,6 @@ COPY vite.config.ts ./
 COPY eslint.config.js ./
 COPY index.html ./
 COPY resources ./resources
-COPY proprietary ./proprietary
 COPY src ./src
 
 ARG GIT_COMMIT=unknown
@@ -28,7 +27,7 @@ FROM base AS prod-deps
 ENV HUSKY=0
 ENV NPM_CONFIG_IGNORE_SCRIPTS=1
 COPY package*.json ./
-RUN --mount=type=cache,target=/root/.npm \
+RUN \
     npm ci --omit=dev
 
 # Final production image
