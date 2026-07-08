@@ -29,7 +29,7 @@ export async function archive(
       });
       return;
     }
-    const url = `${ServerEnv.jwtIssuer()}/game/${gameRecord.info.gameID}`;
+    const url = `${ServerEnv.localApiBase()}/game/${gameRecord.info.gameID}`;
     const response = await fetch(url, {
       method: "POST",
       body: JSON.stringify(gameRecord, replacer),
@@ -60,7 +60,7 @@ export async function readGameRecord(
       log.error(`invalid game ID: ${gameId}`);
       return null;
     }
-    const url = `${ServerEnv.jwtIssuer()}/game/${gameId}`;
+    const url = `${ServerEnv.localApiBase()}/game/${gameId}`;
     const response = await fetch(url, {
       method: "GET",
       headers: {

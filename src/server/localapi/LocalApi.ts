@@ -1,5 +1,6 @@
 import express, { type Request, type Response } from "express";
 import { importJWK, jwtVerify } from "jose";
+import { GamesStore } from "./games";
 import { createSigner } from "./keys";
 import { AccountStore, type Account } from "./store";
 
@@ -11,7 +12,12 @@ import { AccountStore, type Account } from "./store";
 const PORT = parseInt(process.env.LOCALAPI_PORT ?? "8090", 10);
 const DOMAIN = process.env.DOMAIN ?? "localhost";
 const DB_PATH = process.env.LOCALAPI_DB_PATH ?? "./data/accounts.json";
+const GAMES_PATH = process.env.LOCALAPI_GAMES_PATH ?? "./data/games.json";
 const KEY_PATH = process.env.LOCALAPI_KEY_PATH ?? "./data/jwt-ed25519.json";
+// Shared secret the game server sends when archiving finished games. Matches
+// ServerEnv.apiKey() (process.env.API_KEY). When unset ("") the check is a
+// no-op, matching the game server which also sends "".
+const API_KEY = process.env.API_KEY ?? "";
 const ISSUER =
   process.env.LOCALAPI_ISSUER ??
   (DOMAIN === "localhost"
@@ -72,6 +78,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 async function main() {
   const store = new AccountStore(DB_PATH);
+  const games = new GamesStore(GAMES_PATH, store);
   const signer = await createSigner(KEY_PATH);
   const verifyKey = await importJWK(signer.publicJwk, "EdDSA");
 
@@ -97,7 +104,10 @@ async function main() {
 
   const app = express();
   app.set("trust proxy", 3);
-  app.use(express.json({ limit: "16kb" }));
+  // Auth bodies are tiny; game archive payloads (full turn logs) are large, so
+  // parse per-route rather than globally.
+  const jsonSmall = express.json({ limit: "16kb" });
+  const jsonLarge = express.json({ limit: "64mb" });
 
   const r = express.Router();
 
@@ -105,7 +115,7 @@ async function main() {
     res.json({ keys: [signer.publicJwk] });
   });
 
-  r.post("/auth/register", async (req, res) => {
+  r.post("/auth/register", jsonSmall, async (req, res) => {
     const { email, password } = req.body ?? {};
     if (typeof email !== "string" || typeof password !== "string") {
       return res.status(400).json({ error: "email_and_password_required" });
@@ -127,7 +137,7 @@ async function main() {
     res.json({ jwt: await issueToken(account), expiresIn: JWT_TTL_SECONDS });
   });
 
-  r.post("/auth/login", async (req, res) => {
+  r.post("/auth/login", jsonSmall, async (req, res) => {
     const { email, password } = req.body ?? {};
     if (typeof email !== "string" || typeof password !== "string") {
       return res.status(400).json({ error: "email_and_password_required" });
@@ -175,6 +185,42 @@ async function main() {
     } catch {
       return res.status(401).json({ error: "invalid_token" });
     }
+  });
+
+  // Game-result ingestion from the game server's archive() call. Guarded by the
+  // shared API_KEY (no-op when unset). Body includes full turn logs -> large
+  // limit. GET is intentionally unsupported (we don't store replays here).
+  r.post("/game/:id", jsonLarge, (req, res) => {
+    if (API_KEY && req.headers["x-api-key"] !== API_KEY) {
+      return res.status(401).json({ error: "unauthorized" });
+    }
+    try {
+      games.ingest(req.body);
+    } catch (e) {
+      console.error("game ingest failed", e);
+    }
+    res.json({ ok: true });
+  });
+
+  r.get("/game/:id", (_req, res) => {
+    res.status(404).json({ error: "not_found" });
+  });
+
+  r.get("/leaderboard/ranked", (req, res) => {
+    const page = parseInt(String(req.query.page ?? "1"), 10) || 1;
+    res.json(games.leaderboard(page));
+  });
+
+  r.get("/player/:id", (req, res) => {
+    const profile = games.playerProfile(req.params.id);
+    if (!profile) return res.status(404).json({ error: "not_found" });
+    res.json(profile);
+  });
+
+  r.get("/public/player/:publicId/games", (req, res) => {
+    const cursor =
+      typeof req.query.cursor === "string" ? req.query.cursor : undefined;
+    res.json(games.playerGames(req.params.publicId, cursor));
   });
 
   app.use("/localapi", r);
