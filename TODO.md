@@ -109,7 +109,8 @@ Alles aus der letzten Sprachnachricht, damit nichts vergessen wird.
 - [x] Produktion 250/Pumpe (deckt ~50k Kacheln); Baupfad erzeugt gezählte Pumpe
       (getestet)
 - [x] Leerer Tank verlangsamt: Transport-/Handelsschiffe, Landangriffe, Züge
-- [ ] Faktor auf **Kampfschiffe** (braucht Bewegungs-Gate im Warship)
+- [x] Faktor auf **Kampfschiffe**: Bewegungs-Gate in `WarshipExecution.moveWarship`
+      (nur bei leerem Tank; Feuern bleibt unbeeinflusst; getestet)
 - [x] Öl-Anzeige im HUD
 - [ ] **Eigenes Icon** statt Fabrik-Platzhalter → siehe 0.1
 - [x] **Öl-Kosten beim Vergrößern** (`oilExpansionCostPerTile`, 0.4)

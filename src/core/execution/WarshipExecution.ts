@@ -23,6 +23,8 @@ export class WarshipExecution implements Execution {
   private alreadySentShell = new Set<Unit>();
   private lastManualMoveTickRetreatDisabled = 0;
   private lastObservedPatrolTile: TileRef | undefined;
+  // Last tick the warship actually moved, for the oil throttle below.
+  private lastMoveTick = -Infinity;
   private activeHealingRemainder = 0;
   private lastEmittedCombat = false;
 
@@ -418,13 +420,13 @@ export class WarshipExecution implements Execution {
     const result = this.pathfinder.next(this.warship.tile(), retreatPortTile);
     switch (result.status) {
       case PathStatus.COMPLETE:
-        this.warship.move(result.node);
+        this.moveWarship(result.node);
         if (result.node === retreatPortTile) {
           this.warship.setTargetTile(undefined);
         }
         break;
       case PathStatus.NEXT:
-        this.warship.move(result.node);
+        this.moveWarship(result.node);
         break;
       case PathStatus.NOT_FOUND: {
         const newPort = this.findNearestAvailablePortTile();
@@ -659,7 +661,7 @@ export class WarshipExecution implements Execution {
       if (dist <= 20) {
         const nextTile = this.bestNeighborToward(targetTile);
         if (nextTile !== undefined) {
-          this.warship.move(nextTile);
+          this.moveWarship(nextTile);
           continue;
         }
       }
@@ -673,7 +675,7 @@ export class WarshipExecution implements Execution {
           this.warship.touch();
           return;
         case PathStatus.NEXT:
-          this.warship.move(result.node);
+          this.moveWarship(result.node);
           break;
         case PathStatus.NOT_FOUND:
           console.log(`path not found to target`);
@@ -697,6 +699,23 @@ export class WarshipExecution implements Execution {
     return best;
   }
 
+  // Movement throttle: an owner with an empty oil tank moves its warships less
+  // often (oilAdjustedTicksPerMove is 1 at full oil, so no effect there). Firing
+  // is unaffected — a stranded warship still shoots, it just repositions slowly.
+  private moveWarship(tile: TileRef): void {
+    const ticksPerMove = this.mg
+      .config()
+      .oilAdjustedTicksPerMove(1, this.warship.owner());
+    // Only throttle when oil-starved (ticksPerMove > 1). At full oil this is 1,
+    // so we don't cap the warship's normal multi-tile moves per tick (e.g. the
+    // greedy trade-ship pursuit).
+    if (ticksPerMove > 1) {
+      if (this.mg.ticks() - this.lastMoveTick < ticksPerMove) return;
+      this.lastMoveTick = this.mg.ticks();
+    }
+    this.warship.move(tile);
+  }
+
   private patrol() {
     if (this.warship.targetTile() === undefined) {
       this.warship.setTargetTile(this.randomTile());
@@ -712,10 +731,10 @@ export class WarshipExecution implements Execution {
     switch (result.status) {
       case PathStatus.COMPLETE:
         this.warship.setTargetTile(undefined);
-        this.warship.move(result.node);
+        this.moveWarship(result.node);
         break;
       case PathStatus.NEXT:
-        this.warship.move(result.node);
+        this.moveWarship(result.node);
         break;
       case PathStatus.NOT_FOUND: {
         console.log(`path not found to target`);
