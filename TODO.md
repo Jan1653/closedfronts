@@ -90,8 +90,14 @@ Alles aus der letzten Sprachnachricht, damit nichts vergessen wird.
       frischen Join sendet → Server nimmt den Reconnect-Pfad (Zensur +
       Identity-Update vor Spielstart) und broadcastet die Lobby neu. Live
       verifiziert (Name ändert sich in der Spielerliste). DE+EN-Strings ergänzt.
-- [ ] **Clans**: Clan-Erstellung funktioniert nicht — Erstellen ermöglichen;
-      Leaderboard-/Clans-Flow prüfen (kann man überhaupt einen Clan anlegen?).
+- [x] **Clans**: Eigene Clans erstellen + beitreten funktioniert. Backend
+      `localapi/clans.ts` (ClansStore) + volle Clan-Endpunkte in LocalApi.ts;
+      Client `createClan()` + „Clan erstellen"-Formular im ClanModal (My-Clans-Tab).
+      Deutscher `clan_modal`-Block ergänzt (war nur EN). **Dazu localapi in `npm run
+      dev` verdrahtet** (vite-Proxy `/localapi`→:8090, `LOCALAPI_ISSUER` auf
+      :9000 gepinnt — sonst loggt der Client wegen iss-Mismatch aus). Live
+      verifiziert: registrieren → [FLW] erstellen → Detailansicht → zweiter Account
+      tritt bei. (Clan-Leaderboard/Spielverlauf bleiben leere Stubs.)
 
 **Übersetzungen (Priorität: Deutsch + Englisch VOLLSTÄNDIG; andere Sprachen später):**
 
