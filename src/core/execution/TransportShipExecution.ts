@@ -15,6 +15,7 @@ import { targetTransportTile } from "../game/TransportShipUtils";
 import { WaterPathFinder } from "../pathfinding/PathFinder";
 import { PathStatus } from "../pathfinding/types";
 import { AttackExecution } from "./AttackExecution";
+import { TollAvoidance } from "./TollAvoidance";
 
 const malusForRetreat = 25;
 
@@ -28,6 +29,7 @@ export class TransportShipExecution implements Execution {
   private mg: Game;
   private target: Player | TerraNullius;
   private pathFinder: WaterPathFinder;
+  private readonly tollAvoid = new TollAvoidance();
 
   private static _staggerCounter = 0;
 
@@ -283,9 +285,22 @@ export class TransportShipExecution implements Execution {
           .stats()
           .boatArriveTroops(this.attacker, this.target, this.boat.troops());
         return;
-      case PathStatus.NEXT:
-        this.boat.move(result.node);
+      case PathStatus.NEXT: {
+        const moveTo = this.tollAvoid.step(
+          this.mg,
+          this.boat.owner(),
+          this.boat.tile(),
+          result.node,
+          this.dst,
+        );
+        this.boat.move(moveTo);
+        // Detoured off the planned path (toll avoidance) → force a motion-plan
+        // re-record below so the rendered position follows the actual route.
+        if (moveTo !== result.node) {
+          this.motionPlanDst = null;
+        }
         break;
+      }
       case PathStatus.NOT_FOUND: {
         // TODO: add to poisoned port list
         const map = this.mg.map();
