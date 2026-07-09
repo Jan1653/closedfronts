@@ -67,12 +67,12 @@ export class PlayerExecution implements Execution {
         continue;
       }
 
+      // Any structure whose tile is taken is captured by the new tile owner —
+      // including defense posts (they used to be destroyed). So conquering the
+      // tile a post sits on now hands you the post, which also lets you finally
+      // break a small island a post was locking down.
       const captor = this.mg!.player(owner.id());
-      if (u.type() === UnitType.DefensePost) {
-        u.delete(true, captor);
-      } else {
-        captor.captureUnit(u);
-      }
+      captor.captureUnit(u);
     }
 
     if (!this.player.isAlive()) {

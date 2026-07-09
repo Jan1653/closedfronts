@@ -191,14 +191,19 @@ export class Config {
     return Math.max(1, level) <= 1 ? 2 : 1;
   }
 
-  // Tiles captured per burst; grows with level so a stacked post hits both
-  // harder and (via the shorter interval) more often.
+  // Tiles captured per burst: one per level, capped at level 4 (upgrading past
+  // 4 adds nothing). A lone level-1 post now only retakes one tile per burst, so
+  // a real attack out-paces it — a small island held by a post can be taken.
   defensePostGrenadesPerBurst(level: number = 1): number {
-    return 3 + Math.max(0, Math.max(1, level) - 1);
+    return Math.min(4, Math.max(1, level));
   }
 
   defensePostDefenseBonus(): number {
-    return 5;
+    // Deliberately weak — about a sixth of the old strength. The old post
+    // multiplied attacker losses by 5 (×4 above neutral); this is only ~×0.67
+    // above neutral. Overlapping posts stack this up to 3× (see attackLogic), so
+    // a real cluster still bites while a lone post is easy to push through.
+    return 1 + (5 - 1) / 6; // ≈ 1.67
   }
 
   // Multiplier on attack cost when conquering a walled tile. Walls are meant to
@@ -710,6 +715,11 @@ export class Config {
     if (defender.isPlayer()) {
       // Query with the maximum possible defense-post radius, then keep only
       // posts whose own (level-scaled) radius actually reaches this tile.
+      // Overlapping posts stack: each reaching post multiplies the attack cost,
+      // up to 3 of them. The speed penalty is applied once (not stacked) — only
+      // the difficulty stacks. Applying the same multiplier per post makes the
+      // result independent of iteration order, so it stays deterministic.
+      let stacks = 0;
       for (const dp of gm.nearbyUnits(
         tileToConquer,
         this.defensePostRange(Number.MAX_SAFE_INTEGER),
@@ -718,8 +728,8 @@ export class Config {
         const range = this.defensePostRange(dp.unit.level());
         if (dp.unit.owner() === defender && dp.distSquared <= range * range) {
           mag *= this.defensePostDefenseBonus();
-          speed *= this.defensePostSpeedBonus();
-          break;
+          if (stacks === 0) speed *= this.defensePostSpeedBonus();
+          if (++stacks >= 3) break;
         }
       }
     }
