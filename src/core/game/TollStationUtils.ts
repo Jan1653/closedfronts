@@ -6,11 +6,6 @@ import { GameMap, manhattanDistFN, TileRef } from "./GameMap";
 // placeable. The station draws its two road-like connections to them.
 export const WATER_TOLL_STATION_RADIUS = 14;
 
-// Two land tiles must be at least this far apart (manhattan distance) to be
-// treated as separate landmasses. Guards against both connections snapping to
-// the same bank of a channel.
-const MIN_LANDMASS_SEPARATION = 6;
-
 // The minimal map/unit surface tollStationConnections needs — satisfied by both
 // the server's Game and the client's GameView, so the client can compute a
 // station's connections for rendering without a Game instance.
@@ -30,15 +25,17 @@ export interface TollConnGame {
 }
 
 /**
- * Finds the two "connection" anchor tiles for a water toll station placed on
- * `waterTile`. An anchor is either:
- *   - the nearest tile of a landmass, or
- *   - another water toll station within range (this is what lets stations be
- *     chained across open water).
+ * Finds the "connection" anchor tiles for a water toll station placed on
+ * `waterTile`, and thus whether it's placeable. A station needs at least one
+ * connection: to land OR to another toll station. It draws at most one of each:
+ *   - the nearest reachable land tile in range (at most ONE land connection), and
+ *   - the nearest other active toll station in range (lets stations chain across
+ *     open water).
+ * So the valid shapes are: one land, one station, or one land + one station —
+ * never two land connections (to span a wide strait you build a chain).
  *
- * Returns [] if `waterTile` is not water, [A] if only one anchor is in range,
- * or [A, B] (the two nearest distinct anchors) when the tile genuinely bridges
- * two of them. Placement requires a result of length 2.
+ * Returns the connection tiles (length 1 or 2), or [] when it can't connect to
+ * anything (not placeable).
  */
 export function tollStationConnections(
   mg: TollConnGame,
@@ -47,45 +44,36 @@ export function tollStationConnections(
 ): TileRef[] {
   if (!mg.isWater(waterTile)) return [];
 
-  const anchors: TileRef[] = [];
+  const connections: TileRef[] = [];
 
-  // Other toll stations in range are valid anchors (enables chaining). Exclude
-  // any station sitting on this very tile (i.e. the station being placed).
+  // At most ONE station connection: the nearest other active toll station in
+  // range. Exclude any station sitting on this very tile (the one being placed).
+  let bestStation: TileRef | null = null;
+  let bestStationDist = Infinity;
   for (const u of mg.units(UnitType.WaterTollStation)) {
     if (!u.isActive()) continue;
     const t = u.tile();
     if (t === waterTile) continue;
-    if (mg.manhattanDist(waterTile, t) <= radius) anchors.push(t);
-  }
-
-  // Landmass anchors: nearest land tile, plus the nearest tile of a *different*
-  // landmass within the radius.
-  const lands: TileRef[] = [];
-  for (const t of mg.bfs(waterTile, manhattanDistFN(waterTile, radius))) {
-    if (mg.isLand(t) && !mg.isImpassable(t)) lands.push(t);
-  }
-  if (lands.length > 0) {
-    lands.sort(
-      (a, b) => mg.manhattanDist(waterTile, a) - mg.manhattanDist(waterTile, b),
-    );
-    const first = lands[0];
-    anchors.push(first);
-    const firstLandmass = mg.bfs(
-      first,
-      (gm, t) => gm.isLand(t) && gm.manhattanDist(waterTile, t) <= radius,
-    );
-    for (const t of lands) {
-      if (firstLandmass.has(t)) continue;
-      if (mg.manhattanDist(first, t) < MIN_LANDMASS_SEPARATION) continue;
-      anchors.push(t);
-      break;
+    const d = mg.manhattanDist(waterTile, t);
+    if (d <= radius && d < bestStationDist) {
+      bestStationDist = d;
+      bestStation = t;
     }
   }
+  if (bestStation !== null) connections.push(bestStation);
 
-  if (anchors.length === 0) return [];
-  // Two nearest distinct anchors.
-  anchors.sort(
-    (a, b) => mg.manhattanDist(waterTile, a) - mg.manhattanDist(waterTile, b),
-  );
-  return anchors.length >= 2 ? [anchors[0], anchors[1]] : [anchors[0]];
+  // At most ONE land connection: the nearest reachable land tile in range.
+  let bestLand: TileRef | null = null;
+  let bestLandDist = Infinity;
+  for (const t of mg.bfs(waterTile, manhattanDistFN(waterTile, radius))) {
+    if (!mg.isLand(t) || mg.isImpassable(t)) continue;
+    const d = mg.manhattanDist(waterTile, t);
+    if (d < bestLandDist) {
+      bestLandDist = d;
+      bestLand = t;
+    }
+  }
+  if (bestLand !== null) connections.push(bestLand);
+
+  return connections;
 }

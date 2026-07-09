@@ -1599,9 +1599,10 @@ export class PlayerImpl implements Player {
     if (mg.nearbyUnits(tile, 2, [UnitType.WaterTollStation]).length > 0) {
       return false;
     }
-    // Must connect two distinct anchors (two landmasses, or one landmass + a
-    // toll station, or two toll stations) — see tollStationConnections.
-    if (tollStationConnections(mg, tile).length < 2) return false;
+    // Must connect to at least one thing — land or another toll station (never
+    // two landmasses; to span a wide strait you chain stations). See
+    // tollStationConnections.
+    if (tollStationConnections(mg, tile).length < 1) return false;
     return tile;
   }
 
