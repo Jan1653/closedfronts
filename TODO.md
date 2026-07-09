@@ -105,20 +105,21 @@ Alles aus der letzten Sprachnachricht, damit nichts vergessen wird.
       Öl-Toggle-Button in der oberen Steuerleiste (`GameRightSidebar`, in der
       Spawn-Phase sichtbar, Handy+PC) + Taste `O`. Live verifiziert.
 
-**Zollstation — Mechanik-Redesign (wichtig, ersetzt die sofortige Gutschrift):**
+**Zollstation — Mechanik-Redesign (ersetzt die sofortige Gutschrift) — ERLEDIGT:**
 
-- [ ] Maut wird **NICHT sofort** beim Durchfahren gutgeschrieben. Stattdessen:
-  - [ ] Man braucht einen **Hafen** und muss **am Wasser** sein, um überhaupt zu
-        kassieren.
-  - [ ] Durchfahrende **feindliche/neutrale** Schiffe „hinterlegen" Maut an der
-        Station (gesammelt, noch nicht ausgezahlt).
-  - [ ] Ein **Einsammel-Schiff** fährt vom **eigenen Hafen** zur Zollstation und
-        wieder **zurück zum selben Hafen** (nicht zu einem anderen Hafen). Erst bei
-        **Ankunft am Hafen** wird das gesammelte Geld **eingelöst**.
-  - [ ] Gegner können mit **Kriegsschiffen** den Weg abschneiden → wird das
-        Einsammel-Schiff versenkt, geht das gesammelte Geld **komplett verloren**.
-  - [ ] Schiff nutzt denselben Typ/Optik (**Strahl/Trail**) wie das Expansions-
-        Transportschiff, kommt aber **aus dem Hafen**.
+- [x] Maut wird **NICHT sofort** beim Durchfahren gutgeschrieben, sondern
+      **sammelt sich an der Station** (`pendingGold`).
+  - [x] Ohne **Hafen** wird nichts kassiert (Einsammeln braucht einen Hafen am
+        Wasser).
+  - [x] Durchfahrende **feindliche/neutrale** Schiffe zahlen in den Stations-Topf.
+  - [x] Ein **Einsammel-Schiff** (Transportschiff) fährt vom **eigenen Hafen** zur
+        Station und **zurück zum selben Hafen**; erst bei **Ankunft am Hafen** wird
+        das geladene Geld **eingelöst**. Immer nur ein Schiff pro Station gleichzeitig.
+  - [x] **Kriegsschiffe** können den Weg abschneiden → wird das Einsammel-Schiff
+        versenkt/gekapert, ist das geladene Geld **verloren**.
+  - [x] Schiff ist derselbe **Transportschiff-Typ** (mit Trail) wie das Expansions-
+        Boot, kommt aber **aus dem Hafen**.
+  - [ ] Live gegenprüfen (Nutzer testet): Einsammel-Rundtrip + Abfangen + Verlust.
 
 **Sea-Build (Zollstation/Ölpumpe im Meer):**
 
