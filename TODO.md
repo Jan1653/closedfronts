@@ -84,7 +84,12 @@ Alles aus der letzten Sprachnachricht, damit nichts vergessen wird.
       führt zurück ins Hauptmenü.
 - [ ] **Versions-Anzeige entfernen** (das „v-XXX"/Versions-Ding).
 - [ ] **Lobby: Namensänderung** auch während man in einer Lobby ist (Desktop
-      **und** Handy).
+      **und** Handy). **Befund:** der Server kann das schon — `rejoinClient`
+      wendet ein `identityUpdate` (username/clanTag) an, solange das Spiel nicht
+      gestartet ist, und broadcastet die Lobby neu (`GameServer.ts` ~Z. 589‑622).
+      Offen ist nur die **Client-Seite**: Lobby-UI zum Bearbeiten des Namens
+      (mobil+PC) + einen Rejoin/Update mit dem neuen Namen auslösen
+      (in-Lobby-Socket, nicht der `PublicLobbySocket` für die Listen-Ansicht).
 - [ ] **Clans**: Clan-Erstellung funktioniert nicht — Erstellen ermöglichen;
       Leaderboard-/Clans-Flow prüfen (kann man überhaupt einen Clan anlegen?).
 
