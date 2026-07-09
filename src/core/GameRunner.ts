@@ -99,7 +99,7 @@ export class GameRunner {
 
   init() {
     if (this.game.config().gameConfig().gameType !== GameType.Singleplayer) {
-      this.game.addExecution(new SpawnTimerExecution());
+      this.game.addExecution(new SpawnTimerExecution(this.execManager));
     }
     if (this.game.config().spawnNations()) {
       this.game.addExecution(...this.execManager.nationExecutions());

@@ -208,6 +208,10 @@ export class LangSelector extends LitElement {
       "single-player-modal",
       "host-lobby-modal",
       "join-lobby-modal",
+      "host-lobby-modal",
+      // Leaf component with no reactive props from its parent modal, so a parent
+      // re-render won't reach it — must be listed to re-render on lang load.
+      "lobby-name-editor",
       "emoji-table",
       "leader-board",
       "leaderboard-player-list",

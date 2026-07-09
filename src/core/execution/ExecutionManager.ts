@@ -1,4 +1,4 @@
-import { Execution, Game, UnitType } from "../game/Game";
+import { Execution, Game, PlayerInfo, UnitType } from "../game/Game";
 import { PseudoRandom } from "../PseudoRandom";
 import { ClientID, GameID, StampedIntent, Turn } from "../Schemas";
 import { simpleHash } from "../Util";
@@ -144,6 +144,13 @@ export class Executor {
 
   spawnPlayers(): SpawnExecution[] {
     return new PlayerSpawner(this.mg, this.gameID).spawnPlayers();
+  }
+
+  // A random-location spawn for a player who never picked a tile. Used at
+  // spawn-phase end so someone who didn't choose still gets territory (a
+  // SpawnExecution with no tile spawns at a random valid location).
+  spawnPlayerExecution(playerInfo: PlayerInfo): SpawnExecution {
+    return new SpawnExecution(this.gameID, playerInfo);
   }
 
   nationExecutions(): Execution[] {
