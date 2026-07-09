@@ -47,8 +47,14 @@ export class SpawnExecution implements Execution {
       player = this.mg.addPlayer(this.playerInfo);
     }
 
-    // Security: If random spawn is enabled, prevent players from re-rolling their spawn location
-    if (this.mg.config().isRandomSpawn() && player.hasSpawned()) {
+    // Prevent double/re-rolled spawns: a random-spawn game (players can't
+    // re-roll) and a tile-less auto-spawn (the spawn-phase-end fallback) both
+    // no-op once the player has already spawned — e.g. if they picked a tile in
+    // the meantime.
+    if (
+      (this.mg.config().isRandomSpawn() || this.tile === undefined) &&
+      player.hasSpawned()
+    ) {
       return;
     }
 
