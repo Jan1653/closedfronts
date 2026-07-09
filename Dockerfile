@@ -77,6 +77,15 @@ RUN echo "$GIT_COMMIT" > static/commit.txt
 
 ENV GIT_COMMIT="$GIT_COMMIT"
 
+# Persistent state for the self-hosted localapi: user accounts, the JWT signing
+# key and archived game records all live here. This MUST be backed by a
+# persistent/named volume on the host (or in your PaaS), otherwise every
+# redeploy starts with an empty dir — wiping all accounts ("account not found")
+# and regenerating the signing key (logging everyone out). Mount a persistent
+# volume at /data. (Passwords are stored only as scrypt hashes, never plaintext.)
+RUN mkdir -p /data
+VOLUME /data
+
 RUN <<'EOF' tee /usr/local/bin/start.sh
 #!/bin/sh
 # Generate the create-game nginx upstream from NUM_WORKERS before nginx starts.

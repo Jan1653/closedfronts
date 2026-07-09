@@ -180,6 +180,7 @@ docker run -d \
     --env-file "$ENV_FILE" \
     --name "${CONTAINER_NAME}" \
     --network web \
+    -v "${CONTAINER_NAME}-data:/data" \
     --label "traefik.enable=true" \
     --label "traefik.http.routers.${CONTAINER_NAME}.rule=Host(\`${SUBDOMAIN}.${DOMAIN}\`)" \
     --label "traefik.http.routers.${CONTAINER_NAME}.entrypoints=websecure" \

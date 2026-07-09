@@ -11,9 +11,16 @@ import { AccountStore, type Account } from "./store";
 
 const PORT = parseInt(process.env.LOCALAPI_PORT ?? "8090", 10);
 const DOMAIN = process.env.DOMAIN ?? "localhost";
-const DB_PATH = process.env.LOCALAPI_DB_PATH ?? "./data/accounts.json";
-const GAMES_PATH = process.env.LOCALAPI_GAMES_PATH ?? "./data/games.json";
-const KEY_PATH = process.env.LOCALAPI_KEY_PATH ?? "./data/jwt-ed25519.json";
+// All persistent localapi state lives under LOCALAPI_DATA_DIR (default /data).
+// This directory MUST be backed by a persistent volume in production: accounts
+// AND the JWT signing key live here, so a fresh dir on every redeploy wipes all
+// accounts ("account not found") and invalidates every session (logs everyone
+// out). See `VOLUME /data` in the Dockerfile. For a local run outside Docker,
+// set LOCALAPI_DATA_DIR=./data.
+const DATA_DIR = process.env.LOCALAPI_DATA_DIR ?? "/data";
+const DB_PATH = process.env.LOCALAPI_DB_PATH ?? `${DATA_DIR}/accounts.json`;
+const GAMES_PATH = process.env.LOCALAPI_GAMES_PATH ?? `${DATA_DIR}/games.json`;
+const KEY_PATH = process.env.LOCALAPI_KEY_PATH ?? `${DATA_DIR}/jwt-ed25519.json`;
 // Shared secret the game server sends when archiving finished games. Matches
 // ServerEnv.apiKey() (process.env.API_KEY). When unset ("") the check is a
 // no-op, matching the game server which also sends "".

@@ -80,7 +80,12 @@ export class AccountStore {
   private save(): void {
     fs.mkdirSync(path.dirname(this.filePath), { recursive: true });
     const tmp = `${this.filePath}.tmp`;
-    fs.writeFileSync(tmp, JSON.stringify(this.data, null, 2), "utf-8");
+    // 0600: only the owner can read the store. Passwords are already scrypt
+    // hashes (never plaintext), but the file also holds session tokens.
+    fs.writeFileSync(tmp, JSON.stringify(this.data, null, 2), {
+      encoding: "utf-8",
+      mode: 0o600,
+    });
     fs.renameSync(tmp, this.filePath); // atomic replace
   }
 
