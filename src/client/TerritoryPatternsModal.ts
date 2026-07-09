@@ -164,18 +164,6 @@ export class TerritoryPatternsModal extends BaseModal {
 
   protected renderBody() {
     return html`
-      <div class="flex justify-center py-3 shrink-0">
-        <o-button
-          class="no-crazygames"
-          variant="primary"
-          size="sm"
-          translationKey="main.store"
-          @click=${() => {
-            this.close();
-            window.showPage?.("page-item-store");
-          }}
-        ></o-button>
-      </div>
       <div class="px-3 pb-3">${this.renderSkinGrid()}</div>
     `;
   }

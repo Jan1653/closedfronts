@@ -478,9 +478,9 @@ class Client {
 
     const onUserMe = async (userMeResponse: UserMeResponse | false) => {
       updateAccountNavButton(userMeResponse);
-      const isAdFree =
-        userMeResponse !== false && userMeResponse.player?.adfree === true;
-      window.adsEnabled = !isAdFree && !crazyGamesSDK.isOnCrazyGames();
+      // ClosedFronts ships without advertising: keep the ad master switch off so
+      // no ad units ever load (the ad scripts are also removed from index.html).
+      window.adsEnabled = false;
       document.dispatchEvent(
         new CustomEvent("userMeResponse", {
           detail: userMeResponse,
