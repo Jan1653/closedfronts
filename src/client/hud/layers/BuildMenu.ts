@@ -439,7 +439,7 @@ export class BuildMenu extends LitElement implements Controller {
     return player.totalUnitLevels(item.unitType).toString();
   }
 
-  // Quantity stepper: the touch-friendly alternative to Shift+wheel for placing
+  // Quantity stepper: the touch-friendly alternative to Tab+wheel for placing
   // several copies at once (works on mobile, where there is no scroll wheel).
   private adjustQuantity(delta: number): void {
     const MAX = 25;

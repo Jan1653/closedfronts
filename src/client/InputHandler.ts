@@ -436,8 +436,15 @@ export class InputHandler {
     this.canvas.addEventListener(
       "wheel",
       (e) => {
-        this.onScroll(e);
-        this.onShiftScroll(e);
+        // Hold Tab while a build ghost is active + scroll to set how many copies
+        // to place. Tab doesn't discard the ghost (unlike Shift), so the preview
+        // stays put. Otherwise scroll zooms / adjusts the attack ratio as usual.
+        if (this.activeKeys.has("Tab") && this.uiState.ghostStructure !== null) {
+          this.onQuantityScroll(e);
+        } else {
+          this.onScroll(e);
+          this.onShiftScroll(e);
+        }
         e.preventDefault();
       },
       { passive: false },
@@ -579,6 +586,14 @@ export class InputHandler {
       ) {
         e.preventDefault();
         this.eventBus.emit(new ConfirmGhostStructureEvent());
+      }
+
+      // Tab is a build-quantity modifier: hold Tab + scroll (with a build ghost
+      // active) to change how many to place. Track it and stop the browser's
+      // focus navigation. Text inputs bail out above, so Tab still works there.
+      if (e.code === "Tab") {
+        e.preventDefault();
+        this.activeKeys.add("Tab");
       }
 
       // Don't track zoom keys when a meta/ctrl modifier is held — that means
@@ -855,23 +870,22 @@ export class InputHandler {
   private onShiftScroll(event: WheelEvent) {
     if (!event.shiftKey) return;
     const scrollValue = event.deltaY === 0 ? event.deltaX : event.deltaY;
-
-    // While a build ghost is active, Shift + wheel sets how many copies to
-    // place per click (stacked on the tile) instead of nudging the attack
-    // ratio. Scroll up = more.
-    if (this.uiState.ghostStructure !== null) {
-      const MAX_BUILD_QUANTITY = 25;
-      const step = scrollValue > 0 ? -1 : 1;
-      this.uiState.buildQuantity = Math.max(
-        1,
-        Math.min(MAX_BUILD_QUANTITY, this.uiState.buildQuantity + step),
-      );
-      return;
-    }
-
     const increment = this.userSettings.attackRatioIncrement();
     const ratio = scrollValue > 0 ? -increment : increment;
     this.eventBus.emit(new AttackRatioEvent(ratio));
+  }
+
+  // Tab + wheel while a build ghost is active: set how many copies to place per
+  // click (stacked on the tile). Scroll up = more. (Was Shift; moved to Tab so
+  // holding it doesn't trigger Shift's warship-selection/ghost-discard.)
+  private onQuantityScroll(event: WheelEvent) {
+    const scrollValue = event.deltaY === 0 ? event.deltaX : event.deltaY;
+    const MAX_BUILD_QUANTITY = 25;
+    const step = scrollValue > 0 ? -1 : 1;
+    this.uiState.buildQuantity = Math.max(
+      1,
+      Math.min(MAX_BUILD_QUANTITY, this.uiState.buildQuantity + step),
+    );
   }
 
   private onPointerMove(event: PointerEvent) {

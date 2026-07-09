@@ -466,7 +466,7 @@ export class BuildPreviewController implements Controller {
       radiusTileY = this.game.y(upgradeTargetTile);
     }
 
-    // Reflect the Shift+wheel build quantity in the cursor: total cost scales
+    // Reflect the Tab+wheel build quantity in the cursor: total cost scales
     // with how many copies a single click will place.
     const quantity = this.multiPlaceCount(u.type);
     const cost = u.cost * BigInt(quantity);
@@ -530,7 +530,7 @@ export class BuildPreviewController implements Controller {
           ? this.uiState.rocketDirectionUp
           : undefined;
       const tileRef = this.game.ref(tile.x, tile.y);
-      // Shift+wheel can raise the build quantity: place several copies at once,
+      // Tab+wheel can raise the build quantity: place several copies at once,
       // stacked on the tile (e.g. many cities to level it up quickly).
       const count = this.multiPlaceCount(unitType);
       for (let i = 0; i < count; i++) {
@@ -582,7 +582,7 @@ export class BuildPreviewController implements Controller {
   }
 
   /**
-   * How many copies of a structure to place per click. Shift+wheel sets
+   * How many copies of a structure to place per click. Tab+wheel sets
    * uiState.buildQuantity; attack units (nukes / warship) are always single.
    */
   private multiPlaceCount(unitType: UnitType): number {
