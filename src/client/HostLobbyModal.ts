@@ -617,6 +617,10 @@ export class HostLobbyModal extends BaseModal {
             .teamAssignments=${this.teamAssignments}
             .onMovePlayer=${(clientID: string, team: string | null) =>
               this.movePlayerToTeam(clientID, team)}
+            .onRenamePlayer=${this.publiclyListed
+              ? undefined
+              : (clientID: string, username: string) =>
+                  this.renamePlayer(clientID, username)}
             .onToggleNameReveal=${(clientID: string) =>
               this.toggleNameReveal(clientID)}
             .nameReveals=${this.nameReveals}
@@ -1397,6 +1401,16 @@ export class HostLobbyModal extends BaseModal {
     this.dispatchEvent(
       new CustomEvent("kick-player", {
         detail: { target: clientID },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+
+  private renamePlayer(clientID: string, username: string) {
+    this.dispatchEvent(
+      new CustomEvent("rename-player", {
+        detail: { target: clientID, username },
         bubbles: true,
         composed: true,
       }),

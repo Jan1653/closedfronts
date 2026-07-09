@@ -844,6 +844,7 @@
     "move_to_team": "Move player to a team",
     "team_auto": "Auto",
     "random_spawn": "Random spawn",
+    "rename_player": "Rename player",
     "remove_player": "Remove {username}",
     "start": "Start Game",
     "start_delay": "Start delay (Seconds)",

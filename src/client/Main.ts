@@ -51,6 +51,7 @@ import { TerritoryPatternsModal } from "./TerritoryPatternsModal";
 import { TokenLoginModal } from "./TokenLoginModal";
 import {
   SendKickPlayerIntentEvent,
+  SendRenamePlayerIntentEvent,
   SendToggleGameStartTimer,
   SendUpdateGameConfigIntentEvent,
 } from "./Transport";
@@ -225,6 +226,7 @@ declare global {
   interface DocumentEventMap {
     "join-lobby": CustomEvent<JoinLobbyEvent>;
     "kick-player": CustomEvent;
+    "rename-player": CustomEvent<{ target: string; username: string }>;
     toggle_game_start_timer: CustomEvent;
     "join-changed": CustomEvent;
     "open-matchmaking": CustomEvent<undefined>;
@@ -353,7 +355,14 @@ class Client {
     document.addEventListener("join-lobby", this.handleJoinLobby.bind(this));
     document.addEventListener("leave-lobby", this.handleLeaveLobby.bind(this));
     document.addEventListener("kick-player", this.handleKickPlayer.bind(this));
-    document.addEventListener("lobby-rename", this.handleLobbyRename.bind(this));
+    document.addEventListener(
+      "rename-player",
+      this.handleRenamePlayer.bind(this),
+    );
+    document.addEventListener(
+      "lobby-rename",
+      this.handleLobbyRename.bind(this),
+    );
     document.addEventListener(
       "toggle_game_start_timer",
       this.handleToggleGameStartTimer.bind(this),
@@ -997,6 +1006,17 @@ class Client {
     // Forward to eventBus if available
     if (this.eventBus) {
       this.eventBus.emit(new SendKickPlayerIntentEvent(target));
+    }
+  }
+
+  // Host renames another player in the lobby. The server validates authority
+  // and the name, updates it, and rebroadcasts the lobby.
+  private handleRenamePlayer(
+    event: CustomEvent<{ target: string; username: string }>,
+  ) {
+    const { target, username } = event.detail;
+    if (this.eventBus && target && username.trim().length > 0) {
+      this.eventBus.emit(new SendRenamePlayerIntentEvent(target, username));
     }
   }
 

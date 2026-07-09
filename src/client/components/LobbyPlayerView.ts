@@ -40,6 +40,13 @@ export class LobbyTeamView extends LitElement {
     clientID: string,
     team: Team | null,
   ) => void;
+  // Host-only: rename another player in the lobby.
+  @property({ type: Function }) onRenamePlayer?: (
+    clientID: string,
+    username: string,
+  ) => void;
+  @state() private editingClientID: string | null = null;
+  @state() private editValue: string = "";
   @property({ type: Function }) onKickPlayer?: (clientID: string) => void;
   @property({ type: Function }) onToggleNameReveal?: (clientID: string) => void;
   @property({ type: Array }) nameReveals: string[] = [];
@@ -210,6 +217,61 @@ export class LobbyTeamView extends LitElement {
     </select>`;
   }
 
+  private startRename(client: ClientInfo) {
+    this.editingClientID = client.clientID;
+    this.editValue = client.username;
+  }
+
+  private cancelRename() {
+    this.editingClientID = null;
+  }
+
+  private commitRename(clientID: string) {
+    // Enter and blur can both fire; only the first (which clears editing) acts.
+    if (this.editingClientID !== clientID) return;
+    const name = this.editValue.trim();
+    this.editingClientID = null;
+    if (name.length > 0) this.onRenamePlayer?.(clientID, name);
+  }
+
+  // The player name, or an inline edit box while the host is renaming them.
+  private renderPlayerName(client: ClientInfo, displayName: string) {
+    if (this.onRenamePlayer && this.editingClientID === client.clientID) {
+      return html`<input
+        class="min-w-0 flex-1 px-1 py-0.5 rounded-sm bg-gray-900 text-white text-xs border border-sky-500/60"
+        .value=${this.editValue}
+        @click=${(e: Event) => e.stopPropagation()}
+        @input=${(e: Event) =>
+          (this.editValue = (e.target as HTMLInputElement).value)}
+        @keydown=${(e: KeyboardEvent) => {
+          if (e.key === "Enter") this.commitRename(client.clientID);
+          else if (e.key === "Escape") this.cancelRename();
+        }}
+        @blur=${() => this.commitRename(client.clientID)}
+      />`;
+    }
+    return html`<span class="truncate text-white">${displayName}</span>`;
+  }
+
+  // Host-only pencil that turns a name into an inline edit box. Not shown for
+  // the host's own row (they use the "your name" editor above).
+  private renderRenameButton(client: ClientInfo) {
+    if (
+      !this.onRenamePlayer ||
+      client.clientID === this.lobbyCreatorClientID ||
+      this.editingClientID === client.clientID
+    ) {
+      return html``;
+    }
+    return html`<button
+      title=${translateText("host_modal.rename_player")}
+      @click=${() => this.startRename(client)}
+      style="background:none;border:none;cursor:pointer;font-size:12px;line-height:1;margin-left:4px;opacity:0.6;"
+    >
+      ✎
+    </button>`;
+  }
+
   // Host-only per-player toggle for who may see real names under anonymizeNames.
   private renderRevealToggle(clientID: string) {
     if (!this.onToggleNameReveal || !this.anonymizeNames) return html``;
@@ -236,8 +298,9 @@ export class LobbyTeamView extends LitElement {
             ? "current-player"
             : ""}"
         >
-          <span class="text-white">${displayName}</span>
+          ${this.renderPlayerName(client, displayName)}
           ${this.renderRevealToggle(client.clientID)}
+          ${this.renderRenameButton(client)}
           ${client.clientID === this.lobbyCreatorClientID
             ? html`<span class="host-badge"
                 >(${translateText("host_modal.host_badge")})</span
@@ -306,9 +369,9 @@ export class LobbyTeamView extends LitElement {
                       ? "bg-malibu-blue/20 border-sky-500/40"
                       : "bg-gray-700/70 border-transparent"}"
                   >
-                    <span class="truncate text-white">${displayName}</span>
+                    ${this.renderPlayerName(p, displayName)}
                     ${this.renderRevealToggle(p.clientID)}
-                    ${this.renderTeamPicker(p)}
+                    ${this.renderRenameButton(p)} ${this.renderTeamPicker(p)}
                     ${p.clientID === this.lobbyCreatorClientID
                       ? html`<span class="ml-2 text-[11px] text-green-300"
                           >(${translateText("host_modal.host_badge")})</span

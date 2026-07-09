@@ -787,6 +787,7 @@
     "empty_team": "Leer",
     "move_to_team": "Spieler einem Team zuweisen",
     "team_auto": "Auto",
+    "rename_player": "Spieler umbenennen",
     "remove_player": "{username} entfernen",
     "anonymous_players": "Anonyme Spieler",
     "auto_start_timer": "Zeit bis zum automatischen Spielstart",

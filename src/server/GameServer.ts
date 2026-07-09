@@ -370,6 +370,55 @@ export class GameServer {
         return { status: 200 };
       }
 
+      case "rename_player": {
+        if (!actor.isLobbyCreator && !actor.isAdmin) {
+          return {
+            status: 403,
+            error: "only the lobby creator or an admin can rename players",
+          };
+        }
+        // Same reasoning as kick: a listed lobby recruits strangers from the
+        // public browser, so letting the host rename them is a griefing vector.
+        if (this.isListed() && !actor.isAdmin) {
+          return {
+            status: 403,
+            error: "the host cannot rename players in a publicly listed lobby",
+          };
+        }
+        // Usernames are snapshotted at game start, so a rename only means
+        // something in the lobby.
+        if (this.hasStarted()) {
+          return { status: 409, error: "game already started" };
+        }
+        const target = this.activeClients.find(
+          (c) => c.clientID === stamped.targetClientID,
+        );
+        if (target === undefined) {
+          return { status: 404, error: "no matching player to rename" };
+        }
+        const username = stamped.username.trim();
+        if (username.length === 0) {
+          return { status: 400, error: "empty username" };
+        }
+        // No two players may share a name (matches the client-side guard).
+        const clash = this.activeClients.some(
+          (c) =>
+            c.clientID !== target.clientID &&
+            c.username.trim().toLowerCase() === username.toLowerCase(),
+        );
+        if (clash) {
+          return { status: 409, error: "username already in use" };
+        }
+        this.log.info("player renamed", {
+          renamer: stamped.clientID,
+          target: target.clientID,
+          gameID: this.id,
+        });
+        target.username = username;
+        this.broadcastLobbyInfo();
+        return { status: 200 };
+      }
+
       case "update_game_config": {
         if (!actor.isLobbyCreator && !actor.isAdminBot) {
           return {

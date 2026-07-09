@@ -177,6 +177,13 @@ export class SendKickPlayerIntentEvent implements GameEvent {
   constructor(public readonly target: string) {}
 }
 
+export class SendRenamePlayerIntentEvent implements GameEvent {
+  constructor(
+    public readonly target: string,
+    public readonly username: string,
+  ) {}
+}
+
 export class SendUpdateGameConfigIntentEvent implements GameEvent {
   constructor(public readonly config: Partial<GameConfig>) {}
 }
@@ -270,6 +277,10 @@ export class Transport {
 
     this.eventBus.on(SendKickPlayerIntentEvent, (e) =>
       this.onSendKickPlayerIntent(e),
+    );
+
+    this.eventBus.on(SendRenamePlayerIntentEvent, (e) =>
+      this.onSendRenamePlayerIntent(e),
     );
 
     this.eventBus.on(SendUpdateGameConfigIntentEvent, (e) =>
@@ -659,6 +670,14 @@ export class Transport {
     this.sendIntent({
       type: "kick_player",
       targetClientID: event.target,
+    });
+  }
+
+  private onSendRenamePlayerIntent(event: SendRenamePlayerIntentEvent) {
+    this.sendIntent({
+      type: "rename_player",
+      targetClientID: event.target,
+      username: event.username,
     });
   }
 
