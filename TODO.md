@@ -9,15 +9,29 @@ Handy-/Mobile-UI funktionieren.**
 
 Was noch aussteht (Details in den jeweiligen Abschnitten unten):
 
-- [ ] **Random-Spawn** in echter Multiplayer-Lobby live gegenprüfen (Logik steht).
-- [ ] **Zollstation-Rundtrip** live gegenprüfen (Einsammeln + Abfangen + Verlust).
-- [ ] **Sea-Build-Optik**: Bau-Schiff aus dem Hafen, gleicher Trail wie Expansions-Boot.
-- [ ] **Verteidigungsposten**: darf kein neutrales Land einnehmen (nur Wildnis + Kriegsgegner).
-- [ ] **KI baut Zollstationen** (Meerengen-Erkennung nötig; selten auf Easy, an Chokepoints).
+Nur noch live gegenzuprüfen (Logik steht, du testest im Spiel):
+
+- [ ] **Random-Spawn** in echter Multiplayer-Lobby (fehlender Startpunkt → zufällig).
+- [ ] **Zollstation-Rundtrip** (Einsammeln + Abfangen + Verlust).
+- [ ] **KI-Zollstationen** an Meerengen (selten, esp. Easy) — im Spiel beobachten.
+
+Noch offen (echte Arbeit):
+
 - [ ] **Übersetzungs-Audit** DE + EN vollständig (großer Durchlauf).
-- [x] ~~**Lobby-Rename**: gleichen Namen wie ein anderer Spieler verbieten.~~
-      ERLEDIGT — `lobby-name-editor` lehnt Kollisionen (case-insensitiv) ab.
 - [ ] **Map-Editor** (ganz unten) + **Reale-Karten-Import** aus Geodaten.
+
+Erledigt in dieser Runde:
+
+- [x] **Lobby-Rename**: gleichen Namen verbieten — `lobby-name-editor` lehnt
+      Kollisionen (case-insensitiv) ab.
+- [x] **KI baut Zollstationen** an Meerengen (Chokepoint = canBuild-Zwei-Landmassen-
+      Regel; nahe eigener Küste auf gemeinsamem Wasser; per-Difficulty selten,
+      Cap + Cooldown; `SeaBuildExecution` vom Hafen). — *Logik fertig, live prüfen.*
+- [x] **Verteidigungsposten** nimmt kein neutrales Land ein — war bereits umgesetzt
+      (`DefensePostExecution`: Einnahme nur bei `Relation.Hostile`).
+- [x] **Sea-Build-Optik** — war bereits erfüllt: Bau-Schiff startet vom **Hafen**
+      (`SeaBuildExecution.spawnTile`), ist ein `TransportShip` und bekommt darum
+      denselben Trail wie das Expansions-Boot (`TRAIL_TYPES`).
 
 ---
 
@@ -196,9 +210,10 @@ Alles aus der letzten Sprachnachricht, damit nichts vergessen wird.
 
 **Verteidigungsposten:**
 
-- [ ] Umkreis-/Granaten-Einnahme darf **kein neutrales** Gegner-Land einnehmen,
+- [x] Umkreis-/Granaten-Einnahme nimmt **kein neutrales** Gegner-Land ein,
       solange man **nicht im Krieg** mit dem Besitzer ist (nur Wildnis + echte
-      Kriegsgegner).
+      Kriegsgegner). Umgesetzt in `DefensePostExecution.fireBarrage` (Einnahme
+      nur bei `Relation.Hostile` in einer der beiden Richtungen).
 
 **KI (alle Schwierigkeiten, angemessen skaliert):**
 
@@ -210,9 +225,12 @@ Alles aus der letzten Sprachnachricht, damit nichts vergessen wird.
       Anzahl je Schwierigkeit) — nutzt dieselbe Front-Logik wie Verteidigungsposten.
 - [x] **Verteidigungsposten**: baut die KI bereits (bestehend); Refactor auf
       generischen `countUnitsNearFront` (auch für Wände).
-- [ ] **Zollstationen**: KI baut sie noch nicht — braucht Meerengen-Erkennung
-      (Wasser zwischen zwei Landmassen nahe eigener Küste) + Sea-Build-Orchestrierung.
-      Eigene, komplexere Aufgabe → offen.
+- [x] **Zollstationen**: KI baut sie jetzt — `tryBuildTollStation`. Meerengen-
+      Erkennung über `canBuild(WaterTollStation)` (zwei Landmassen-Anker in Radius
+      14); Kandidaten sind Wassertiles nahe der eigenen Küste auf **gemeinsamem
+      Wasser** (wo fremde Boote fahren). Bau via `SeaBuildExecution` vom Hafen.
+      Selten + per Difficulty gedeckelt (Easy 1/sehr rar … Impossible 3), mit
+      Cooldown; teurer Scan nur wenn die seltene Chance trifft. **Live prüfen.**
 - [~] KI versteht **Krieg**/Relationen bereits (AI-Attack/Warship nutzen
       `Relation.Hostile`); Kaperung feindlicher Strukturen passiert automatisch,
       wenn KI-Kampfschiffe nahe genug sind (`WarshipCaptureTracker`). Gezieltes
