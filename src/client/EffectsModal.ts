@@ -78,18 +78,6 @@ export class EffectsModal extends BaseModal {
   protected renderBody(tab: string) {
     return html`
       <div class="flex flex-col">
-        <div class="flex justify-center py-3 shrink-0">
-          <o-button
-            class="no-crazygames"
-            variant="primary"
-            size="sm"
-            translationKey="main.store"
-            @click=${() => {
-              this.close();
-              window.showPage?.("page-item-store");
-            }}
-          ></o-button>
-        </div>
         <effects-grid
           mode="select"
           .cosmetics=${this.cosmetics}
