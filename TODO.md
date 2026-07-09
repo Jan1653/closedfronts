@@ -272,10 +272,39 @@ gesagt wird. Hier die vollständige Spezifikation, damit nichts verloren geht.
 - [ ] Speichern **privat** ODER **veröffentlichen** — beides an den **Account**
       gebunden/verlinkt (private Maps erscheinen nur beim Ersteller).
 
+**Reale Karten importieren (aus Geodaten eine Map generieren):**
+
+- [ ] Im Editor gibt es eine **echte Weltkarte**; man klickt/zieht einen **Bereich**
+      (z. B. die eigene Heimatstadt) und daraus wird eine **spielbare Map generiert**.
+- [ ] Daten aus **öffentlich/offen lizenzierten** Kartenquellen ziehen
+      (**OpenStreetMap**, Natural Earth, o. Ä.). **NICHT Google** — deren Daten sind
+      nicht offen lizenziert und passen nicht zur AGPL/CC-BY-SA-Linie des Projekts
+      (siehe [[closedfronts-project]]).
+- [ ] **Terrain aus der Realität ableiten**: Land/Wasser, und der Terrain-**Typ**
+      richtet sich nach dem, was dort wirklich ist (z. B. Wüste → Wüste, Gebirge →
+      Gebirge, Wald/Ebene entsprechend).
+- [ ] **Flüsse müssen funktionieren** und **durchgehend** sein: ein in der Realität
+      zusammenhängender Fluss darf beim Rastern **nicht mittendrin zerrissen** werden.
+      Lieber den Fluss **durchziehen** (Lücken schließen / verbinden), als einzelne
+      Pixel mitten in den Fluss zu setzen. **Fluss-Kontinuität hat Priorität.**
+- [ ] **Entrauschen** (viele einzelne Streu-Pixel vermeiden), ABER am Anfang lieber
+      **eine solide Fläche/„ein Schweiß"** erzeugen, statt zu aggressiv Pixel zu
+      vermeiden. Priorität: erst grob & zusammenhängend, dann verfeinern — Flüsse
+      aber von Anfang an durchgehend.
+- [ ] Ergebnis ist eine normale Custom-Map (benennen, privat/öffentlich, „+" in die
+      eigene Auswahl) wie oben.
+
 **Technik (bei Umsetzung klären):**
 
 - [ ] Speicherformat kompatibel zum bestehenden Terrain-Loader
       (`TerrainMapFileLoader` / bestehendes bin-Format) halten.
 - [ ] Backend: `localapi`-Endpunkte für Maps (CRUD), Likes, Listing/Filter —
       siehe [[closedfronts-localapi]].
+- [ ] Geodaten-Import: Quelle klären (OSM-Extrakte/Overpass für Küstenlinie +
+      Gewässer/`waterway`, Landnutzung/`natural=desert|wood|…`; ggf. Höhen aus
+      offenem DEM). Rasterung ins Spiel-Grid: Wasser/Land-Maske, Terrain-Typ pro
+      Kachel, **Fluss-Skelett zuerst als durchgehende 1-Kachel-Linie brennen**
+      (Fluss-Segmente verbinden), dann Landnutzung füllen, dann kleine Insel-/
+      Streu-Pixel glätten (Morphologie: open/close) — Flüsse dabei NICHT auftrennen.
+- [ ] Lizenz/Attribution der Geodatenquelle beachten (OSM = ODbL → Namensnennung).
 - [ ] Mobile-UI berücksichtigen (Querschnittsregel).
