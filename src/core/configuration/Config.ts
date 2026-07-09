@@ -2,7 +2,6 @@ import { z } from "zod";
 import { PlayerView } from "../../client/view";
 import { AssetManifest } from "../AssetUrls";
 import { DoomsdayClockSpeed } from "../game/DoomsdayClock";
-import { isOilDepositAt } from "../game/OilDeposits";
 import {
   Difficulty,
   Game,
@@ -19,6 +18,7 @@ import {
   UnitType,
 } from "../game/Game";
 import { TileRef } from "../game/GameMap";
+import { isOilDepositAt } from "../game/OilDeposits";
 import { UserSettings } from "../game/UserSettings";
 import { GameConfig, TeamCountConfig } from "../Schemas";
 import { NukeType } from "../StatsSchemas";
@@ -928,8 +928,22 @@ export class Config {
   }
 
   oilConsumptionRate(player: Player | PlayerView): number {
-    // The bigger you are, the more oil you burn each tick.
-    return Math.floor(player.numTilesOwned() / 200);
+    // The bigger you are, the more oil you burn each tick; cities also each burn
+    // a little (they run on fuel — see the troop-rate boost below).
+    return (
+      Math.floor(player.numTilesOwned() / 200) +
+      this.builtCityCount(player) * this.cityOilConsumption()
+    );
+  }
+
+  // Active, finished cities (shared by oil consumption + the fuelled troop
+  // boost). Works for both the sim Player and the client's PlayerView.
+  private builtCityCount(player: Player | PlayerView): number {
+    let n = 0;
+    for (const u of player.units(UnitType.City)) {
+      if (u.isActive() && !u.isUnderConstruction()) n++;
+    }
+    return n;
   }
 
   // Oil burned per tile conquered (expansion into wilderness / enemy land).
@@ -937,6 +951,24 @@ export class Config {
   // war machine has to keep pumping to keep advancing.
   oilExpansionCostPerTile(): number {
     return 5;
+  }
+
+  // A little fuel is burned each time a ship (transport/warship/trade) is
+  // launched, so a busy navy actually needs oil.
+  oilCostPerShipLaunch(): number {
+    return 25;
+  }
+
+  // A little fuel is burned each time a train reaches a station on its route.
+  oilCostPerTrainStation(): number {
+    return 3;
+  }
+
+  // Passive oil each city burns per tick (folded into oilConsumptionRate). In
+  // return a fuelled empire's cities generate troops slightly faster (see
+  // troopIncreaseRate).
+  cityOilConsumption(): number {
+    return 2;
   }
 
   // Oil pumps can only sit on an oil deposit. The deposit map is a shared,
@@ -1014,6 +1046,13 @@ export class Config {
         default:
           assertNever(this._gameConfig.difficulty);
       }
+    }
+
+    // Fuelled cities generate troops a little faster — +1% per built city while
+    // you have oil (capped), so keeping oil flowing is worth it. Runs dry → no
+    // boost.
+    if (player.oil() > 0) {
+      toAdd *= 1 + Math.min(this.builtCityCount(player) * 0.01, 0.2);
     }
 
     return Math.min(player.troops() + toAdd, max) - player.troops();

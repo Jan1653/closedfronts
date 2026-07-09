@@ -134,6 +134,8 @@ export class TransportShipExecution implements Execution {
       troops: this.troops,
       targetTile: this.dst,
     });
+    // Launching a ship burns a little fuel.
+    this.attacker.useOil(mg.config().oilCostPerShipLaunch());
 
     const fullPath = this.pathFinder.findPath(this.src, this.dst) ?? [this.src];
     if (fullPath.length === 0 || fullPath[0] !== this.src) {

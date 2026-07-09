@@ -54,6 +54,8 @@ export class WarshipExecution implements Execution {
         spawn,
         this.input,
       );
+      // Launching a warship burns a little fuel.
+      this.input.owner.useOil(mg.config().oilCostPerShipLaunch());
     }
     this.lastObservedPatrolTile = this.warship.warshipState().patrolTile;
   }

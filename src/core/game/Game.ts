@@ -593,6 +593,9 @@ export interface Player {
   removeGold(toRemove: Gold): Gold;
   oil(): number;
   updateOil(): void;
+  // Deduct a discrete amount of oil (clamped at 0) — e.g. the fuel a launched
+  // ship or a train passing a station burns.
+  useOil(amount: number): void;
   oilSpeedFactor(): number;
   troops(): number;
   setTroops(troops: number): void;

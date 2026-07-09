@@ -58,6 +58,8 @@ export class TradeShipExecution implements Execution {
         targetUnit: this._dstPort,
         lastSetSafeFromPirates: ticks,
       });
+      // Dispatching a trade ship burns a little fuel.
+      this.origOwner.useOil(this.mg.config().oilCostPerShipLaunch());
       this.mg.stats().boatSendTrade(this.origOwner, this._dstPort.owner());
     }
 

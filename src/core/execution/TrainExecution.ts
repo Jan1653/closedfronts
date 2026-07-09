@@ -268,6 +268,8 @@ export class TrainExecution implements Execution {
       throw new Error("Not initialized");
     }
     this.stations[1].onTrainStop(this);
+    // Reaching a station burns a little fuel (a train needs oil to run).
+    this.player.useOil(this.mg.config().oilCostPerTrainStation());
     const stationType = this.stations[1].unit.type();
     if (stationType === UnitType.City || stationType === UnitType.Port) {
       this._tradeStopsVisited++;

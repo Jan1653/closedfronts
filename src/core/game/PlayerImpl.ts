@@ -1220,6 +1220,11 @@ export class PlayerImpl implements Player {
     );
   }
 
+  useOil(amount: number): void {
+    if (amount <= 0) return;
+    this._oil = Math.max(0, this._oil - amount);
+  }
+
   oilSpeedFactor(): number {
     return this._oil > 0 ? 1 : this.mg.config().oilShortageSpeedFactor();
   }
