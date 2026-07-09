@@ -918,20 +918,19 @@ export class Config {
 
   // ── Oil economy ──────────────────────────────────────────────────────────
   oilProductionPerPump(player: Player | PlayerView): number {
-    // Scales with empire size: a pump on a small realm produces modestly, while
-    // a large realm's pump produces much more. So an oil pump built early gives
-    // less than before, but income keeps pace (and outgrows upkeep) as you
-    // expand. Consumption is numTilesOwned/200, so the tiles/130 term more than
-    // covers passive upkeep once the empire is sizeable, funding expansion too.
-    // e.g. 5k tiles → ~118/tick, 50k → ~465/tick, 100k → ~849/tick.
-    return 80 + Math.floor(player.numTilesOwned() / 130);
+    // Scales with empire size, but deliberately modest so oil stays a real
+    // constraint: a pump earns slowly and you rely on several of them plus
+    // careful spending rather than one pump funding everything.
+    // e.g. 5k tiles → ~41/tick, 50k → ~191/tick, 100k → ~358/tick per pump.
+    return 25 + Math.floor(player.numTilesOwned() / 300);
   }
 
   oilConsumptionRate(player: Player | PlayerView): number {
     // The bigger you are, the more oil you burn each tick; cities also each burn
-    // a little (they run on fuel — see the troop-rate boost below).
+    // a little (they run on fuel — see the troop-rate boost below). Kept high
+    // enough that passive upkeep noticeably eats into production.
     return (
-      Math.floor(player.numTilesOwned() / 200) +
+      Math.floor(player.numTilesOwned() / 120) +
       this.builtCityCount(player) * this.cityOilConsumption()
     );
   }
@@ -950,18 +949,18 @@ export class Config {
   // Makes actively growing cost fuel on top of the passive size upkeep, so a
   // war machine has to keep pumping to keep advancing.
   oilExpansionCostPerTile(): number {
-    return 5;
+    return 10;
   }
 
   // A little fuel is burned each time a ship (transport/warship/trade) is
   // launched, so a busy navy actually needs oil.
   oilCostPerShipLaunch(): number {
-    return 25;
+    return 60;
   }
 
   // A little fuel is burned each time a train reaches a station on its route.
   oilCostPerTrainStation(): number {
-    return 3;
+    return 8;
   }
 
   // Passive oil each city burns per tick (folded into oilConsumptionRate). In

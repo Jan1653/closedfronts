@@ -128,7 +128,7 @@ const UNDER_ATTACK_THREAT_RATIO = 0.35;
  * lot of ground, so most nations end up wanting just one or two — enough to
  * keep the oil economy (expansion + upkeep) from grinding them to a halt.
  */
-const OIL_TILES_PER_PUMP = 20000;
+const OIL_TILES_PER_PUMP = 30000;
 
 /** How many territory tiles to sample when hunting for an oil deposit to build on. */
 const OIL_DEPOSIT_SAMPLE = 80;
@@ -330,10 +330,9 @@ export class NationStructureBehavior {
     // let them lay down their economic base (city/port) before a pump.
     if (this.placementsCount === 0) return false;
 
-    const target = Math.max(
-      1,
-      Math.ceil(this.player.numTilesOwned() / OIL_TILES_PER_PUMP),
-    );
+    // No guaranteed first pump: a nation only builds one once it's sizeable,
+    // and far fewer overall (they were flooding the map with pumps).
+    const target = Math.floor(this.player.numTilesOwned() / OIL_TILES_PER_PUMP);
     if (this.player.unitsOwned(UnitType.OilPump) >= target) return false;
     if (this.player.gold() < this.cost(UnitType.OilPump)) return false;
 
