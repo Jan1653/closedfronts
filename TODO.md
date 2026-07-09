@@ -46,10 +46,12 @@ Sprachnachricht 4 (Bau-/Öl-/Zoll-Feedback) — erledigt:
       der Meerenge, Struktur „under construction" mit Balken, Versenken bricht ab.
 - [x] **Anzahl ändern: Shift → Tab** (+ Mausrad, wenn Bau-Ghost aktiv). Shift bleibt
       wie es war; Tab verwirft den Ghost nicht.
-- [x] **Zollstation-Platzierung** unterstützt bereits Ketten: 2 verschiedene Anker
-      (Land+Station, Station+Station, oder zwei Landmassen), nur eine Seite muss
-      Land sein — `tollStationConnections`. (Sichtbar wird's erst mit dem Render
-      oben.)
+- [x] **Zollstation-Platzierung (neue Regel)**: braucht nur **eine** Verbindung —
+      zu Land **oder** zu einer anderen Station. Höchstens 1× Land + 1× Station
+      (also 1 Land, 1 Station oder beides), aber **nie zwei Land-Verbindungen**.
+      Behebt: neben einer einzelnen Station (offenes Wasser) war fälschlich nicht
+      platzierbar. Weite Meerengen überspannt man per Stations-Kette.
+      (`tollStationConnections`.)
 - [x] **Kein Emoji-/Radialmenü beim Bauen**: bei aktivem Bau-Ghost platziert der
       Klick immer (kein Kontext-/Emoji-Menü über dem eigenen Namen).
 - [x] **Schwarze Outline an Mauern** nur an den Kanten ohne Nachbarwand (außen +
