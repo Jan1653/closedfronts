@@ -140,10 +140,21 @@ Alles aus der letzten Sprachnachricht, damit nichts vergessen wird.
 
 **KI (alle Schwierigkeiten, angemessen skaliert):**
 
-- [ ] KI baut/nutzt **Ölpumpen** (Öl-Ökonomie verstehen).
-- [ ] KI baut **Zollstationen**, **Wände**, **Verteidigungsposten** sinnvoll und
-      versteht deren Funktion.
-- [ ] KI versteht **Krieg** inkl. der neuen Kaper-Mechanik (Kriegsschiff).
+- [x] KI baut/nutzt **Ölpumpen** — `NationStructureBehavior.tryBuildOilPump`
+      (auf eigenem Öl-Vorkommen, außerhalb der Nuke-Sparphase, ~1 Pumpe/20k
+      Kacheln, erst nach der wirtschaftlichen Basis). Live verifiziert: Nation baut
+      eine Pumpe, sobald sie die 200k-Gold-Schwelle erreicht.
+- [x] KI baut **Wände** defensiv an der Angriffsfront (`tryBuildWall`, Medium+,
+      Anzahl je Schwierigkeit) — nutzt dieselbe Front-Logik wie Verteidigungsposten.
+- [x] **Verteidigungsposten**: baut die KI bereits (bestehend); Refactor auf
+      generischen `countUnitsNearFront` (auch für Wände).
+- [ ] **Zollstationen**: KI baut sie noch nicht — braucht Meerengen-Erkennung
+      (Wasser zwischen zwei Landmassen nahe eigener Küste) + Sea-Build-Orchestrierung.
+      Eigene, komplexere Aufgabe → offen.
+- [~] KI versteht **Krieg**/Relationen bereits (AI-Attack/Warship nutzen
+      `Relation.Hostile`); Kaperung feindlicher Strukturen passiert automatisch,
+      wenn KI-Kampfschiffe nahe genug sind (`WarshipCaptureTracker`). Gezieltes
+      „Struktur kapern"-Verhalten der KI wäre noch ein Zusatz.
 
 **Test-Hinweis:**
 

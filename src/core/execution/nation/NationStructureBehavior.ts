@@ -123,6 +123,28 @@ const TEAM_POST_SAVE_UP_PHASE_TICKS = 150; // 15s
 const UNDER_ATTACK_THREAT_RATIO = 0.35;
 
 /**
+ * Roughly how many owned tiles one oil pump should sustain. One pump covers a
+ * lot of ground, so most nations end up wanting just one or two — enough to
+ * keep the oil economy (expansion + upkeep) from grinding them to a halt.
+ */
+const OIL_TILES_PER_PUMP = 20000;
+
+/** How many territory tiles to sample when hunting for an oil deposit to build on. */
+const OIL_DEPOSIT_SAMPLE = 80;
+
+/**
+ * Max walls a nation builds along a single attack front, per difficulty. Easy
+ * nations don't wall at all; harder ones raise a longer barrier. Walls auto-
+ * connect into a line, so a few anchors already form a real wall.
+ */
+const WALL_ANCHORS_BY_DIFFICULTY: Record<Difficulty, number> = {
+  [Difficulty.Easy]: 0,
+  [Difficulty.Medium]: 1,
+  [Difficulty.Hard]: 2,
+  [Difficulty.Impossible]: 3,
+};
+
+/**
  * Hard / Impossible: one additional defense post is allowed per this fraction
  * of the incoming-to-own-troop ratio (e.g. 0.4 → 1 post at 0–40%, 2 at
  * 40–80%, 3 at 80–120%, …).
@@ -166,6 +188,17 @@ export class NationStructureBehavior {
       if (this.defensePostNeeded()) {
         return false;
       }
+    }
+
+    // Oil pumps keep the oil economy running — build them outside the nuke
+    // save-up pacing so the nation never grinds to a halt from an empty tank.
+    if (this.tryBuildOilPump()) {
+      return true;
+    }
+
+    // Defensive walls along an active front (harder difficulties).
+    if (this.tryBuildWall()) {
+      return true;
     }
 
     if (this.isOnStructureCooldown()) {
@@ -215,7 +248,10 @@ export class NationStructureBehavior {
     }
 
     const frontTiles = this.getAttackFrontTiles(landAttacks);
-    if (this.countDefensePostsNearFront(frontTiles, allowed) >= allowed)
+    if (
+      this.countUnitsNearFront(UnitType.DefensePost, frontTiles, allowed) >=
+      allowed
+    )
       return false;
 
     const cost = this.cost(UnitType.DefensePost);
@@ -250,6 +286,90 @@ export class NationStructureBehavior {
   }
 
   /**
+   * Builds an oil pump on an owned oil deposit when the nation wants more (one
+   * pump sustains a lot of territory). Fundamental to the oil economy, so it is
+   * built outside the nuke save-up pacing. All difficulties build them — a
+   * nation with no oil grinds to a crawl. Does nothing if the nation owns no
+   * deposit tile within the sampled territory.
+   */
+  private tryBuildOilPump(): boolean {
+    const config = this.game.config();
+    if (config.isUnitDisabled(UnitType.OilPump)) return false;
+    // Not as the very first structure — nations start with a full oil tank, so
+    // let them lay down their economic base (city/port) before a pump.
+    if (this.placementsCount === 0) return false;
+
+    const target = Math.max(
+      1,
+      Math.ceil(this.player.numTilesOwned() / OIL_TILES_PER_PUMP),
+    );
+    if (this.player.unitsOwned(UnitType.OilPump) >= target) return false;
+    if (this.player.gold() < this.cost(UnitType.OilPump)) return false;
+
+    const tiles = randTerritoryTileArray(
+      this.random,
+      this.game,
+      this.player,
+      OIL_DEPOSIT_SAMPLE,
+    );
+    for (const t of tiles) {
+      if (!config.isOilDeposit(this.game, t)) continue;
+      if (!this.player.canBuild(UnitType.OilPump, t)) continue;
+      this.game.addExecution(
+        new ConstructionExecution(this.player, UnitType.OilPump, t),
+      );
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Raises a defensive wall along an active land-attack front (Medium+ only).
+   * Walls auto-connect into a line, so a handful of anchors form a real barrier.
+   * Like defense posts, this is built outside the normal pacing/counter system.
+   */
+  private tryBuildWall(): boolean {
+    const config = this.game.config();
+    if (config.isUnitDisabled(UnitType.Wall)) return false;
+
+    const { difficulty } = config.gameConfig();
+    const maxAnchors = WALL_ANCHORS_BY_DIFFICULTY[difficulty];
+    if (maxAnchors === 0) return false;
+
+    const player = this.player;
+    const landAttacks = player
+      .incomingAttacks()
+      .filter((a) => a.sourceTile() === null);
+    if (landAttacks.length === 0) return false;
+
+    const ourTroops = player.troops();
+    if (ourTroops <= 0) return false;
+    const incomingTroops = landAttacks.reduce((sum, a) => sum + a.troops(), 0);
+    if (incomingTroops / ourTroops < UNDER_ATTACK_THREAT_RATIO) return false;
+
+    if (player.gold() < this.cost(UnitType.Wall)) return false;
+
+    const frontTiles = this.getAttackFrontTiles(landAttacks);
+    if (frontTiles.length === 0) return false;
+    if (
+      this.countUnitsNearFront(UnitType.Wall, frontTiles, maxAnchors) >=
+      maxAnchors
+    ) {
+      return false;
+    }
+
+    const tiles = this.sampleTilesNearFront(frontTiles, 25, UnitType.Wall);
+    for (const tile of tiles) {
+      if (!player.canBuild(UnitType.Wall, tile)) continue;
+      this.game.addExecution(
+        new ConstructionExecution(player, UnitType.Wall, tile),
+      );
+      return true;
+    }
+    return false;
+  }
+
+  /**
    * Returns our border tiles that are adjacent to a tile owned by any of the
    * attacking players.
    */
@@ -278,10 +398,11 @@ export class NationStructureBehavior {
   }
 
   /**
-   * Counts defense posts within 1.5 × borderSpacing of any front tile.
+   * Counts units of `unitType` within 1.5 × borderSpacing of any front tile.
    * `cap` short-circuits the scan once that many are found.
    */
-  private countDefensePostsNearFront(
+  private countUnitsNearFront(
+    unitType: UnitType,
     frontTiles: TileRef[],
     cap?: number,
   ): number {
@@ -292,9 +413,9 @@ export class NationStructureBehavior {
     const rangeSquared = (borderSpacing * 1.5) ** 2;
 
     let count = 0;
-    for (const dp of this.player.units(UnitType.DefensePost)) {
+    for (const u of this.player.units(unitType)) {
       for (const frontTile of frontTiles) {
-        if (game.euclideanDistSquared(dp.tile(), frontTile) <= rangeSquared) {
+        if (game.euclideanDistSquared(u.tile(), frontTile) <= rangeSquared) {
           count++;
           if (cap !== undefined && count >= cap) return count;
           break;
