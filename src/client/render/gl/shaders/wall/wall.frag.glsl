@@ -8,8 +8,13 @@ uniform float uUnderConstructionAlpha; // alpha while a wall is still building
 
 flat in float vOwnerID;
 flat in float vUnderConstruction;
+flat in float vMask;
+in vec2 vUv;
 
 out vec4 fragColor;
+
+// Outline band thickness in block-UV space (block spans uSizeTiles world tiles).
+const float OUTLINE = 0.14;
 
 vec3 rgb2hsv(vec3 c) {
   vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
@@ -36,5 +41,24 @@ void main() {
   vec3 rgb = hsv2rgb(hsv);
 
   float a = vUnderConstruction > 0.5 ? uUnderConstructionAlpha : 1.0;
+
+  // Black outline only on sides that have no neighbouring wall, so a run of
+  // walls is bordered on the outside (and inside of concave bends) but stays
+  // seamless where walls connect. vUv 0..1: x-=left, x+=right, y-=up, y+=down.
+  float m     = floor(vMask + 0.5); // round once to the exact integer
+  float up    = mod(m, 2.0);
+  float right = mod(floor(m / 2.0), 2.0);
+  float down  = mod(floor(m / 4.0), 2.0);
+  float left  = mod(floor(m / 8.0), 2.0);
+  bool onOutline =
+    (vUv.y < OUTLINE && up < 0.5) ||
+    (vUv.y > 1.0 - OUTLINE && down < 0.5) ||
+    (vUv.x < OUTLINE && left < 0.5) ||
+    (vUv.x > 1.0 - OUTLINE && right < 0.5);
+  if (onOutline) {
+    fragColor = vec4(0.0, 0.0, 0.0, a);
+    return;
+  }
+
   fragColor = vec4(rgb, a);
 }

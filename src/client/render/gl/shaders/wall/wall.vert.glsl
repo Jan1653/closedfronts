@@ -3,16 +3,21 @@ precision highp float;
 
 layout(location = 0) in vec2 aPos;   // unit quad 0..1
 layout(location = 1) in vec4 aInst;  // x, y, ownerID, underConstruction
+layout(location = 2) in float aMask; // neighbour mask (1=up 2=right 4=down 8=left)
 
 uniform mat3  uCamera;
 uniform float uSizeTiles;            // block size in world tiles
 
 flat out float vOwnerID;
 flat out float vUnderConstruction;
+flat out float vMask;
+out vec2 vUv;                        // 0..1 position within the block
 
 void main() {
   vOwnerID = aInst.z;
   vUnderConstruction = aInst.w;
+  vMask = aMask;
+  vUv = aPos;
 
   // World-anchored solid block centred on the tile. Sizing slightly above one
   // tile makes orthogonally- and diagonally-adjacent walls fuse into a

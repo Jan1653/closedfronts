@@ -21,8 +21,10 @@ import { createProgram, shaderSrc } from "../utils/GlUtils";
 import wallFragSrc from "../shaders/wall/wall.frag.glsl?raw";
 import wallVertSrc from "../shaders/wall/wall.vert.glsl?raw";
 
-// Per-instance: x, y, ownerID, underConstruction
-const FLOATS_PER_INSTANCE = 4;
+// Per-instance: x, y, ownerID, underConstruction, neighbourMask
+// neighbourMask bits: 1=up(-y) 2=right(+x) 4=down(+y) 8=left(-x). A side with no
+// neighbouring wall gets a black outline in the fragment shader.
+const FLOATS_PER_INSTANCE = 5;
 const BYTES_PER_INSTANCE = FLOATS_PER_INSTANCE * 4;
 
 export class WallPass {
@@ -94,10 +96,24 @@ export class WallPass {
     gl.vertexAttribPointer(1, 4, gl.FLOAT, false, BYTES_PER_INSTANCE, 0);
     gl.vertexAttribDivisor(1, 1);
 
+    // Attribute 2: per-instance neighbour mask (float, offset 16 bytes)
+    gl.enableVertexAttribArray(2);
+    gl.vertexAttribPointer(2, 1, gl.FLOAT, false, BYTES_PER_INSTANCE, 16);
+    gl.vertexAttribDivisor(2, 1);
+
     gl.bindVertexArray(null);
   }
 
   updateStructures(units: Map<number, UnitState>): void {
+    const mapW = this.mapW;
+    // First pass: all active wall tiles, so each wall can tell which sides have
+    // a neighbouring wall (a side without one gets the black outline).
+    const wallSet = new Set<number>();
+    for (const unit of units.values()) {
+      if (!unit.isActive || unit.unitType !== UT_WALL) continue;
+      wallSet.add(unit.pos);
+    }
+
     let count = 0;
     for (const unit of units.values()) {
       if (!unit.isActive) continue;
@@ -105,12 +121,21 @@ export class WallPass {
 
       this.instanceBuf.ensureCapacity(count + 1);
       const off = count * FLOATS_PER_INSTANCE;
-      const x = unit.pos % this.mapW;
-      const y = (unit.pos - x) / this.mapW;
+      const x = unit.pos % mapW;
+      const y = (unit.pos - x) / mapW;
+      // Neighbour mask (bit set = wall on that side, so no outline there). Guard
+      // horizontal wrap-around at the map edges; out-of-range tiles simply
+      // aren't in wallSet.
+      let mask = 0;
+      if (y > 0 && wallSet.has(unit.pos - mapW)) mask |= 1; // up
+      if (x < mapW - 1 && wallSet.has(unit.pos + 1)) mask |= 2; // right
+      if (wallSet.has(unit.pos + mapW)) mask |= 4; // down
+      if (x > 0 && wallSet.has(unit.pos - 1)) mask |= 8; // left
       this.instanceBuf.float32[off + 0] = x;
       this.instanceBuf.float32[off + 1] = y;
       this.instanceBuf.float32[off + 2] = unit.ownerID;
       this.instanceBuf.float32[off + 3] = unit.underConstruction ? 1 : 0;
+      this.instanceBuf.float32[off + 4] = mask;
       count++;
     }
 
