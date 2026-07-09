@@ -1582,9 +1582,19 @@ export class PlayerImpl implements Player {
     if (!mg.isValidRef(tile)) return false;
     if (!mg.isWater(tile)) return false;
     if (mg.isImpassable(tile)) return false;
-    // Requires a harbor: the builder ship launches from one of your ports, so
-    // without a port you can't place a toll station (greyed out in the menu).
-    if (!this.units(UnitType.Port).some((p) => p.isActive())) return false;
+    // Requires a reachable harbor — same rule as warships, so the toll station
+    // greys out identically without one. The builder ship launches from a port
+    // and has to sail to the tile, so the port must be active, finished, and on
+    // the same water body as the target.
+    const tileComponent = mg.getWaterComponent(tile);
+    const hasReachablePort = this.units(UnitType.Port).some(
+      (port) =>
+        port.isActive() &&
+        !port.isUnderConstruction() &&
+        tileComponent !== null &&
+        mg.hasWaterComponent(port.tile(), tileComponent),
+    );
+    if (!hasReachablePort) return false;
     // Don't stack toll stations on top of each other.
     if (mg.nearbyUnits(tile, 2, [UnitType.WaterTollStation]).length > 0) {
       return false;
