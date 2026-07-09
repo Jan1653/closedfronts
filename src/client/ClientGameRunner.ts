@@ -103,6 +103,11 @@ export interface JoinLobbyResult {
   stop: (force?: boolean) => boolean;
   prestart: Promise<void>;
   join: Promise<void>;
+  // Change the local player's name/clan tag while still in the lobby. Re-sends
+  // the join; the server treats a same-persistentID join as a reconnect and
+  // applies the new identity (only before the game starts), then rebroadcasts
+  // the lobby so every client sees the new name.
+  updateIdentity: (playerName: string, playerClanTag: string | null) => void;
 }
 
 export function joinLobby(
@@ -257,6 +262,15 @@ export function joinLobby(
     },
     prestart: prestartPromise,
     join: joinPromise,
+    updateIdentity: (playerName: string, playerClanTag: string | null) => {
+      lobbyConfig.playerName = playerName;
+      lobbyConfig.playerClanTag = playerClanTag;
+      // Reconnect so the join is re-sent on a fresh socket. The server then
+      // takes its reconnect path — censors the new name and applies it before
+      // the game starts, then rebroadcasts the lobby. (Re-sending "join" on the
+      // live in-game socket is rejected as an unknown message type.)
+      transport.reconnect();
+    },
   };
 }
 

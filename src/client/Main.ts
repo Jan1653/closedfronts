@@ -231,6 +231,7 @@ declare global {
     userMeResponse: CustomEvent<UserMeResponse | false>;
     "leave-lobby": CustomEvent;
     "update-game-config": CustomEvent;
+    "lobby-rename": CustomEvent<{ name: string }>;
   }
 }
 
@@ -352,6 +353,7 @@ class Client {
     document.addEventListener("join-lobby", this.handleJoinLobby.bind(this));
     document.addEventListener("leave-lobby", this.handleLeaveLobby.bind(this));
     document.addEventListener("kick-player", this.handleKickPlayer.bind(this));
+    document.addEventListener("lobby-rename", this.handleLobbyRename.bind(this));
     document.addEventListener(
       "toggle_game_start_timer",
       this.handleToggleGameStartTimer.bind(this),
@@ -996,6 +998,21 @@ class Client {
     if (this.eventBus) {
       this.eventBus.emit(new SendKickPlayerIntentEvent(target));
     }
+  }
+
+  // Change the local player's name while sitting in a lobby (mobile + desktop).
+  // Re-joins with the new identity (the server updates it before game start and
+  // rebroadcasts the lobby) and persists the name for future games.
+  private handleLobbyRename(event: CustomEvent<{ name: string }>) {
+    const name = (event.detail?.name ?? "").trim();
+    if (name.length === 0 || this.lobbyHandle === null) return;
+    const clanTag = this.usernameInput?.getClanTag() ?? null;
+    try {
+      localStorage.setItem("username", name);
+    } catch {
+      // ignore storage failures (private mode, etc.)
+    }
+    this.lobbyHandle.updateIdentity(name, clanTag);
   }
 
   private handleToggleGameStartTimer() {

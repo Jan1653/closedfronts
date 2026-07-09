@@ -255,6 +255,11 @@
     "too_long": "Benutzername darf {max} Zeichen nicht überschreiten.",
     "invalid_chars": "Benutzername darf nur Buchstaben, Zahlen, Leerzeichen, Unterstriche und [eckige Klammer] enthalten."
   },
+  "lobby": {
+    "your_name": "Dein Name",
+    "save_name": "Speichern",
+    "name_saved": "Name aktualisiert"
+  },
   "host_modal": {
     "title": "Private Lobby",
     "mode": "Modus",

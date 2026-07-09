@@ -36,6 +36,7 @@ import { normaliseMapKey } from "./Utils";
 import { BaseModal } from "./components/BaseModal";
 import "./components/CopyButton";
 import "./components/LobbyConfigItem";
+import "./components/LobbyNameEditor";
 import "./components/LobbyPlayerView";
 import { modalHeader } from "./components/ui/ModalHeader";
 import { nationsConfigToSlider } from "./utilities/GameConfigHelpers";
@@ -153,6 +154,9 @@ export class JoinLobbyModal extends BaseModal {
                 ${this.gameConfig ? this.renderGameConfig() : html``}
                 ${this.players.length > 0
                   ? html`
+                      <lobby-name-editor
+                        class="mt-6 block"
+                      ></lobby-name-editor>
                       <lobby-player-view
                         class="mt-6"
                         .gameMode=${this.gameConfig?.gameMode ?? GameMode.FFA}

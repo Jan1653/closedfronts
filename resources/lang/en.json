@@ -765,6 +765,11 @@
     "video_tutorial": "Video Tutorial",
     "video_tutorial_title": "ClosedFronts Tutorial"
   },
+  "lobby": {
+    "your_name": "Your name",
+    "save_name": "Save",
+    "name_saved": "Name updated"
+  },
   "host_modal": {
     "anonymous_players": "Anonymous players",
     "assigned_teams": "Assigned Teams",

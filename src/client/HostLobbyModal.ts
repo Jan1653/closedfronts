@@ -36,6 +36,7 @@ import "./components/ConfirmDialog";
 import { CopyButton } from "./components/CopyButton";
 import "./components/GameConfigSettings";
 import "./components/InputCard";
+import "./components/LobbyNameEditor";
 import "./components/LobbyPlayerView";
 import "./components/ToggleInputCard";
 import { modalHeader } from "./components/ui/ModalHeader";
@@ -580,6 +581,8 @@ export class HostLobbyModal extends BaseModal {
               .handleConfigHostCheatToggleChanged}
             @unit-toggle-changed=${this.handleConfigUnitToggleChanged}
           ></game-config-settings>
+
+          <lobby-name-editor class="mt-8 block"></lobby-name-editor>
 
           <lobby-player-view
             class="mt-10"
