@@ -17,13 +17,15 @@ Nur noch live gegenzuprüfen (Logik steht, du testest im Spiel):
 
 Noch offen (echte Arbeit):
 
-- [ ] **Zollstation-Verbindungen rendern**: sichtbare Linien übers Meer zu den
-      zwei Ankern (wie die Wand-Linie). `connections` wird in
-      `WaterTollStationExecution` berechnet, aber **nicht gezeichnet** → neuer
-      Render-Pass nötig.
 - [ ] **Schiffe umgehen Zollstationen** (Pathfinding), außer der Umweg ist zu
       lang → dann durchfahren + zahlen. (Core-Pathfinding, größer.)
 - [ ] **Map-Editor** (ganz unten) + **Reale-Karten-Import** aus Geodaten.
+
+- [x] **Zollstation-Verbindungslinien gerendert**: neuer `TollConnectionPass`
+      zeichnet je Station zwei bernsteinfarbene Seil-/Straßen-Linien übers Meer
+      zu den Ankern. Client berechnet die Anker selbst (`tollStationConnections`
+      via minimales `TollConnGame`-Interface; GameView erfüllt es), gecacht +
+      nur bei Änderung der Stations-Menge neu. — *Shader-Änderung, im Spiel prüfen.*
 
 Sprachnachricht 4 (Bau-/Öl-/Zoll-Feedback) — erledigt:
 
