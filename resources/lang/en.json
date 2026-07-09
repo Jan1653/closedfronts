@@ -1116,6 +1116,13 @@
     "teams_of": "{teamCount} teams of {playersPerTeam}",
     "teams_title": "Teams"
   },
+  "multi_tab": {
+    "detected": "Multiple tabs detected. ClosedFronts can only run in one tab at a time.",
+    "explanation": "Running the game in several tabs can cause problems. Close the other tabs to continue.",
+    "please_wait": "Please wait",
+    "seconds": "seconds…",
+    "warning": "Warning"
+  },
   "news": {
     "title": "Release Notes"
   },
