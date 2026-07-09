@@ -449,6 +449,11 @@ export class BuildPreviewController implements Controller {
       case UnitType.WaterTollStation:
         rangeRadius = WATER_TOLL_STATION_RADIUS;
         break;
+      case UnitType.Wall:
+        // Shows the auto-connect radius: place within it of another of your
+        // walls and a wall line is built between the two.
+        rangeRadius = this.game.config().wallConnectRange();
+        break;
       case UnitType.OilPump:
         // Shows the pump's radius, colored green/red by whether the tile is a
         // valid oil deposit.
