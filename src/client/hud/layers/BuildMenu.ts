@@ -483,6 +483,14 @@ export class BuildMenu extends LitElement implements Controller {
   }
 
   render() {
+    // The <build-menu> element is static in the page, so Lit also renders it on
+    // the home page / lobby — before the game HUD wires up game + uiState. Bail
+    // out until they exist; otherwise reading this.uiState.buildQuantity throws,
+    // and a thrown render can abort Lit's whole update batch (which was breaking
+    // the game-start flow, leaving it stuck on the loading screen).
+    if (!this.uiState || !this.game) {
+      return html`<div class="build-menu hidden"></div>`;
+    }
     return html`
       <div
         class="build-menu ${this._hidden ? "hidden" : ""}"
