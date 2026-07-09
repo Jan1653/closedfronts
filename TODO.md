@@ -5,6 +5,21 @@ Handy-/Mobile-UI funktionieren.**
 
 ---
 
+## ⭐ Offene Punkte (Kurzübersicht)
+
+Was noch aussteht (Details in den jeweiligen Abschnitten unten):
+
+- [ ] **Random-Spawn** in echter Multiplayer-Lobby live gegenprüfen (Logik steht).
+- [ ] **Zollstation-Rundtrip** live gegenprüfen (Einsammeln + Abfangen + Verlust).
+- [ ] **Sea-Build-Optik**: Bau-Schiff aus dem Hafen, gleicher Trail wie Expansions-Boot.
+- [ ] **Verteidigungsposten**: darf kein neutrales Land einnehmen (nur Wildnis + Kriegsgegner).
+- [ ] **KI baut Zollstationen** (Meerengen-Erkennung nötig; selten auf Easy, an Chokepoints).
+- [ ] **Übersetzungs-Audit** DE + EN vollständig (großer Durchlauf).
+- [ ] **Lobby-Rename**: gleichen Namen wie ein anderer Spieler verbieten.
+- [ ] **Map-Editor** (ganz unten) + **Reale-Karten-Import** aus Geodaten.
+
+---
+
 ## 0. Aktuelles Feedback-Backlog (Stand: neustes Sprachfeedback)
 
 Alles aus der letzten Sprachnachricht, damit nichts vergessen wird.
@@ -87,13 +102,42 @@ Alles aus der letzten Sprachnachricht, damit nichts vergessen wird.
       + Live-Fortschritt beim Hover („Gewinne 5 Partien (0/5)"). `unlock`-Feld im
       Cosmetic-Schema; `userMe` liefert `flares` + `stats`. Live verifiziert.
 
+### 0.9 Sprachnachricht 3 (Leaderboard/Lobby/Avatar/Spawn/Stats) — erledigt
+
+- [x] **Leaderboard funktioniert** — end-to-end verifiziert (Endpunkt +
+      Client-Modal rendern Ränge, Siege/Niederlagen, ELO).
+- [x] **Stats-Tracking für Accounts funktioniert** — verifiziert: `archive()`
+      (Multiplayer + Singleplayer-Route) postet fertige Spiele an die localapi,
+      `GamesStore.ingest` ordnet per `persistentID` (= Account-UUID) zu; speist
+      `userMe.stats`, Leaderboard, Profil UND Cosmetic-Freischaltung.
+      `GamesStore.statsFor` ergänzt.
+- [x] **Lobby-Namensfeld beim Host zeigte Roh-Strings** (`lobby.your_name` …):
+      statischer Host-Modal rendert beim Boot vor dem Laden der Übersetzungen,
+      und der `lobby-name-editor` (kein reaktives Prop vom Eltern-Modal) wurde nie
+      neu gerendert. Fix: `host-lobby-modal` + `lobby-name-editor` zur Re-Render-
+      Liste im `LangSelector` ergänzt. Verifiziert („Dein Name / Speichern").
+- [x] **Random-Spawn**: wer in einer (Nicht-Singleplayer-)Lobby keinen Startpunkt
+      setzt, bekommt am Spawn-Phasen-Ende einen **zufälligen** Spawn statt „draußen"
+      zu stehen. `SpawnTimerExecution` platziert unspawnte Menschen via tile-loser
+      `SpawnExecution` (`Executor.spawnPlayerExecution`). Typecheck ok — Multiplayer
+      noch live gegenzuprüfen (im Preview nicht voll durchspielbar).
+- [x] **Profilbild-Upload** auf der Konto-Seite (hochladen/entfernen). Client
+      verkleinert auf 128×128 (Canvas). localapi: **eine Datei pro Account**
+      (`avatars/<publicId>.<ext>`, im `/data`-Volume → übersteht Redeploys),
+      `GET /users/:publicId/avatar`, `userMe.avatarUrl`.
+      **Sicherheit:** Bild-Validierung per **Magic Bytes** (PNG/JPEG/WebP, nicht
+      der behauptete MIME), Cap **64 KB** dekodiert (413), Body-Limit **256 KB**,
+      E-Mail-Länge **254** bei Register/Login. Live verifiziert (Upload/Entfernen +
+      alle Ablehnungen: Nicht-Bild/zu groß/unauth/lange E-Mail).
+
 ### 0.8 Feedback-Backlog (Sprachnachricht 2) — NEU, offen
 
 **Menü / Seite:**
 
-- [ ] **Logo klickbar → Startseite**: Klick auf das „ClosedFronts"-Logo oben links
-      führt zurück ins Hauptmenü.
-- [ ] **Versions-Anzeige entfernen** (das „v-XXX"/Versions-Ding).
+- [x] **Logo klickbar → Startseite**: Logo ist jetzt `nav-menu-item` mit
+      `data-page="page-play"` (Desktop + Mobile) → Klick führt ins Hauptmenü.
+      Live verifiziert.
+- [x] **Versions-Anzeige entfernt** (`#game-version`-Div + Import raus). Verifiziert.
 - [x] **Lobby: Namensänderung** in der Lobby (Desktop **und** Handy) — ERLEDIGT.
       Neue Komponente `<lobby-name-editor>` in Host- + Join-Modal („Dein Name" +
       Speichern). Klick löst ein `lobby-rename`-DOM-Event aus; Main persistiert den
