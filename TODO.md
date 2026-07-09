@@ -15,7 +15,8 @@ Was noch aussteht (Details in den jeweiligen Abschnitten unten):
 - [ ] **Verteidigungsposten**: darf kein neutrales Land einnehmen (nur Wildnis + Kriegsgegner).
 - [ ] **KI baut Zollstationen** (Meerengen-Erkennung nötig; selten auf Easy, an Chokepoints).
 - [ ] **Übersetzungs-Audit** DE + EN vollständig (großer Durchlauf).
-- [ ] **Lobby-Rename**: gleichen Namen wie ein anderer Spieler verbieten.
+- [x] ~~**Lobby-Rename**: gleichen Namen wie ein anderer Spieler verbieten.~~
+      ERLEDIGT — `lobby-name-editor` lehnt Kollisionen (case-insensitiv) ab.
 - [ ] **Map-Editor** (ganz unten) + **Reale-Karten-Import** aus Geodaten.
 
 ---
