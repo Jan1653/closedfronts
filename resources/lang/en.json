@@ -401,6 +401,12 @@
     "artist_label": "Artist:",
     "color_label": "Color:",
     "common": "Common",
+    "difficulty": {
+      "Easy": "Easy",
+      "Hard": "Hard",
+      "Impossible": "Impossible",
+      "Medium": "Medium"
+    },
     "epic": "Epic",
     "free": "+{numFree} BONUS!",
     "hard": "Plutonium",
@@ -408,6 +414,12 @@
     "per_day": "/day",
     "rare": "Rare",
     "soft": "Caps",
+    "task": {
+      "games": "Play {count} games",
+      "games_difficulty": "Play {count} games on {difficulty}",
+      "wins": "Win {count} games",
+      "wins_difficulty": "Win {count} games on {difficulty}"
+    },
     "uncommon": "Uncommon"
   },
   "difficulty": {
@@ -440,20 +452,28 @@
     "veryfast": "Very Fast"
   },
   "effects": {
+    "azure": "Azure",
     "button_title": "Pick an effect!",
+    "ember": "Ember",
+    "gold": "Gold",
     "nukeType": {
       "atom": "Atom",
       "hydro": "Hydrogen",
       "mirvWarhead": "MIRV"
     },
+    "ocean": "Ocean",
+    "rainbow": "Rainbow",
     "search": "Search...",
+    "sunset": "Sunset",
     "title": "Effects",
+    "toxic": "Toxic",
     "type": {
       "nukeExplosion": "Nuke Explosion",
       "nukeTrail": "Nuke Trail",
       "structures": "Structures",
       "transportShipTrail": "Boat Trail"
-    }
+    },
+    "voidtrail": "Void"
   },
   "error_modal": {
     "connection_error": "Connection error!",
@@ -1379,7 +1399,15 @@
   },
   "territory_patterns": {
     "pattern": {
-      "default": "Default"
+      "checkerboard": "Checkerboard",
+      "chevron": "Chevron",
+      "crosshatch": "Crosshatch",
+      "default": "Default",
+      "diagonal": "Diagonal",
+      "diamonds": "Diamonds",
+      "grid": "Grid",
+      "stripes": "Stripes",
+      "waves": "Waves"
     },
     "search": "Search...",
     "select_skin": "Skin",

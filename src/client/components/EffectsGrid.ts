@@ -129,8 +129,23 @@ export class EffectsGrid extends LitElement {
       return ofType.filter((r) => r.relationship === "purchasable");
     }
     const owned = ofType.filter((r) => r.relationship === "owned");
+    // Still-locked effects that carry an unlock task — shown greyed with the
+    // task on hover, after the owned ones.
+    const locked = ofType.filter(
+      (r) =>
+        r.relationship === "blocked" &&
+        !!(r.cosmetic as { unlock?: unknown } | null)?.unlock,
+    );
     // The Default tile has no name to match — hide it while searching.
-    return this.search.trim() ? owned : [noneTile(effectType), ...owned];
+    return this.search.trim()
+      ? [...owned, ...locked]
+      : [noneTile(effectType), ...owned, ...locked];
+  }
+
+  private get playerStats() {
+    return this.userMeResponse === false
+      ? null
+      : (this.userMeResponse.player.stats ?? null);
   }
 
   private renderTile(slot: string, r: ResolvedCosmetic): TemplateResult {
@@ -148,6 +163,7 @@ export class EffectsGrid extends LitElement {
     return html`<cosmetic-button
       .resolved=${r}
       .selected=${isSelected}
+      .stats=${this.playerStats}
       .onSelect=${() => this.select(slot, name)}
     ></cosmetic-button>`;
   }

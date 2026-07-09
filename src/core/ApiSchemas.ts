@@ -85,6 +85,17 @@ export const UserMeResponseSchema = z.object({
     publicId: z.string(),
     adfree: z.boolean(),
     flares: z.string().array().optional(),
+    // ClosedFronts: lightweight aggregate stats used to show live progress on
+    // task-locked cosmetics ("3 / 10 games on Medium"). Optional — absent for
+    // guests or if the backend doesn't provide it.
+    stats: z
+      .object({
+        games: z.number(),
+        wins: z.number(),
+        gamesByDifficulty: z.record(z.string(), z.number()),
+        winsByDifficulty: z.record(z.string(), z.number()),
+      })
+      .optional(),
     achievements: z.object({
       singleplayerMap: z.array(SingleplayerMapAchievementSchema),
     }),

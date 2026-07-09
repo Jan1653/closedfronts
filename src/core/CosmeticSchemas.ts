@@ -69,6 +69,55 @@ export const ColorPaletteSchema = z.object({
   secondaryColor: z.string(),
 });
 
+// ClosedFronts task-based unlock. A cosmetic with no `unlock` (and no price) is
+// free — granted to every account. One with an `unlock` is granted once the
+// player's game stats meet the task. The localapi reads this to compute the
+// ownership flares it returns in /users/@me; the client reads it to show the
+// task on hover for a still-locked cosmetic. `difficulty` applies only to the
+// *_difficulty task types (games on / wins on a given AI difficulty).
+export const UnlockTaskSchema = z.object({
+  type: z.enum(["games", "wins", "games_difficulty", "wins_difficulty"]),
+  count: z.number().int().positive(),
+  difficulty: z.enum(["Easy", "Medium", "Hard", "Impossible"]).optional(),
+});
+export type UnlockTask = z.infer<typeof UnlockTaskSchema>;
+
+// Aggregate player stats an unlock task is evaluated against (mirrors
+// UserMeResponse.player.stats). Kept here so the check is shared by the client
+// (progress display) and the localapi (flare granting).
+export interface CosmeticStats {
+  games: number;
+  wins: number;
+  gamesByDifficulty: Record<string, number>;
+  winsByDifficulty: Record<string, number>;
+}
+
+/** How far the player has progressed toward `task` (0 if no stats). */
+export function unlockProgress(
+  task: UnlockTask,
+  stats: CosmeticStats | null | undefined,
+): number {
+  if (!stats) return 0;
+  switch (task.type) {
+    case "games":
+      return stats.games;
+    case "wins":
+      return stats.wins;
+    case "games_difficulty":
+      return stats.gamesByDifficulty[task.difficulty ?? ""] ?? 0;
+    case "wins_difficulty":
+      return stats.winsByDifficulty[task.difficulty ?? ""] ?? 0;
+  }
+}
+
+/** True once the player's stats satisfy the task. */
+export function isUnlockComplete(
+  task: UnlockTask,
+  stats: CosmeticStats | null | undefined,
+): boolean {
+  return unlockProgress(task, stats) >= task.count;
+}
+
 const CosmeticSchema = z.object({
   name: CosmeticNameSchema,
   affiliateCode: z.string().nullable().optional(),
@@ -76,6 +125,7 @@ const CosmeticSchema = z.object({
   priceSoft: z.number().optional(),
   priceHard: z.number().optional(),
   artist: z.string().optional(),
+  unlock: UnlockTaskSchema.optional(),
   rarity: z
     .enum(["common", "uncommon", "rare", "epic", "legendary"])
     .or(z.string()),

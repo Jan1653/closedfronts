@@ -1,6 +1,7 @@
 import { html, LitElement, nothing, TemplateResult } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import {
+  CosmeticStats,
   Effect,
   Flag,
   isNukeExplosionEffect,
@@ -8,9 +9,11 @@ import {
   Pattern,
   Skin,
   Subscription,
+  UnlockTask,
 } from "../../core/CosmeticSchemas";
 import { PlayerPattern } from "../../core/Schemas";
 import {
+  describeUnlockTask,
   PaymentMethod,
   PurchaseResult,
   ResolvedCosmetic,
@@ -45,6 +48,10 @@ export class CosmeticButton extends LitElement {
   @property({ type: Boolean })
   userHasSubscription: boolean = false;
 
+  /** Player stats, for live progress on a task-locked (blocked) cosmetic. */
+  @property({ attribute: false })
+  stats: CosmeticStats | null = null;
+
   /** Colour variants of one pattern; 2+ become clickable swatches. */
   @property({ attribute: false })
   variants?: ResolvedCosmetic[];
@@ -67,7 +74,16 @@ export class CosmeticButton extends LitElement {
     return this;
   }
 
+  /** The unlock task of a still-locked (blocked) cosmetic, else undefined. */
+  private get lockedTask(): UnlockTask | undefined {
+    const active = this.activeResolved;
+    if (active.relationship !== "blocked") return undefined;
+    return (active.cosmetic as { unlock?: UnlockTask } | null)?.unlock;
+  }
+
   private handleClick() {
+    // A locked cosmetic can't be selected — the tile only shows its task.
+    if (this.lockedTask) return;
     this.onSelect?.(this.activeResolved);
   }
 
@@ -296,6 +312,7 @@ export class CosmeticButton extends LitElement {
   render() {
     const active = this.activeResolved;
     const c = active.cosmetic;
+    const lockedTask = this.lockedTask;
     const priced = c as Pattern | Skin | Flag | Effect | Pack | null;
     const priceHard = priced?.priceHard;
     const priceSoft = priced?.priceSoft;
@@ -361,11 +378,41 @@ export class CosmeticButton extends LitElement {
             : nothing}
 
           <div
-            class="w-full aspect-square flex items-center justify-center bg-white/5 rounded-lg p-2 border border-white/10 group-hover:border-white/20 transition-colors duration-200 overflow-hidden"
+            class="relative w-full aspect-square flex items-center justify-center bg-white/5 rounded-lg p-2 border border-white/10 group-hover:border-white/20 transition-colors duration-200 overflow-hidden"
           >
-            ${this.renderPreview()}
+            <div
+              class="w-full h-full flex items-center justify-center ${lockedTask
+                ? "opacity-30"
+                : ""}"
+            >
+              ${this.renderPreview()}
+            </div>
+            ${lockedTask
+              ? html`<div
+                  class="absolute inset-0 flex items-center justify-center pointer-events-none"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="w-8 h-8 text-white/80 drop-shadow"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path
+                      d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5Zm3 8H9V7a3 3 0 0 1 6 0v3Z"
+                    />
+                  </svg>
+                </div>`
+              : nothing}
           </div>
         </button>
+        ${lockedTask
+          ? html`<div
+              class="w-full mt-1 px-1 text-center text-[11px] font-semibold leading-tight text-amber-300/90"
+              title=${describeUnlockTask(lockedTask, this.stats)}
+            >
+              ${describeUnlockTask(lockedTask, this.stats)}
+            </div>`
+          : nothing}
         ${this.renderColorSwatches()}
         ${isOwnedSubscription
           ? html`<div

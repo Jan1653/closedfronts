@@ -88,18 +88,29 @@ export class TerritoryPatternsModal extends BaseModal {
 
   /** Combined patterns + skins grid. To the user they're the same: "skins". */
   private renderSkinGrid(): TemplateResult {
-    const items = resolveCosmetics(
-      this.cosmetics,
-      this.userMeResponse,
-      null,
-    ).filter(
-      (r) =>
-        (r.type === "pattern" || r.type === "skin") &&
-        r.relationship === "owned" &&
-        (r.cosmetic === null
-          ? !this.search
-          : this.includedInSearch(r.cosmetic.name)),
-    );
+    const stats =
+      this.userMeResponse === false
+        ? null
+        : (this.userMeResponse.player.stats ?? null);
+    const items = resolveCosmetics(this.cosmetics, this.userMeResponse, null)
+      .filter(
+        (r) =>
+          (r.type === "pattern" || r.type === "skin") &&
+          // Owned items, plus still-locked ones that carry an unlock task (shown
+          // greyed with the task on hover, so the player knows how to earn them).
+          (r.relationship === "owned" ||
+            (r.relationship === "blocked" &&
+              !!(r.cosmetic as { unlock?: unknown } | null)?.unlock)) &&
+          (r.cosmetic === null
+            ? !this.search
+            : this.includedInSearch(r.cosmetic.name)),
+      )
+      // Owned first, locked last.
+      .sort(
+        (a, b) =>
+          (a.relationship === "owned" ? 0 : 1) -
+          (b.relationship === "owned" ? 0 : 1),
+      );
 
     return html`
       <div class="flex flex-col">
@@ -125,6 +136,7 @@ export class TerritoryPatternsModal extends BaseModal {
               <cosmetic-button
                 .resolved=${r}
                 .selected=${isSelected}
+                .stats=${stats}
                 .onSelect=${(rc: ResolvedCosmetic) => this.selectCosmetic(rc)}
               ></cosmetic-button>
             `;
@@ -163,9 +175,7 @@ export class TerritoryPatternsModal extends BaseModal {
   }
 
   protected renderBody() {
-    return html`
-      <div class="px-3 pb-3">${this.renderSkinGrid()}</div>
-    `;
+    return html` <div class="px-3 pb-3">${this.renderSkinGrid()}</div> `;
   }
 
   protected async onOpen(): Promise<void> {

@@ -178,6 +178,30 @@
     "transfer_warning": "Damit wird das ausgewählte Mitglied zum neuen Anführer. Du wirst zum normalen Mitglied. Diese Aktion kann nicht rückgängig gemacht werden.",
     "unban": "Entbannen"
   },
+  "cosmetics": {
+    "difficulty": {
+      "Easy": "Leicht",
+      "Hard": "Schwer",
+      "Impossible": "Unmöglich",
+      "Medium": "Mittel"
+    },
+    "task": {
+      "games": "Spiele {count} Partien",
+      "games_difficulty": "Spiele {count} Partien auf {difficulty}",
+      "wins": "Gewinne {count} Partien",
+      "wins_difficulty": "Gewinne {count} Partien auf {difficulty}"
+    }
+  },
+  "effects": {
+    "azure": "Azur",
+    "ember": "Glut",
+    "gold": "Gold",
+    "ocean": "Ozean",
+    "rainbow": "Regenbogen",
+    "sunset": "Sonnenuntergang",
+    "toxic": "Giftig",
+    "voidtrail": "Leere"
+  },
   "common": {
     "close": "Schließen",
     "available": "Verfügbar",
@@ -897,7 +921,15 @@
       "purchase": "Kaufe dieses Muster, um es freizuschalten."
     },
     "pattern": {
-      "default": "Standard"
+      "checkerboard": "Schachbrett",
+      "chevron": "Chevron",
+      "crosshatch": "Kreuzschraffur",
+      "default": "Standard",
+      "diagonal": "Diagonale",
+      "diamonds": "Rauten",
+      "grid": "Gitter",
+      "stripes": "Streifen",
+      "waves": "Wellen"
     }
   },
   "flag_input": {

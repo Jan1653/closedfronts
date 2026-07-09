@@ -4,6 +4,7 @@ import {
   ColorPalette,
   Cosmetics,
   CosmeticsSchema,
+  CosmeticStats,
   Effect,
   findEffectForSlot,
   Flag,
@@ -12,6 +13,8 @@ import {
   Product,
   Skin,
   Subscription,
+  unlockProgress,
+  UnlockTask,
 } from "../core/CosmeticSchemas";
 import { UserSettings } from "../core/game/UserSettings";
 import {
@@ -732,6 +735,25 @@ export async function getPlayerCosmetics(): Promise<PlayerCosmetics> {
   }
 
   return result;
+}
+
+/**
+ * Localized description of a task-locked cosmetic's unlock requirement, with
+ * live progress, e.g. "Win 5 games (2/5)". Shown on hover for a locked item.
+ */
+export function describeUnlockTask(
+  task: UnlockTask,
+  stats: CosmeticStats | null | undefined,
+): string {
+  const difficulty = task.difficulty
+    ? translateText(`cosmetics.difficulty.${task.difficulty}`)
+    : "";
+  const base = translateText(`cosmetics.task.${task.type}`, {
+    count: task.count,
+    difficulty,
+  });
+  const progress = Math.min(unlockProgress(task, stats), task.count);
+  return `${base} (${progress}/${task.count})`;
 }
 
 export function translateCosmetic(prefix: string, name: string): string {

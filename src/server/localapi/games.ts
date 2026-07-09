@@ -1,6 +1,11 @@
 import fs from "fs";
 import path from "path";
-import { Difficulty, GameMode, GameType, RankedType } from "../../core/game/Game";
+import {
+  Difficulty,
+  GameMode,
+  GameType,
+  RankedType,
+} from "../../core/game/Game";
 import type { AccountStore } from "./store";
 
 // Aggregates finished-game results (fed by the game server's archive() POST to
@@ -217,6 +222,32 @@ export class GamesStore {
     }
     this.save();
     return recorded;
+  }
+
+  // Aggregate stats for task-locked cosmetics (see CosmeticStats): total games
+  // + wins, and per-AI-difficulty games + wins (summed across game types/modes).
+  statsFor(publicId: string): {
+    games: number;
+    wins: number;
+    gamesByDifficulty: Record<string, number>;
+    winsByDifficulty: Record<string, number>;
+  } {
+    const agg = this.data.players[publicId];
+    const gamesByDifficulty: Record<string, number> = {};
+    const winsByDifficulty: Record<string, number> = {};
+    if (!agg) return { games: 0, wins: 0, gamesByDifficulty, winsByDifficulty };
+    for (const [key, b] of Object.entries(agg.buckets)) {
+      const difficulty = key.split("|")[2] ?? "Medium";
+      gamesByDifficulty[difficulty] =
+        (gamesByDifficulty[difficulty] ?? 0) + b.t;
+      winsByDifficulty[difficulty] = (winsByDifficulty[difficulty] ?? 0) + b.w;
+    }
+    return {
+      games: agg.total,
+      wins: agg.wins,
+      gamesByDifficulty,
+      winsByDifficulty,
+    };
   }
 
   // RankedLeaderboardResponse — { "1v1": entries }. On a casual self-hosted

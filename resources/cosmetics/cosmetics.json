@@ -1,0 +1,209 @@
+{
+  "patterns": {
+    "checkerboard": {
+      "name": "checkerboard",
+      "pattern": "AAEABg",
+      "product": null,
+      "rarity": "common"
+    },
+    "stripes": {
+      "name": "stripes",
+      "pattern": "ABEAzA",
+      "product": null,
+      "rarity": "common"
+    },
+    "diagonal": {
+      "name": "diagonal",
+      "pattern": "ABEIk2w",
+      "product": null,
+      "rarity": "common"
+    },
+    "chevron": {
+      "name": "chevron",
+      "pattern": "ADEYfDgQAAGDx-4",
+      "product": null,
+      "rarity": "uncommon",
+      "unlock": {
+        "type": "wins",
+        "count": 5
+      }
+    },
+    "grid": {
+      "name": "grid",
+      "pattern": "ACEQf5L8SQI",
+      "product": null,
+      "rarity": "uncommon",
+      "unlock": {
+        "type": "games_difficulty",
+        "difficulty": "Medium",
+        "count": 10
+      }
+    },
+    "waves": {
+      "name": "waves",
+      "pattern": "ADEQ4OAADh8R",
+      "product": null,
+      "rarity": "rare",
+      "unlock": {
+        "type": "games",
+        "count": 25
+      }
+    },
+    "diamonds": {
+      "name": "diamonds",
+      "pattern": "ADEYABg8fn48GAA",
+      "product": null,
+      "rarity": "rare",
+      "unlock": {
+        "type": "wins",
+        "count": 10
+      }
+    },
+    "crosshatch": {
+      "name": "crosshatch",
+      "pattern": "ADEYEapEqhGqRKo",
+      "product": null,
+      "rarity": "epic",
+      "unlock": {
+        "type": "wins_difficulty",
+        "difficulty": "Hard",
+        "count": 10
+      }
+    }
+  },
+  "flags": {},
+  "effects": {
+    "transportShipTrail": {
+      "ocean": {
+        "name": "ocean",
+        "effectType": "transportShipTrail",
+        "attributes": {
+          "type": "gradient",
+          "colors": ["#0ea5e9", "#22d3ee", "#a5f3fc"],
+          "colorSize": 6,
+          "movementSpeed": 4
+        },
+        "product": null,
+        "rarity": "common"
+      },
+      "sunset": {
+        "name": "sunset",
+        "effectType": "transportShipTrail",
+        "attributes": {
+          "type": "gradient",
+          "colors": ["#f59e0b", "#ef4444", "#ec4899"],
+          "colorSize": 6,
+          "movementSpeed": 4
+        },
+        "product": null,
+        "rarity": "common"
+      },
+      "toxic": {
+        "name": "toxic",
+        "effectType": "transportShipTrail",
+        "attributes": {
+          "type": "gradient",
+          "colors": ["#84cc16", "#22c55e", "#065f46"],
+          "colorSize": 5,
+          "movementSpeed": 6
+        },
+        "product": null,
+        "rarity": "uncommon",
+        "unlock": {
+          "type": "games",
+          "count": 15
+        }
+      },
+      "rainbow": {
+        "name": "rainbow",
+        "effectType": "transportShipTrail",
+        "attributes": {
+          "type": "gradient",
+          "colors": [
+            "#ef4444",
+            "#f59e0b",
+            "#eab308",
+            "#22c55e",
+            "#3b82f6",
+            "#8b5cf6"
+          ],
+          "colorSize": 4,
+          "movementSpeed": 8
+        },
+        "product": null,
+        "rarity": "epic",
+        "unlock": {
+          "type": "games",
+          "count": 40
+        }
+      }
+    },
+    "nukeTrail": {
+      "ember": {
+        "name": "ember",
+        "effectType": "nukeTrail",
+        "attributes": {
+          "type": "gradient",
+          "colors": ["#facc15", "#f97316", "#b91c1c"],
+          "colorSize": 5,
+          "movementSpeed": 5
+        },
+        "product": null,
+        "rarity": "common"
+      },
+      "voidtrail": {
+        "name": "voidtrail",
+        "effectType": "nukeTrail",
+        "attributes": {
+          "type": "transition",
+          "colors": ["#7c3aed", "#1e1b4b", "#000000"],
+          "frequency": 2
+        },
+        "product": null,
+        "rarity": "rare",
+        "unlock": {
+          "type": "wins",
+          "count": 15
+        }
+      }
+    },
+    "structures": {
+      "gold": {
+        "name": "gold",
+        "effectType": "structures",
+        "attributes": {
+          "type": "transition",
+          "colors": ["#fde68a", "#f59e0b", "#b45309"],
+          "frequency": 1.5
+        },
+        "product": null,
+        "rarity": "rare",
+        "unlock": {
+          "type": "wins",
+          "count": 10
+        }
+      }
+    },
+    "nukeExplosion": {
+      "azure": {
+        "name": "azure",
+        "effectType": "nukeExplosion",
+        "attributes": {
+          "type": "shockwave",
+          "nukeType": "atom",
+          "colors": ["#38bdf8", "#0ea5e9", "#e0f2fe"],
+          "size": 30,
+          "speed": 20,
+          "thickness": 4,
+          "transitionSpeed": 3
+        },
+        "product": null,
+        "rarity": "uncommon",
+        "unlock": {
+          "type": "wins",
+          "count": 5
+        }
+      }
+    }
+  }
+}

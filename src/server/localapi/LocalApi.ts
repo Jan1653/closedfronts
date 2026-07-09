@@ -1,9 +1,39 @@
 import express, { type Request, type Response } from "express";
 import { importJWK, jwtVerify } from "jose";
-import { canonicalTag, ClansStore, isValidClanTag } from "./clans";
+import cosmeticsRaw from "resources/cosmetics/cosmetics.json";
+import {
+  CosmeticsSchema,
+  isUnlockComplete,
+  type CosmeticStats,
+} from "../../core/CosmeticSchemas";
+import { ClansStore, isValidClanTag } from "./clans";
 import { GamesStore } from "./games";
 import { createSigner } from "./keys";
 import { AccountStore, type Account } from "./store";
+
+// The cosmetics catalog is bundled from the repo (single source of truth for
+// both the served /cosmetics.json and the flare computation below). Parse once
+// at startup so a malformed catalog fails loudly rather than silently granting
+// nothing. Free items (no `unlock`) are granted to everyone; task-locked items
+// are granted once the player's stats satisfy the task.
+const cosmetics = CosmeticsSchema.parse(cosmeticsRaw);
+
+function computeFlares(stats: CosmeticStats): string[] {
+  const flares: string[] = [];
+  for (const [name, p] of Object.entries(cosmetics.patterns)) {
+    if (!p.unlock || isUnlockComplete(p.unlock, stats)) {
+      flares.push(`pattern:${name}`);
+    }
+  }
+  for (const byName of Object.values(cosmetics.effects ?? {})) {
+    for (const [name, e] of Object.entries(byName ?? {})) {
+      if (!e.unlock || isUnlockComplete(e.unlock, stats)) {
+        flares.push(`effect:${name}`);
+      }
+    }
+  }
+  return flares;
+}
 
 // Self-hosted replacement for the closed-source auth API. Serves email/password
 // accounts, JWT issuance/refresh (cookie-based) and JWKS, all under /localapi so
@@ -21,7 +51,8 @@ const DOMAIN = process.env.DOMAIN ?? "localhost";
 const DATA_DIR = process.env.LOCALAPI_DATA_DIR ?? "/data";
 const DB_PATH = process.env.LOCALAPI_DB_PATH ?? `${DATA_DIR}/accounts.json`;
 const GAMES_PATH = process.env.LOCALAPI_GAMES_PATH ?? `${DATA_DIR}/games.json`;
-const KEY_PATH = process.env.LOCALAPI_KEY_PATH ?? `${DATA_DIR}/jwt-ed25519.json`;
+const KEY_PATH =
+  process.env.LOCALAPI_KEY_PATH ?? `${DATA_DIR}/jwt-ed25519.json`;
 const CLANS_PATH = process.env.LOCALAPI_CLANS_PATH ?? `${DATA_DIR}/clans.json`;
 // Shared secret the game server sends when archiving finished games. Matches
 // ServerEnv.apiKey() (process.env.API_KEY). When unset ("") the check is a
@@ -101,18 +132,25 @@ async function main() {
       role: account.role,
     });
 
-  const userMe = (account: Account) => ({
-    user: { email: account.email },
-    player: {
-      publicId: account.publicId,
-      adfree: false,
-      achievements: { singleplayerMap: [] as never[] },
-      friends: [] as string[],
-      clans: clanStore.clansForPlayer(account.publicId),
-      clanRequests: clanStore.requestsForPlayer(account.publicId),
-      subscription: null,
-    },
-  });
+  const userMe = (account: Account) => {
+    const stats = games.statsFor(account.publicId);
+    return {
+      user: { email: account.email },
+      player: {
+        publicId: account.publicId,
+        adfree: false,
+        // Ownership flares derived from the cosmetics catalog: free items +
+        // task-locked items the player's stats have unlocked.
+        flares: computeFlares(stats),
+        stats,
+        achievements: { singleplayerMap: [] as never[] },
+        friends: [] as string[],
+        clans: clanStore.clansForPlayer(account.publicId),
+        clanRequests: clanStore.requestsForPlayer(account.publicId),
+        subscription: null,
+      },
+    };
+  };
 
   const app = express();
   app.set("trust proxy", 3);
@@ -125,6 +163,12 @@ async function main() {
 
   r.get("/.well-known/jwks.json", (_req, res) => {
     res.json({ keys: [signer.publicJwk] });
+  });
+
+  // Cosmetics catalog (patterns + effects). Static; served here so the client's
+  // fetchCosmetics() (`${apiBase}/cosmetics.json`) resolves same-origin.
+  r.get("/cosmetics.json", (_req, res) => {
+    res.json(cosmeticsRaw);
   });
 
   r.post("/auth/register", jsonSmall, async (req, res) => {
@@ -275,7 +319,11 @@ async function main() {
     const search =
       typeof req.query.search === "string" ? req.query.search : undefined;
     res.json(
-      clanStore.browse(search, parsePage(req.query.page), parseLimit(req.query.limit)),
+      clanStore.browse(
+        search,
+        parsePage(req.query.page),
+        parseLimit(req.query.limit),
+      ),
     );
   });
 
@@ -300,9 +348,14 @@ async function main() {
       role === "leader" ? 0 : role === "officer" ? 1 : 2;
     const results = [...clan.members]
       .sort(
-        (a, b) => rank(a.role) - rank(b.role) || a.joinedAt.localeCompare(b.joinedAt),
+        (a, b) =>
+          rank(a.role) - rank(b.role) || a.joinedAt.localeCompare(b.joinedAt),
       )
-      .map((m) => ({ role: m.role, joinedAt: m.joinedAt, publicId: m.publicId }));
+      .map((m) => ({
+        role: m.role,
+        joinedAt: m.joinedAt,
+        publicId: m.publicId,
+      }));
     return {
       results,
       total: results.length,
@@ -421,9 +474,8 @@ async function main() {
   });
 
   // Member actions: kick / promote / demote / transfer.
-  const memberAction = (
-    kind: "kick" | "promote" | "demote" | "transfer",
-  ) =>
+  const memberAction =
+    (kind: "kick" | "promote" | "demote" | "transfer") =>
     async (req: Request<{ tag: string }>, res: Response) => {
       const account = await authedAccount(req);
       if (!account) return res.status(401).json({ error: "unauthorized" });
@@ -432,7 +484,9 @@ async function main() {
       const role = clanStore.memberRole(clan, account.publicId);
       // kick allowed for leader+officer; the rest are leader-only.
       const allowed =
-        kind === "kick" ? role === "leader" || role === "officer" : role === "leader";
+        kind === "kick"
+          ? role === "leader" || role === "officer"
+          : role === "leader";
       if (!allowed) return res.status(403).json({ error: "forbidden" });
       const target = (req.body ?? {}).targetPublicId;
       if (typeof target !== "string")
