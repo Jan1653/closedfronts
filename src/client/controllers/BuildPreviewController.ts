@@ -521,12 +521,17 @@ export class BuildPreviewController implements Controller {
     }
     const tile = this.transformHandler.screenToWorldCoordinates(e.x, e.y);
     if (this.ghostUnit.buildableUnit.canUpgrade !== false) {
-      this.eventBus.emit(
-        new SendUpgradeStructureIntentEvent(
-          this.ghostUnit.buildableUnit.canUpgrade,
-          this.ghostUnit.buildableUnit.type,
-        ),
-      );
+      // Tab+wheel quantity also stacks an existing structure: each intent is one
+      // level (upgrades are instant, so N in a tick add N levels, gold allowing).
+      const count = this.multiPlaceCount(this.ghostUnit.buildableUnit.type);
+      for (let i = 0; i < count; i++) {
+        this.eventBus.emit(
+          new SendUpgradeStructureIntentEvent(
+            this.ghostUnit.buildableUnit.canUpgrade,
+            this.ghostUnit.buildableUnit.type,
+          ),
+        );
+      }
       this.removeGhostStructure();
     } else if (this.ghostUnit.buildableUnit.canBuild) {
       const unitType = this.ghostUnit.buildableUnit.type;
@@ -535,14 +540,12 @@ export class BuildPreviewController implements Controller {
           ? this.uiState.rocketDirectionUp
           : undefined;
       const tileRef = this.game.ref(tile.x, tile.y);
-      // Tab+wheel can raise the build quantity: place several copies at once,
-      // stacked on the tile (e.g. many cities to level it up quickly).
+      // Tab+wheel can raise the build quantity: build the structure and level it
+      // straight up to that count (one intent — the sim does the stacking).
       const count = this.multiPlaceCount(unitType);
-      for (let i = 0; i < count; i++) {
-        this.eventBus.emit(
-          new BuildUnitIntentEvent(unitType, tileRef, rocketDirectionUp),
-        );
-      }
+      this.eventBus.emit(
+        new BuildUnitIntentEvent(unitType, tileRef, rocketDirectionUp, count),
+      );
       if (!shouldPreserveGhostAfterBuild(unitType)) {
         this.removeGhostStructure();
       }

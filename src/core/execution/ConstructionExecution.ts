@@ -25,6 +25,9 @@ export class ConstructionExecution implements Execution {
     private constructionType: UnitType,
     private tile: TileRef,
     private rocketDirectionUp?: boolean,
+    // Mass placement: once built, immediately level the structure up to this
+    // many (each extra level costs gold like a normal upgrade). 1 = plain build.
+    private stackCount: number = 1,
   ) {}
 
   init(mg: Game, ticks: number): void {
@@ -163,6 +166,16 @@ export class ConstructionExecution implements Execution {
           `unit type ${this.constructionType} cannot be constructed`,
         );
         break;
+    }
+
+    // Mass placement (Tab+wheel): level the finished structure up to the
+    // requested count. Each step is a real, gold-checked upgrade; stop as soon
+    // as one can't be afforded or the type isn't upgradeable.
+    if (this.structure !== null && this.stackCount > 1) {
+      for (let i = 1; i < this.stackCount; i++) {
+        if (!this.player.canUpgradeUnit(this.structure)) break;
+        this.player.upgradeUnit(this.structure);
+      }
     }
   }
 

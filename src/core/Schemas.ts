@@ -502,6 +502,10 @@ export const BuildUnitIntentSchema = z.object({
   unit: z.enum(UnitType),
   tile: z.number(),
   rocketDirectionUp: z.boolean().optional(),
+  // Mass placement: build this structure and immediately level it up to `count`
+  // (Tab+wheel quantity). Absent/1 = a single level-1 build. Capped to match the
+  // client's MAX_BUILD_QUANTITY. Non-upgradeable units ignore it.
+  count: z.number().int().min(1).max(25).optional(),
 });
 
 export const UpgradeStructureIntentSchema = z.object({

@@ -89,6 +89,8 @@ export class BuildUnitIntentEvent implements GameEvent {
     public readonly unit: UnitType,
     public readonly tile: TileRef,
     public readonly rocketDirectionUp?: boolean,
+    // Build the structure and level it up to this many (Tab+wheel quantity).
+    public readonly count?: number,
   ) {}
 }
 
@@ -572,6 +574,7 @@ export class Transport {
       unit: event.unit,
       tile: event.tile,
       rocketDirectionUp: event.rocketDirectionUp,
+      count: event.count,
     });
   }
 

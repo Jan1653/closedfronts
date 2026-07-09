@@ -462,26 +462,32 @@ export class BuildMenu extends LitElement implements Controller {
   }
 
   public sendBuildOrUpgrade(buildableUnit: BuildableUnit, tile: TileRef): void {
+    const count = this.placeCount(buildableUnit.type);
     if (buildableUnit.canUpgrade !== false) {
-      this.eventBus.emit(
-        new SendUpgradeStructureIntentEvent(
-          buildableUnit.canUpgrade,
-          buildableUnit.type,
-        ),
-      );
+      // Quantity stacks an existing structure: one intent per level.
+      for (let i = 0; i < count; i++) {
+        this.eventBus.emit(
+          new SendUpgradeStructureIntentEvent(
+            buildableUnit.canUpgrade,
+            buildableUnit.type,
+          ),
+        );
+      }
     } else if (buildableUnit.canBuild) {
       const rocketDirectionUp =
         buildableUnit.type === UnitType.AtomBomb ||
         buildableUnit.type === UnitType.HydrogenBomb
           ? this.uiState.rocketDirectionUp
           : undefined;
-      // Place the chosen quantity, stacked on the tile.
-      const count = this.placeCount(buildableUnit.type);
-      for (let i = 0; i < count; i++) {
-        this.eventBus.emit(
-          new BuildUnitIntentEvent(buildableUnit.type, tile, rocketDirectionUp),
-        );
-      }
+      // Build and level straight up to the chosen quantity (one intent).
+      this.eventBus.emit(
+        new BuildUnitIntentEvent(
+          buildableUnit.type,
+          tile,
+          rocketDirectionUp,
+          count,
+        ),
+      );
     }
     this.hideMenu();
   }
@@ -501,17 +507,11 @@ export class BuildMenu extends LitElement implements Controller {
         @contextmenu=${(e: MouseEvent) => e.preventDefault()}
       >
         <div class="build-quantity" translate="no">
-          <button
-            @click=${() => this.adjustQuantity(-1)}
-            aria-label="less"
-          >
+          <button @click=${() => this.adjustQuantity(-1)} aria-label="less">
             −
           </button>
           <span class="qty-value">×${this.uiState.buildQuantity}</span>
-          <button
-            @click=${() => this.adjustQuantity(1)}
-            aria-label="more"
-          >
+          <button @click=${() => this.adjustQuantity(1)} aria-label="more">
             +
           </button>
         </div>
