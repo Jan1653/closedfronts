@@ -33,6 +33,13 @@ export class LobbyTeamView extends LitElement {
   @property({ type: String }) lobbyCreatorClientID: string = "";
   @property({ type: String }) currentClientID: string = "";
   @property({ attribute: "team-count" }) teamCount: TeamCountConfig = 2;
+  // Host's manual team overrides (clientID -> team name); mirrors gameConfig.
+  @property({ type: Object }) teamAssignments: Record<string, string> = {};
+  // Host-only: move a player to a team (null = back to automatic assignment).
+  @property({ type: Function }) onMovePlayer?: (
+    clientID: string,
+    team: Team | null,
+  ) => void;
   @property({ type: Function }) onKickPlayer?: (clientID: string) => void;
   @property({ type: Function }) onToggleNameReveal?: (clientID: string) => void;
   @property({ type: Array }) nameReveals: string[] = [];
@@ -66,7 +73,8 @@ export class LobbyTeamView extends LitElement {
       changedProperties.has("clients") ||
       changedProperties.has("teamCount") ||
       changedProperties.has("nationCount") ||
-      changedProperties.has("isPublicGame")
+      changedProperties.has("isPublicGame") ||
+      changedProperties.has("teamAssignments")
     ) {
       const teamsList = this.getTeamList();
       this.computeTeamPreview(teamsList);
@@ -170,6 +178,38 @@ export class LobbyTeamView extends LitElement {
     </div>`;
   }
 
+  // Host-only per-player dropdown to force a team (or "Auto" to clear the
+  // override and fall back to the automatic clan/friend assignment).
+  private renderTeamPicker(client: ClientInfo) {
+    if (
+      !this.onMovePlayer ||
+      this.gameMode !== GameMode.Team ||
+      this.teamCount === HumansVsNations
+    ) {
+      return html``;
+    }
+    const teams = this.getTeamList().filter((t) => t !== ColoredTeams.Nations);
+    const current = this.teamAssignments[client.clientID] ?? "";
+    return html`<select
+      class="ml-2 bg-gray-900 text-white text-[11px] rounded-sm border border-gray-600 px-1 py-0.5"
+      title=${translateText("host_modal.move_to_team")}
+      @change=${(e: Event) => {
+        const v = (e.target as HTMLSelectElement).value;
+        this.onMovePlayer?.(client.clientID, v === "" ? null : v);
+      }}
+    >
+      <option value="" ?selected=${current === ""}>
+        ${translateText("host_modal.team_auto")}
+      </option>
+      ${teams.map(
+        (t) =>
+          html`<option value=${t} ?selected=${current === t}>
+            ${getTranslatedPlayerTeamLabel(t)}
+          </option>`,
+      )}
+    </select>`;
+  }
+
   // Host-only per-player toggle for who may see real names under anonymizeNames.
   private renderRevealToggle(clientID: string) {
     if (!this.onToggleNameReveal || !this.anonymizeNames) return html``;
@@ -268,6 +308,7 @@ export class LobbyTeamView extends LitElement {
                   >
                     <span class="truncate text-white">${displayName}</span>
                     ${this.renderRevealToggle(p.clientID)}
+                    ${this.renderTeamPicker(p)}
                     ${p.clientID === this.lobbyCreatorClientID
                       ? html`<span class="ml-2 text-[11px] text-green-300"
                           >(${translateText("host_modal.host_badge")})</span
@@ -365,10 +406,15 @@ export class LobbyTeamView extends LitElement {
           c.friends ?? [],
         ),
     );
+    const overrides =
+      Object.keys(this.teamAssignments).length > 0
+        ? new Map<string, Team>(Object.entries(this.teamAssignments))
+        : undefined;
     const assignment = assignTeamsLobbyPreview(
       players,
       teams,
       this.effectiveNationCount,
+      overrides,
     );
     const buckets = new Map<Team, ClientInfo[]>();
     for (const t of teams) buckets.set(t, []);

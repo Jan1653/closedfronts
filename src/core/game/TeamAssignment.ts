@@ -7,9 +7,29 @@ export function assignTeams(
   players: PlayerInfo[],
   teams: Team[],
   maxTeamSize: number = getMaxTeamSize(players.length, teams.length),
+  // Host-set overrides (clientID -> team). These players are placed on their
+  // chosen team first and are exempt from clan/friend logic and the size cap;
+  // overrides naming a team not in `teams` are ignored.
+  overrides?: Map<ClientID, Team>,
 ): Map<PlayerInfo, Team | "kicked"> {
   const result = new Map<PlayerInfo, Team | "kicked">();
   const teamPlayerCount = new Map<Team, number>();
+
+  // Host overrides win outright: pre-place those players (iterate `players` in
+  // order so the outcome is deterministic) and remove them from the pools the
+  // automatic assignment sees.
+  const validTeams = new Set(teams);
+  const overridden = new Set<PlayerInfo>();
+  if (overrides !== undefined && overrides.size > 0) {
+    for (const p of players) {
+      if (p.clientID === null) continue;
+      const team = overrides.get(p.clientID);
+      if (team === undefined || !validTeams.has(team)) continue;
+      result.set(p, team);
+      teamPlayerCount.set(team, (teamPlayerCount.get(team) ?? 0) + 1);
+      overridden.add(p);
+    }
+  }
 
   // Clans are strict: a clan goes to one team together, and any overflow
   // members get kicked. (You opted into the clan, so we honor "all or
@@ -17,6 +37,7 @@ export function assignTeams(
   const clanGroups = new Map<string, PlayerInfo[]>();
   const nonClanPlayers: PlayerInfo[] = [];
   for (const p of players) {
+    if (overridden.has(p)) continue;
     if (p.clanTag) {
       if (!clanGroups.has(p.clanTag)) clanGroups.set(p.clanTag, []);
       clanGroups.get(p.clanTag)!.push(p);
@@ -137,12 +158,13 @@ export function assignTeamsLobbyPreview(
   players: PlayerInfo[],
   teams: Team[],
   nationCount: number,
+  overrides?: Map<ClientID, Team>,
 ): Map<PlayerInfo, Team | "kicked"> {
   const maxTeamSize = getMaxTeamSize(
     players.length + nationCount,
     teams.length,
   );
-  return assignTeams(players, teams, maxTeamSize);
+  return assignTeams(players, teams, maxTeamSize, overrides);
 }
 
 export function getMaxTeamSize(numPlayers: number, numTeams: number): number {

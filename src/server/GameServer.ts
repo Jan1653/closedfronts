@@ -263,6 +263,9 @@ export class GameServer {
     if (gameConfig.playerTeams !== undefined) {
       this.gameConfig.playerTeams = gameConfig.playerTeams;
     }
+    if (gameConfig.teamAssignments !== undefined) {
+      this.gameConfig.teamAssignments = gameConfig.teamAssignments;
+    }
     if (gameConfig.goldMultiplier !== undefined) {
       this.gameConfig.goldMultiplier = gameConfig.goldMultiplier ?? undefined;
     }

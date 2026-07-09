@@ -90,6 +90,8 @@ export class HostLobbyModal extends BaseModal {
   @state() private doomsdayClockSpeed: DoomsdayClockSpeed = "normal";
   @state() private anonymizeNames: boolean = false;
   @state() private nameReveals: string[] = [];
+  // Host's manual team overrides (clientID -> team name).
+  @state() private teamAssignments: Record<string, string> = {};
   @state() private whitelistEnabled: boolean = false;
   @state() private allowedPublicIds: string = "";
   @state() private waterNukes: boolean = false;
@@ -142,6 +144,18 @@ export class HostLobbyModal extends BaseModal {
     this.lobbyCreatorClientID = lobby.lobbyCreatorClientID ?? "";
     if (lobby.clients) {
       this.clients = lobby.clients;
+      // Drop overrides for players who have left, so a departed client can't
+      // hold a team slot.
+      const present = new Set(lobby.clients.map((c) => c.clientID));
+      const pruned = Object.fromEntries(
+        Object.entries(this.teamAssignments).filter(([id]) => present.has(id)),
+      );
+      if (
+        Object.keys(pruned).length !== Object.keys(this.teamAssignments).length
+      ) {
+        this.teamAssignments = pruned;
+        void this.putGameConfig();
+      }
     }
     // The server can delist on its own (join whitelist enabled, duplicate
     // creator resolved by the master); follow its state unless our own
@@ -600,6 +614,9 @@ export class HostLobbyModal extends BaseModal {
             .onKickPlayer=${this.publiclyListed
               ? undefined
               : (clientID: string) => this.kickPlayer(clientID)}
+            .teamAssignments=${this.teamAssignments}
+            .onMovePlayer=${(clientID: string, team: string | null) =>
+              this.movePlayerToTeam(clientID, team)}
             .onToggleNameReveal=${(clientID: string) =>
               this.toggleNameReveal(clientID)}
             .nameReveals=${this.nameReveals}
@@ -780,6 +797,7 @@ export class HostLobbyModal extends BaseModal {
     this.doomsdayClockSpeed = "normal";
     this.anonymizeNames = false;
     this.nameReveals = [];
+    this.teamAssignments = {};
     this.whitelistEnabled = false;
     this.allowedPublicIds = "";
     this.waterNukes = false;
@@ -1290,6 +1308,7 @@ export class HostLobbyModal extends BaseModal {
               ? spawnImmunityTicks
               : null,
             playerTeams: this.teamCount,
+            teamAssignments: this.teamAssignments,
             nations: sliderToNationsConfig(
               this.nations,
               this.defaultNationCount,
@@ -1336,6 +1355,17 @@ export class HostLobbyModal extends BaseModal {
         composed: true,
       }),
     );
+  }
+
+  private movePlayerToTeam(clientID: string, team: string | null) {
+    const next = { ...this.teamAssignments };
+    if (team === null) {
+      delete next[clientID];
+    } else {
+      next[clientID] = team;
+    }
+    this.teamAssignments = next;
+    this.putGameConfig();
   }
 
   private toggleNameReveal(clientID: string) {

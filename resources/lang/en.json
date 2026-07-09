@@ -841,6 +841,8 @@
     "player_whitelist": "Player Whitelist (public IDs)",
     "player_whitelist_placeholder": "comma separated",
     "players": "Players",
+    "move_to_team": "Move player to a team",
+    "team_auto": "Auto",
     "random_spawn": "Random spawn",
     "remove_player": "Remove {username}",
     "start": "Start Game",

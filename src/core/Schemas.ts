@@ -362,6 +362,10 @@ export const GameConfigSchema = z.object({
   spawnImmunityDuration: z.number().int().min(0).nullable().optional(), // In ticks
   disabledUnits: z.enum(UnitType).array().optional(),
   playerTeams: TeamCountConfigSchema.optional(),
+  // Private team lobbies: the host's manual team overrides (clientID -> team
+  // name). Takes precedence over the automatic clan/friend assignment for those
+  // players; overrides to a team that no longer exists are ignored.
+  teamAssignments: z.record(z.string(), z.string()).optional(),
   goldMultiplier: z.number().min(0.1).max(1000).nullable().optional(),
   startingGold: z.number().int().min(0).max(1000000000).nullable().optional(),
   hostCheats: z

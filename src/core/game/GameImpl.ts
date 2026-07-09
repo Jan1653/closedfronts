@@ -212,7 +212,18 @@ export class GameImpl implements Game {
       ...this._humans,
       ...this._nations.map((n) => n.playerInfo),
     ];
-    const playerToTeam = assignTeams(allPlayers, this.playerTeams);
+    // Host's manual team overrides (clientID -> team), if any.
+    const rawOverrides = this.config().gameConfig().teamAssignments;
+    const overrides =
+      rawOverrides !== undefined
+        ? new Map<ClientID, Team>(Object.entries(rawOverrides))
+        : undefined;
+    const playerToTeam = assignTeams(
+      allPlayers,
+      this.playerTeams,
+      undefined,
+      overrides,
+    );
     for (const [playerInfo, team] of playerToTeam.entries()) {
       if (team === "kicked") {
         console.warn(`Player ${playerInfo.name} was kicked from team`);
