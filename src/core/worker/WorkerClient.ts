@@ -93,7 +93,11 @@ export class WorkerClient {
         id: messageId,
         gameStartInfo: this.gameStartInfo,
         clientID: this.clientID,
-        cdnBase: getCdnBase(),
+        // With no CDN configured, getCdnBase() is "" and assets resolve to
+        // relative "/_assets/..." URLs. The worker runs from a blob: URL, so a
+        // relative fetch there fails ("Failed to parse URL"). Fall back to the
+        // page origin so the worker gets absolute, fetchable asset URLs.
+        cdnBase: getCdnBase() || globalThis.location?.origin || "",
       });
 
       setTimeout(() => {
