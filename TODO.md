@@ -41,6 +41,10 @@ Sprachnachricht 4 (Bau-/Öl-/Zoll-Feedback) — erledigt:
       (Land+Station, Station+Station, oder zwei Landmassen), nur eine Seite muss
       Land sein — `tollStationConnections`. (Sichtbar wird's erst mit dem Render
       oben.)
+- [x] **Kein Emoji-/Radialmenü beim Bauen**: bei aktivem Bau-Ghost platziert der
+      Klick immer (kein Kontext-/Emoji-Menü über dem eigenen Namen).
+- [x] **Schwarze Outline an Mauern** nur an den Kanten ohne Nachbarwand (außen +
+      innen): pro Wand eine 4-Bit-Nachbarmaske, Fragment-Shader zeichnet dort Schwarz.
 
 Erledigt in dieser Runde:
 
