@@ -55,6 +55,7 @@ import { StructureLevelPass } from "./passes/StructureLevelPass";
 import { StructurePass } from "./passes/StructurePass";
 import { TerrainPass } from "./passes/TerrainPass";
 import { TerritoryPass } from "./passes/TerritoryPass";
+import { TollConnectionPass } from "./passes/TollConnectionPass";
 import { TrailPass } from "./passes/TrailPass";
 import { UnitPass } from "./passes/UnitPass";
 import { WallPass } from "./passes/WallPass";
@@ -125,6 +126,7 @@ export class GPURenderer {
   private nightCompositePass: NightCompositePass;
   private structurePass: StructurePass;
   private wallPass: WallPass;
+  private tollConnectionPass: TollConnectionPass;
   private structureLevelPass: StructureLevelPass;
   private unitPass: UnitPass;
   private namePass: NamePass;
@@ -533,6 +535,8 @@ export class GPURenderer {
     );
     // Walls render as bold own-colour blocks (like the railroad), not icons.
     this.wallPass = new WallPass(gl, header, this.paletteTex, this.settings);
+    // Toll-station connection lines over the sea (rope/road to the anchors).
+    this.tollConnectionPass = new TollConnectionPass(gl);
     this.structureLevelPass = new StructureLevelPass(gl, header, this.settings);
     this.unitPass = new UnitPass(
       gl,
@@ -876,6 +880,10 @@ export class GPURenderer {
   updateRelations(data: Uint8Array, size: number): void {
     this.borderPass.updateRelations(data, size);
     this.affiliationPalette.updateRelations(data, size);
+  }
+
+  updateTollConnections(segments: Float32Array): void {
+    this.tollConnectionPass.update(segments);
   }
 
   updateStructures(units: Map<number, UnitState>): void {
@@ -1257,6 +1265,7 @@ export class GPURenderer {
     this.rangeCirclePass.draw(cam);
     this.nukeTrajectoryPass.draw(cam);
     this.crosshairPass.draw(cam);
+    this.tollConnectionPass.draw(cam);
     if (pe.structure) this.wallPass.draw(cam);
     if (pe.structure) this.structurePass.draw(cam, zoom);
     if (pe.structure) this.structureLevelPass.draw(cam, zoom);
@@ -1316,6 +1325,7 @@ export class GPURenderer {
     this.crosshairPass.dispose();
     this.structurePass.dispose();
     this.wallPass.dispose();
+    this.tollConnectionPass.dispose();
     this.structureLevelPass.dispose();
     this.unitPass.dispose();
     this.namePass.dispose();

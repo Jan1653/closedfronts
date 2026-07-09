@@ -189,6 +189,9 @@ export class MapRenderer {
   updateStructures(units: Map<number, UnitState>): void {
     this.renderer?.updateStructures(units);
   }
+  updateTollConnections(segments: Float32Array): void {
+    this.renderer?.updateTollConnections(segments);
+  }
   applyDeadUnits(deadUnits: DeadUnitFx[]): void {
     this.renderer?.applyDeadUnits(deadUnits);
   }

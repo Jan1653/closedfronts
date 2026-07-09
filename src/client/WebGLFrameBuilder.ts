@@ -13,7 +13,8 @@ import {
   type TrailEffectAttributes,
 } from "../core/CosmeticSchemas";
 import { decodePatternData } from "../core/PatternDecoder";
-import { PlayerType } from "../core/game/Game";
+import { PlayerType, UnitType } from "../core/game/Game";
+import { tollStationConnections } from "../core/game/TollStationUtils";
 import { getCachedCosmetics } from "./Cosmetics";
 import { uploadFrameData } from "./render/frame/Upload";
 // Type-only: a value import would pull GPURenderer and its `.glsl?raw` shader
@@ -142,6 +143,9 @@ export class WebGLFrameBuilder {
   private localPlayerSmallID = 0;
   // Scratch buffer for terrain-delta uploads (parallel to the refs list).
   private terrainDeltaBytes: Uint8Array = new Uint8Array(0);
+  // Cache key for toll-station connection lines (recompute only when the set of
+  // active toll stations changes — their anchors are otherwise static).
+  private tollConnKey = "";
 
   constructor(private readonly view: MapRenderer) {
     this.palette = new Float32Array(PALETTE_SIZE * 2 * 4);
@@ -194,8 +198,35 @@ export class WebGLFrameBuilder {
     this.syncLocalPlayer(gameView);
     this.syncSpawnOverlay(gameView);
     this.syncTerrainDeltas(gameView);
+    this.syncTollConnections(gameView);
     this.resolveDeadUnitExplosions(gameView);
     uploadFrameData(this.view, gameView.frameData());
+  }
+
+  // Push each toll station's two connection lines (station centre → anchor
+  // centre) to the renderer. Recomputed only when the set of active stations
+  // changes, since a station's anchors are otherwise static.
+  private syncTollConnections(gameView: GameView): void {
+    const stations = gameView
+      .units(UnitType.WaterTollStation)
+      .filter((u) => u.isActive() && !u.isUnderConstruction());
+    const key = stations
+      .map((s) => s.tile())
+      .sort((a, b) => a - b)
+      .join(",");
+    if (key === this.tollConnKey) return;
+    this.tollConnKey = key;
+
+    const segs: number[] = [];
+    for (const s of stations) {
+      const tile = s.tile();
+      const sx = gameView.x(tile) + 0.5;
+      const sy = gameView.y(tile) + 0.5;
+      for (const anchor of tollStationConnections(gameView, tile)) {
+        segs.push(sx, sy, gameView.x(anchor) + 0.5, gameView.y(anchor) + 0.5);
+      }
+    }
+    this.view.updateTollConnections(new Float32Array(segs));
   }
 
   /**

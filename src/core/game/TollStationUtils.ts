@@ -1,5 +1,5 @@
-import { Game, UnitType } from "./Game";
-import { manhattanDistFN, TileRef } from "./GameMap";
+import { UnitType } from "./Game";
+import { GameMap, manhattanDistFN, TileRef } from "./GameMap";
 
 // Radius (in tiles) around a water toll station in which two connection anchors
 // (a landmass or another toll station) must exist for the station to be
@@ -10,6 +10,24 @@ export const WATER_TOLL_STATION_RADIUS = 14;
 // treated as separate landmasses. Guards against both connections snapping to
 // the same bank of a channel.
 const MIN_LANDMASS_SEPARATION = 6;
+
+// The minimal map/unit surface tollStationConnections needs — satisfied by both
+// the server's Game and the client's GameView, so the client can compute a
+// station's connections for rendering without a Game instance.
+export interface TollConnGame {
+  isWater(t: TileRef): boolean;
+  isLand(t: TileRef): boolean;
+  isImpassable(t: TileRef): boolean;
+  manhattanDist(a: TileRef, b: TileRef): number;
+  units(...types: UnitType[]): ReadonlyArray<{
+    isActive(): boolean;
+    tile(): TileRef;
+  }>;
+  bfs(
+    tile: TileRef,
+    filter: (gm: GameMap, tile: TileRef) => boolean,
+  ): Set<TileRef>;
+}
 
 /**
  * Finds the two "connection" anchor tiles for a water toll station placed on
@@ -23,7 +41,7 @@ const MIN_LANDMASS_SEPARATION = 6;
  * two of them. Placement requires a result of length 2.
  */
 export function tollStationConnections(
-  mg: Game,
+  mg: TollConnGame,
   waterTile: TileRef,
   radius: number = WATER_TOLL_STATION_RADIUS,
 ): TileRef[] {
