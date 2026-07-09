@@ -805,7 +805,12 @@ export class InputHandler {
       this.eventBus.emit(new ShowBuildMenuEvent(event.clientX, event.clientY));
       return;
     }
-    if (this.activeKeys.has(this.keybinds.emojiMenuModifier)) {
+    if (
+      this.activeKeys.has(this.keybinds.emojiMenuModifier) &&
+      this.uiState.ghostStructure === null
+    ) {
+      // While placing a build the click must place the structure, not open the
+      // emoji menu (e.g. building on the tile under your own name).
       this.suppressNextTap = false;
       this.eventBus.emit(new ShowEmojiMenuEvent(event.clientX, event.clientY));
       return;
@@ -827,6 +832,10 @@ export class InputHandler {
       }
 
       if (
+        // Placing a build: the click must place the structure, never open the
+        // radial/context menu (which happens over your own name when
+        // leftClickOpensMenu is on).
+        this.uiState.ghostStructure !== null ||
         !this.userSettings.leftClickOpensMenu() ||
         event.shiftKey ||
         this.gameView.inSpawnPhase() // No Radial Menu during spawn phase, only spawn point selection
