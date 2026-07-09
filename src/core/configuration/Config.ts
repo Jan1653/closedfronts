@@ -915,11 +915,14 @@ export class Config {
   }
 
   // ── Oil economy ──────────────────────────────────────────────────────────
-  oilProductionPerPump(): number {
-    // A single pump must clearly out-produce a sizeable empire's consumption
-    // (numTilesOwned / 200), otherwise building one feels like it does nothing.
-    // At 250/tick one pump covers a 50k-tile empire; stack more for bigger ones.
-    return 250;
+  oilProductionPerPump(player: Player | PlayerView): number {
+    // Scales with empire size: a pump on a small realm produces modestly, while
+    // a large realm's pump produces much more. So an oil pump built early gives
+    // less than before, but income keeps pace (and outgrows upkeep) as you
+    // expand. Consumption is numTilesOwned/200, so the tiles/130 term more than
+    // covers passive upkeep once the empire is sizeable, funding expansion too.
+    // e.g. 5k tiles → ~118/tick, 50k → ~465/tick, 100k → ~849/tick.
+    return 80 + Math.floor(player.numTilesOwned() / 130);
   }
 
   oilConsumptionRate(player: Player | PlayerView): number {

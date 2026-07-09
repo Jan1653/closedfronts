@@ -49,6 +49,9 @@ export interface BuildItemDisplay {
   countable?: boolean;
 }
 
+// Two rows: the first holds the core offensive/economy buildings, the second
+// the defensive + resource "extras" (defense post, toll station, wall, oil
+// pump) — so those always sit in the second row instead of wrapping up top.
 export const buildTable: BuildItemDisplay[][] = [
   [
     {
@@ -101,13 +104,6 @@ export const buildTable: BuildItemDisplay[][] = [
       countable: true,
     },
     {
-      unitType: UnitType.DefensePost,
-      icon: shieldIcon,
-      description: "build_menu.desc.defense_post",
-      key: "unit_type.defense_post",
-      countable: true,
-    },
-    {
       unitType: UnitType.City,
       icon: cityIcon,
       description: "build_menu.desc.city",
@@ -119,6 +115,15 @@ export const buildTable: BuildItemDisplay[][] = [
       icon: factoryIcon,
       description: "build_menu.desc.factory",
       key: "unit_type.factory",
+      countable: true,
+    },
+  ],
+  [
+    {
+      unitType: UnitType.DefensePost,
+      icon: shieldIcon,
+      description: "build_menu.desc.defense_post",
+      key: "unit_type.defense_post",
       countable: true,
     },
     {
@@ -606,9 +611,13 @@ export class BuildMenu extends LitElement implements Controller {
   }
 
   private getBuildableUnits(): BuildItemDisplay[][] {
-    return buildTable.map((row) =>
-      row.filter((item) => !this.game?.config()?.isUnitDisabled(item.unitType)),
-    );
+    return buildTable
+      .map((row) =>
+        row.filter(
+          (item) => !this.game?.config()?.isUnitDisabled(item.unitType),
+        ),
+      )
+      .filter((row) => row.length > 0);
   }
 
   get isVisible() {

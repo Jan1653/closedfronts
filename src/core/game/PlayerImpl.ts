@@ -1199,7 +1199,7 @@ export class PlayerImpl implements Player {
     const pumps = this.units(UnitType.OilPump).filter(
       (u) => u.isActive() && !u.isUnderConstruction(),
     ).length;
-    const production = pumps * config.oilProductionPerPump();
+    const production = pumps * config.oilProductionPerPump(this);
     const consumption = config.oilConsumptionRate(this);
 
     // Expanding burns fuel: charge oil for tiles gained since the last tick.
@@ -1582,11 +1582,15 @@ export class PlayerImpl implements Player {
     if (!mg.isValidRef(tile)) return false;
     if (!mg.isWater(tile)) return false;
     if (mg.isImpassable(tile)) return false;
+    // Requires a harbor: the builder ship launches from one of your ports, so
+    // without a port you can't place a toll station (greyed out in the menu).
+    if (!this.units(UnitType.Port).some((p) => p.isActive())) return false;
     // Don't stack toll stations on top of each other.
     if (mg.nearbyUnits(tile, 2, [UnitType.WaterTollStation]).length > 0) {
       return false;
     }
-    // Must genuinely bridge two distinct landmasses within range.
+    // Must connect two distinct anchors (two landmasses, or one landmass + a
+    // toll station, or two toll stations) — see tollStationConnections.
     if (tollStationConnections(mg, tile).length < 2) return false;
     return tile;
   }
