@@ -6,11 +6,13 @@ import { OilPumpExecution } from "./OilPumpExecution";
 import { WaterTollStationExecution } from "./WaterTollStationExecution";
 
 /**
- * Builds a water structure (currently the Water Toll Station) out at sea: a
- * troop transport ship sails from the owner's nearest port to the target tile
- * and constructs it on arrival. The ship stays vulnerable the whole way and
- * during the build — an enemy warship that sinks it cancels the construction,
- * and nothing is charged.
+ * Builds a water structure (Water Toll Station or a sea oil pump) out at sea: a
+ * troop transport ship sails from the owner's nearest port to the target tile.
+ * On arrival the structure appears "under construction" (showing the normal
+ * build progress bar) while the ship holds position and guards it; when the bar
+ * fills the structure activates and the ship leaves. The ship stays vulnerable
+ * the whole way AND during the build — an enemy warship that sinks it cancels
+ * the construction (the half-built structure is removed) and nothing is charged.
  */
 export class SeaBuildExecution implements Execution {
   private mg: Game;
@@ -18,6 +20,7 @@ export class SeaBuildExecution implements Execution {
   private builder: Unit | null = null;
   private pathFinder: WaterPathFinder;
   private buildTicksLeft = 0;
+  private structure: Unit | null = null;
 
   private static staggerCounter = 0;
 
@@ -54,45 +57,68 @@ export class SeaBuildExecution implements Execution {
       targetTile: this.targetTile,
     });
     this.player.addGold(goldBefore - this.player.gold());
-    this.buildTicksLeft = mg.config().seaBuildTicks();
   }
 
   tick(ticks: number): void {
     if (this.builder === null || !this.builder.isActive()) {
-      this.active = false; // ship sunk / never launched → build cancelled
-      return;
-    }
-
-    if (this.builder.tile() === this.targetTile) {
-      if (this.buildTicksLeft > 0) {
-        this.buildTicksLeft--; // holding position, still sinkable
-        return;
+      // Ship sunk / never launched → cancel and tear down any half-built
+      // structure so a sunk builder truly loses the toll station.
+      if (this.structure !== null && this.structure.isActive()) {
+        this.structure.delete(false);
       }
-      this.complete();
+      this.active = false;
       return;
     }
 
-    const result = this.pathFinder.next(this.builder.tile(), this.targetTile);
-    switch (result.status) {
-      case PathStatus.NEXT:
-      case PathStatus.COMPLETE:
-        this.builder.move(result.node);
-        break;
-      case PathStatus.NOT_FOUND:
+    // Still sailing to the build site.
+    if (this.builder.tile() !== this.targetTile) {
+      const result = this.pathFinder.next(this.builder.tile(), this.targetTile);
+      switch (result.status) {
+        case PathStatus.NEXT:
+        case PathStatus.COMPLETE:
+          this.builder.move(result.node);
+          break;
+        case PathStatus.NOT_FOUND:
+          this.builder.delete(false);
+          this.active = false;
+          break;
+      }
+      return;
+    }
+
+    // Arrived: start construction (structure shows the normal progress bar).
+    if (this.structure === null) {
+      if (this.player.canBuild(this.structureType, this.targetTile) === false) {
         this.builder.delete(false);
         this.active = false;
-        break;
-    }
-  }
-
-  private complete(): void {
-    // Re-check validity (the strait could have changed) and build the structure.
-    if (this.player.canBuild(this.structureType, this.targetTile) !== false) {
-      const structure = this.player.buildUnit(
+        return;
+      }
+      this.structure = this.player.buildUnit(
         this.structureType,
         this.targetTile,
         {},
       );
+      this.buildTicksLeft =
+        this.mg.unitInfo(this.structureType).constructionDuration ??
+        this.mg.config().seaBuildTicks();
+      if (this.buildTicksLeft > 0) {
+        this.structure.setUnderConstruction(true);
+      }
+    }
+
+    // Building — the ship holds position and guards it (still sinkable above).
+    if (this.buildTicksLeft > 0) {
+      this.buildTicksLeft--;
+      return;
+    }
+
+    this.complete();
+  }
+
+  private complete(): void {
+    const structure = this.structure;
+    if (structure !== null && structure.isActive()) {
+      structure.setUnderConstruction(false);
       if (this.structureType === UnitType.WaterTollStation) {
         this.mg.addExecution(new WaterTollStationExecution(structure));
       } else if (this.structureType === UnitType.OilPump) {

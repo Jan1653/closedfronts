@@ -482,7 +482,9 @@ export class Config {
             (numUnits: number) => Math.min(500_000, (numUnits + 1) * 100_000),
             UnitType.WaterTollStation,
           ),
-          constructionDuration: this.instantBuild() ? 0 : 5 * 10,
+          // Long build: the builder ship has to hold at the strait the whole
+          // time (and can be sunk), so a toll station takes real commitment.
+          constructionDuration: this.instantBuild() ? 0 : 30 * 10,
           maxHealth: 1000,
         };
         break;
