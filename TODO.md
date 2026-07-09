@@ -17,11 +17,15 @@ Nur noch live gegenzuprüfen (Logik steht, du testest im Spiel):
 
 Noch offen (echte Arbeit):
 
-- [ ] **Übersetzungs-Audit** DE + EN vollständig (großer Durchlauf).
 - [ ] **Map-Editor** (ganz unten) + **Reale-Karten-Import** aus Geodaten.
 
 Erledigt in dieser Runde:
 
+- [x] **Übersetzungs-Audit DE + EN vollständig**: 700 nur in en.json vorhandene
+      Keys ins Deutsche übersetzt (fielen vorher auf Englisch zurück) — jetzt
+      **volle DE/EN-Parität** (alle ICU-Platzhalter/Plurale validiert). Zusätzlich
+      fehlenden `multi_tab.*`-Block (Multi-Tab-Warnung) in beide Dateien ergänzt
+      (war im Code referenziert, fehlte in beiden → Roh-Keys für alle).
 - [x] **Lobby-Rename**: gleichen Namen verbieten — `lobby-name-editor` lehnt
       Kollisionen (case-insensitiv) ab.
 - [x] **KI baut Zollstationen** an Meerengen (Chokepoint = canBuild-Zwei-Landmassen-
@@ -173,8 +177,10 @@ Alles aus der letzten Sprachnachricht, damit nichts vergessen wird.
 
 - [x] **Regel geklärt:** DE + EN werden im Repo manuell gepflegt (de.json + en.json
       synchron), Crowdin nur für andere Sprachen — CLAUDE.md entsprechend angepasst.
-- [ ] Alle sichtbaren Texte über `translateText` + `en.json`/`de.json`; **DE + EN
-      komplett** (großer Audit, weiterhin offen).
+- [x] Alle sichtbaren Texte über `translateText` + `en.json`/`de.json`; **DE + EN
+      komplett** — Audit erledigt: 700 fehlende DE-Keys übersetzt (volle Parität),
+      ICU/Plurale validiert, fehlenden `multi_tab.*`-Block ergänzt. (Rest-Deko:
+      116 veraltete Keys nur in de.json — harmlos, ungenutzt.)
 - [x] „Aktive Einstellungen": **„Boot"** war auf DE nicht übersetzt (fehlte im
       `unit_type`-Block der de.json) → `boat/oil_pump/wall/water_toll_station` ergänzt.
 - [x] Neue Bauten (**Ölpumpe, Wand, Zollstation**) **erscheinen** jetzt in „Aktive
