@@ -156,6 +156,9 @@ export class JoinLobbyModal extends BaseModal {
                   ? html`
                       <lobby-name-editor
                         class="mt-6 block"
+                        .existingNames=${this.players
+                          .filter((c) => c.clientID !== this.currentClientID)
+                          .map((c) => c.username)}
                       ></lobby-name-editor>
                       <lobby-player-view
                         class="mt-6"

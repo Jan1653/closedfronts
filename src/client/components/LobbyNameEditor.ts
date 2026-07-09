@@ -1,5 +1,5 @@
 import { html, LitElement } from "lit";
-import { customElement, state } from "lit/decorators.js";
+import { customElement, property, state } from "lit/decorators.js";
 import {
   MAX_USERNAME_LENGTH,
   MIN_USERNAME_LENGTH,
@@ -21,9 +21,17 @@ export class LobbyNameEditor extends LitElement {
   @state() private error = "";
   @state() private saved = false;
 
+  /** Names of the OTHER players in the lobby (self excluded), so a rename can't
+   * collide with a name already in use. Compared case-insensitively. */
+  @property({ attribute: false }) existingNames: string[] = [];
+
   createRenderRoot() {
     return this; // light DOM so Tailwind classes apply
   }
+
+  // The player's own current name — always allowed to keep, so the collision
+  // check never blocks re-saving your own name.
+  private originalName = "";
 
   connectedCallback() {
     super.connectedCallback();
@@ -32,6 +40,7 @@ export class LobbyNameEditor extends LitElement {
     } catch {
       this.value = "";
     }
+    this.originalName = this.value;
   }
 
   private onInput(e: Event) {
@@ -45,6 +54,15 @@ export class LobbyNameEditor extends LitElement {
     const result = validateUsername(name);
     if (!result.isValid) {
       this.error = result.error ?? "";
+      this.saved = false;
+      return;
+    }
+    const lower = name.toLowerCase();
+    if (
+      lower !== this.originalName.trim().toLowerCase() &&
+      this.existingNames.some((n) => n.trim().toLowerCase() === lower)
+    ) {
+      this.error = translateText("lobby.name_taken");
       this.saved = false;
       return;
     }

@@ -461,7 +461,8 @@
   "lobby": {
     "your_name": "Dein Name",
     "save_name": "Speichern",
-    "name_saved": "Name aktualisiert"
+    "name_saved": "Name aktualisiert",
+    "name_taken": "Ein anderer Spieler hat diesen Namen bereits."
   },
   "host_modal": {
     "title": "Private Lobby",

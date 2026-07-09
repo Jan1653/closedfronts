@@ -582,7 +582,12 @@ export class HostLobbyModal extends BaseModal {
             @unit-toggle-changed=${this.handleConfigUnitToggleChanged}
           ></game-config-settings>
 
-          <lobby-name-editor class="mt-8 block"></lobby-name-editor>
+          <lobby-name-editor
+            class="mt-8 block"
+            .existingNames=${this.clients
+              .filter((c) => c.clientID !== this.lobbyCreatorClientID)
+              .map((c) => c.username)}
+          ></lobby-name-editor>
 
           <lobby-player-view
             class="mt-10"

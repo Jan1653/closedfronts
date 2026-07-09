@@ -801,7 +801,8 @@
   "lobby": {
     "your_name": "Your name",
     "save_name": "Save",
-    "name_saved": "Name updated"
+    "name_saved": "Name updated",
+    "name_taken": "Another player already has that name."
   },
   "host_modal": {
     "anonymous_players": "Anonymous players",
