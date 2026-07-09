@@ -296,6 +296,14 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: false,
         },
+        // Self-hosted auth/clan/leaderboard API. In production nginx routes
+        // /localapi same-origin to the localapi service; in dev we proxy it to
+        // the standalone localapi process (npm run start:localapi, port 8090).
+        "/localapi": {
+          target: "http://localhost:8090",
+          changeOrigin: false,
+          secure: false,
+        },
       },
     },
   };

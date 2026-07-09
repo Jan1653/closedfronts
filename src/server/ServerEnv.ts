@@ -87,7 +87,10 @@ export class ServerEnv {
   static jwtIssuer(): string {
     // Self-hosted: tokens are issued by the same-origin localapi under
     // /localapi (see src/server/localapi). Must match the client's getApiBase()
-    // and the localapi's ISSUER.
+    // and the localapi's ISSUER. LOCALAPI_ISSUER overrides for dev, where the
+    // browser reaches the localapi through vite on :9000 (not the localapi's
+    // own :8090), so the token's `iss` must be the :9000 public origin.
+    if (process.env.LOCALAPI_ISSUER) return process.env.LOCALAPI_ISSUER;
     const domain = ServerEnv.jwtAudience();
     return domain === "localhost"
       ? "http://localhost:8090/localapi"

@@ -24,3 +24,6 @@ tests/perf/output/
 
 # Locally built Go binary (gen-maps uses `go run .`)
 map-generator/map-generator
+
+# Local dev localapi state (accounts, JWT signing key, clans, games)
+/data/

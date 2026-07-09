@@ -114,6 +114,33 @@ export async function fetchClans(
   }
 }
 
+// Create a new clan with the caller as leader. Returns the new ClanInfo, or an
+// error key for the UI (tag taken / invalid / not signed in / network).
+export async function createClan(
+  tag: string,
+  name: string,
+): Promise<ClanInfo | { error: string }> {
+  try {
+    const res = await clanFetch(`/clans`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tag, name }),
+    });
+    if (res.status === 401) return { error: "clan_modal.sign_in_for_clans" };
+    if (res.status === 409) return { error: "clan_modal.error_tag_taken" };
+    if (res.status === 400) return { error: "clan_modal.error_invalid_tag" };
+    if (!res.ok) return { error: "clan_modal.error_failed" };
+    const parsed = ClanInfoSchema.safeParse(await res.json());
+    if (!parsed.success) {
+      console.warn("createClan: Zod validation failed", parsed.error);
+      return { error: "clan_modal.error_failed" };
+    }
+    return parsed.data;
+  } catch {
+    return { error: "clan_modal.error_network" };
+  }
+}
+
 export async function fetchClanDetail(tag: string): Promise<ClanInfo | false> {
   try {
     const res = await clanFetch(`/clans/${encodeURIComponent(tag)}`);

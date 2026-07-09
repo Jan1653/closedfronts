@@ -1,5 +1,6 @@
 import express, { type Request, type Response } from "express";
 import { importJWK, jwtVerify } from "jose";
+import { canonicalTag, ClansStore, isValidClanTag } from "./clans";
 import { GamesStore } from "./games";
 import { createSigner } from "./keys";
 import { AccountStore, type Account } from "./store";
@@ -21,6 +22,7 @@ const DATA_DIR = process.env.LOCALAPI_DATA_DIR ?? "/data";
 const DB_PATH = process.env.LOCALAPI_DB_PATH ?? `${DATA_DIR}/accounts.json`;
 const GAMES_PATH = process.env.LOCALAPI_GAMES_PATH ?? `${DATA_DIR}/games.json`;
 const KEY_PATH = process.env.LOCALAPI_KEY_PATH ?? `${DATA_DIR}/jwt-ed25519.json`;
+const CLANS_PATH = process.env.LOCALAPI_CLANS_PATH ?? `${DATA_DIR}/clans.json`;
 // Shared secret the game server sends when archiving finished games. Matches
 // ServerEnv.apiKey() (process.env.API_KEY). When unset ("") the check is a
 // no-op, matching the game server which also sends "".
@@ -86,6 +88,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 async function main() {
   const store = new AccountStore(DB_PATH);
   const games = new GamesStore(GAMES_PATH, store);
+  const clanStore = new ClansStore(CLANS_PATH);
   const signer = await createSigner(KEY_PATH);
   const verifyKey = await importJWK(signer.publicJwk, "EdDSA");
 
@@ -105,6 +108,8 @@ async function main() {
       adfree: false,
       achievements: { singleplayerMap: [] as never[] },
       friends: [] as string[],
+      clans: clanStore.clansForPlayer(account.publicId),
+      clanRequests: clanStore.requestsForPlayer(account.publicId),
       subscription: null,
     },
   });
@@ -229,6 +234,232 @@ async function main() {
       typeof req.query.cursor === "string" ? req.query.cursor : undefined;
     res.json(games.playerGames(req.params.publicId, cursor));
   });
+
+  // ---- Clans ----------------------------------------------------------------
+
+  // Resolve the caller's account from the Bearer JWT (null if unauthenticated).
+  const authedAccount = async (req: Request): Promise<Account | null> => {
+    const auth = req.headers.authorization;
+    if (!auth?.startsWith("Bearer ")) return null;
+    try {
+      const { payload } = await jwtVerify(auth.slice(7), verifyKey, {
+        issuer: ISSUER,
+        audience: AUDIENCE,
+      });
+      return store.findById(uuidFromSub(payload.sub)) ?? null;
+    } catch {
+      return null;
+    }
+  };
+
+  const parsePage = (v: unknown) =>
+    Math.max(1, parseInt(String(v ?? "1"), 10) || 1);
+  const parseLimit = (v: unknown) =>
+    Math.min(50, Math.max(1, parseInt(String(v ?? "20"), 10) || 20));
+
+  // Public existence probe (uppercased tag in the route, per the client).
+  r.get("/public/clan/:tag/exists", (req, res) => {
+    if (clanStore.findByTag(req.params.tag))
+      return res.status(200).json({ exists: true });
+    return res.status(404).json({ exists: false });
+  });
+
+  // Clan leaderboard: not aggregated on this self-hosted instance yet.
+  r.get("/public/clans/leaderboard", (_req, res) => {
+    const now = new Date().toISOString();
+    res.json({ start: now, end: now, clans: [], total: 0 });
+  });
+
+  // Browse clans.
+  r.get("/clans", (req, res) => {
+    const search =
+      typeof req.query.search === "string" ? req.query.search : undefined;
+    res.json(
+      clanStore.browse(search, parsePage(req.query.page), parseLimit(req.query.limit)),
+    );
+  });
+
+  // Create a clan (auth). Body { tag, name }; the creator becomes leader.
+  r.post("/clans", jsonSmall, async (req, res) => {
+    const account = await authedAccount(req);
+    if (!account) return res.status(401).json({ error: "unauthorized" });
+    const { tag, name } = req.body ?? {};
+    if (typeof tag !== "string" || !isValidClanTag(tag))
+      return res.status(400).json({ error: "invalid_tag" });
+    if (typeof name !== "string" || name.trim().length === 0)
+      return res.status(400).json({ error: "invalid_name" });
+    if (clanStore.findByTag(tag))
+      return res.status(409).json({ error: "tag_taken", message: "tag taken" });
+    const clan = clanStore.create(tag, name, account.publicId);
+    res.json(clanStore.info(clan));
+  });
+
+  const membersResponse = (clan: ReturnType<typeof clanStore.findByTag>) => {
+    if (!clan) return { results: [], total: 0, page: 1, limit: 0 };
+    const rank = (role: string) =>
+      role === "leader" ? 0 : role === "officer" ? 1 : 2;
+    const results = [...clan.members]
+      .sort(
+        (a, b) => rank(a.role) - rank(b.role) || a.joinedAt.localeCompare(b.joinedAt),
+      )
+      .map((m) => ({ role: m.role, joinedAt: m.joinedAt, publicId: m.publicId }));
+    return {
+      results,
+      total: results.length,
+      page: 1,
+      limit: results.length,
+      pendingRequests: clan.requests.length,
+    };
+  };
+
+  // Clan detail / update / disband / members.
+  r.get("/clans/:tag", (req, res) => {
+    const clan = clanStore.findByTag(req.params.tag);
+    if (!clan) return res.status(404).json({ error: "not_found" });
+    res.json(clanStore.info(clan));
+  });
+
+  r.patch("/clans/:tag", jsonSmall, async (req, res) => {
+    const account = await authedAccount(req);
+    if (!account) return res.status(401).json({ error: "unauthorized" });
+    const clan = clanStore.findByTag(req.params.tag);
+    if (!clan) return res.status(404).json({ error: "not_found" });
+    const role = clanStore.memberRole(clan, account.publicId);
+    if (role !== "leader" && role !== "officer")
+      return res.status(403).json({ error: "forbidden" });
+    clanStore.update(clan, req.body ?? {});
+    res.json(clanStore.info(clan));
+  });
+
+  r.delete("/clans/:tag", async (req, res) => {
+    const account = await authedAccount(req);
+    if (!account) return res.status(401).json({ error: "unauthorized" });
+    const clan = clanStore.findByTag(req.params.tag);
+    if (!clan) return res.status(404).json({ error: "not_found" });
+    if (clanStore.memberRole(clan, account.publicId) !== "leader")
+      return res.status(403).json({ error: "forbidden" });
+    clanStore.disband(clan.tag);
+    res.json({ ok: true });
+  });
+
+  r.get("/clans/:tag/members", (req, res) => {
+    const clan = clanStore.findByTag(req.params.tag);
+    if (!clan) return res.status(404).json({ error: "not_found" });
+    res.json(membersResponse(clan));
+  });
+
+  // Join / leave.
+  r.post("/clans/:tag/join", async (req, res) => {
+    const account = await authedAccount(req);
+    if (!account) return res.status(401).json({ error: "unauthorized" });
+    const clan = clanStore.findByTag(req.params.tag);
+    if (!clan) return res.status(404).json({ error: "not_found" });
+    const result = clanStore.join(clan, account.publicId);
+    if (result === "banned")
+      return res.status(403).json({ code: "BANNED", reason: null });
+    if (result === "already_member")
+      return res.status(409).json({ message: "already a member" });
+    if (result === "request_pending")
+      return res.status(409).json({ message: "request pending" });
+    res.json({ status: result });
+  });
+
+  r.post("/clans/:tag/leave", async (req, res) => {
+    const account = await authedAccount(req);
+    if (!account) return res.status(401).json({ error: "unauthorized" });
+    const clan = clanStore.findByTag(req.params.tag);
+    if (!clan) return res.status(404).json({ error: "not_found" });
+    clanStore.leave(clan, account.publicId);
+    res.json({ ok: true });
+  });
+
+  // Join-request management (leader/officer), plus self-withdraw.
+  r.get("/clans/:tag/requests", async (req, res) => {
+    const account = await authedAccount(req);
+    if (!account) return res.status(401).json({ error: "unauthorized" });
+    const clan = clanStore.findByTag(req.params.tag);
+    if (!clan) return res.status(404).json({ error: "not_found" });
+    const role = clanStore.memberRole(clan, account.publicId);
+    if (role !== "leader" && role !== "officer")
+      return res.status(403).json({ error: "forbidden" });
+    const page = parsePage(req.query.page);
+    const limit = parseLimit(req.query.limit);
+    const start = (page - 1) * limit;
+    res.json({
+      results: clan.requests.slice(start, start + limit),
+      total: clan.requests.length,
+      page,
+      limit,
+    });
+  });
+
+  for (const kind of ["approve", "deny"] as const) {
+    r.post(`/clans/:tag/requests/${kind}`, jsonSmall, async (req, res) => {
+      const account = await authedAccount(req);
+      if (!account) return res.status(401).json({ error: "unauthorized" });
+      const clan = clanStore.findByTag(req.params.tag);
+      if (!clan) return res.status(404).json({ error: "not_found" });
+      const role = clanStore.memberRole(clan, account.publicId);
+      if (role !== "leader" && role !== "officer")
+        return res.status(403).json({ error: "forbidden" });
+      const target = (req.body ?? {}).targetPublicId;
+      if (typeof target !== "string")
+        return res.status(400).json({ error: "invalid_target" });
+      if (kind === "approve") clanStore.approveRequest(clan, target);
+      else clanStore.denyRequest(clan, target);
+      res.json({ ok: true });
+    });
+  }
+
+  r.post("/clans/:tag/requests/withdraw", async (req, res) => {
+    const account = await authedAccount(req);
+    if (!account) return res.status(401).json({ error: "unauthorized" });
+    const clan = clanStore.findByTag(req.params.tag);
+    if (!clan) return res.status(404).json({ error: "not_found" });
+    clanStore.denyRequest(clan, account.publicId);
+    res.json({ ok: true });
+  });
+
+  // Member actions: kick / promote / demote / transfer.
+  const memberAction = (
+    kind: "kick" | "promote" | "demote" | "transfer",
+  ) =>
+    async (req: Request<{ tag: string }>, res: Response) => {
+      const account = await authedAccount(req);
+      if (!account) return res.status(401).json({ error: "unauthorized" });
+      const clan = clanStore.findByTag(req.params.tag);
+      if (!clan) return res.status(404).json({ error: "not_found" });
+      const role = clanStore.memberRole(clan, account.publicId);
+      // kick allowed for leader+officer; the rest are leader-only.
+      const allowed =
+        kind === "kick" ? role === "leader" || role === "officer" : role === "leader";
+      if (!allowed) return res.status(403).json({ error: "forbidden" });
+      const target = (req.body ?? {}).targetPublicId;
+      if (typeof target !== "string")
+        return res.status(400).json({ error: "invalid_target" });
+      if (kind === "kick") clanStore.kick(clan, target);
+      else if (kind === "promote") clanStore.setRole(clan, target, "officer");
+      else if (kind === "demote") clanStore.setRole(clan, target, "member");
+      else clanStore.transferLeadership(clan, target);
+      res.json({ ok: true });
+    };
+  r.post("/clans/:tag/kick", jsonSmall, memberAction("kick"));
+  r.post("/clans/:tag/promote", jsonSmall, memberAction("promote"));
+  r.post("/clans/:tag/demote", jsonSmall, memberAction("demote"));
+  r.post("/clans/:tag/transfer", jsonSmall, memberAction("transfer"));
+
+  // Bans + game history: not implemented on this instance → empty responses.
+  r.get("/clans/:tag/bans", (_req, res) =>
+    res.json({ results: [], total: 0, page: 1, limit: 0 }),
+  );
+  r.get("/clans/:tag/games", (_req, res) =>
+    res.json({ results: [], nextCursor: null }),
+  );
+  for (const kind of ["ban", "unban"] as const) {
+    r.post(`/clans/:tag/${kind}`, jsonSmall, async (_req, res) =>
+      res.json({ ok: true }),
+    );
+  }
 
   app.use("/localapi", r);
 

@@ -1,7 +1,7 @@
 import { html } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { getUserMe, invalidateUserMe } from "./Api";
-import { type ClanInfo, type ClanMember } from "./ClanApi";
+import { type ClanInfo, type ClanMember, createClan } from "./ClanApi";
 import { BaseModal } from "./components/BaseModal";
 import "./components/clan/ClanBansView";
 import "./components/clan/ClanBrowseView";
@@ -47,6 +47,12 @@ export class ClanModal extends BaseModal {
   @state() private loading = false;
 
   @state() private myClans: ClanInfo[] = [];
+
+  // Create-clan form (in the "my clans" tab).
+  @state() private createTag = "";
+  @state() private createName = "";
+  @state() private createError: string | null = null;
+  @state() private creating = false;
   @state() private myPendingRequests: {
     tag: string;
     name: string;
@@ -502,39 +508,106 @@ export class ClanModal extends BaseModal {
     this.setActiveTab("overview");
   }
 
+  private async handleCreateClan() {
+    const tag = this.createTag.trim().toUpperCase();
+    const name = this.createName.trim();
+    if (!/^[A-Z0-9]{2,5}$/.test(tag)) {
+      this.createError = "clan_modal.error_invalid_tag";
+      return;
+    }
+    if (name.length === 0) {
+      this.createError = "clan_modal.error_invalid_name";
+      return;
+    }
+    this.creating = true;
+    this.createError = null;
+    try {
+      const result = await createClan(tag, name);
+      if ("error" in result) {
+        this.createError = result.error;
+        return;
+      }
+      this.createTag = "";
+      this.createName = "";
+      invalidateUserMe();
+      await this.loadMyClans();
+      this.openDetail(result.tag);
+    } finally {
+      this.creating = false;
+    }
+  }
+
+  private renderCreateClan() {
+    return html`
+      <div class="rounded-xl border border-white/10 bg-white/5 p-4 space-y-2">
+        <div class="text-sm font-bold text-white/80">
+          ${translateText("clan_modal.create_title")}
+        </div>
+        <div class="flex flex-col sm:flex-row gap-2">
+          <input
+            type="text"
+            .value=${this.createTag}
+            @input=${(e: Event) => {
+              this.createTag = (e.target as HTMLInputElement).value;
+              this.createError = null;
+            }}
+            placeholder=${translateText("clan_modal.create_tag_placeholder")}
+            maxlength="5"
+            class="sm:w-24 px-3 py-2 rounded-lg bg-transparent border border-white/10 text-white uppercase focus:outline-none focus:border-malibu-blue/50"
+          />
+          <input
+            type="text"
+            .value=${this.createName}
+            @input=${(e: Event) => {
+              this.createName = (e.target as HTMLInputElement).value;
+              this.createError = null;
+            }}
+            @keydown=${(e: KeyboardEvent) => {
+              if (e.key === "Enter") this.handleCreateClan();
+            }}
+            placeholder=${translateText("clan_modal.create_name_placeholder")}
+            maxlength="35"
+            class="flex-1 min-w-0 px-3 py-2 rounded-lg bg-transparent border border-white/10 text-white focus:outline-none focus:border-malibu-blue/50"
+          />
+          <button
+            @click=${() => this.handleCreateClan()}
+            ?disabled=${this.creating}
+            class="shrink-0 px-4 py-2 rounded-lg bg-malibu-blue hover:bg-aquarius text-white font-bold uppercase tracking-wider disabled:opacity-50 transition-all"
+          >
+            ${translateText("clan_modal.create_button")}
+          </button>
+        </div>
+        ${this.createError
+          ? html`<div class="text-red-400 text-xs">
+              ${translateText(this.createError)}
+            </div>`
+          : ""}
+      </div>
+    `;
+  }
+
   private renderMyClans() {
     const hasClans = this.myClans.length > 0;
     const hasRequests = this.myPendingRequests.length > 0;
 
-    if (!hasClans && !hasRequests) {
-      return html`
-        <div class="flex flex-col items-center justify-center p-12 text-center">
-          <p class="text-white/40 text-sm mb-4">
-            ${translateText("clan_modal.no_clans")}
-          </p>
-          <button
-            @click=${() => this.setActiveTab("browse")}
-            class="px-6 py-2 text-sm font-bold text-white uppercase tracking-wider bg-malibu-blue hover:bg-aquarius active:bg-malibu-blue/80 rounded-lg transition-all"
-          >
-            ${translateText("clan_modal.browse")}
-          </button>
-        </div>
-      `;
-    }
-
     return html`
       <div class="space-y-3">
+        ${this.renderCreateClan()}
         ${hasRequests ? this.renderPendingRequestsButton() : ""}
-        ${this.myClans.map(
-          (clan) => html`
-            <clan-card
-              .clan=${clan}
-              .clanRole=${this.myClanRoles.get(clan.tag)}
-              @clan-select=${(e: CustomEvent<{ tag: string }>) =>
-                this.openDetail(e.detail.tag)}
-            ></clan-card>
-          `,
-        )}
+        ${!hasClans && !hasRequests
+          ? html`<p class="text-white/40 text-sm text-center py-6">
+              ${translateText("clan_modal.no_clans")}
+            </p>`
+          : this.myClans.map(
+              (clan) => html`
+                <clan-card
+                  .clan=${clan}
+                  .clanRole=${this.myClanRoles.get(clan.tag)}
+                  @clan-select=${(e: CustomEvent<{ tag: string }>) =>
+                    this.openDetail(e.detail.tag)}
+                ></clan-card>
+              `,
+            )}
       </div>
     `;
   }
