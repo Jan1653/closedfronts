@@ -15,6 +15,7 @@ import { Cluster } from "../../game/TrainStation";
 import { PseudoRandom } from "../../PseudoRandom";
 import { assertNever } from "../../Util";
 import { ConstructionExecution } from "../ConstructionExecution";
+import { SeaBuildExecution } from "../SeaBuildExecution";
 import { UpgradeStructureExecution } from "../UpgradeStructureExecution";
 import { closestTile, closestTwoTiles } from "../Util";
 import { randTerritoryTileArray } from "./NationUtils";
@@ -145,6 +146,30 @@ const WALL_ANCHORS_BY_DIFFICULTY: Record<Difficulty, number> = {
 };
 
 /**
+ * Toll-station willingness per difficulty. `cap` = most a nation will ever own;
+ * `chanceDenom` = per-call build probability of 1/chanceDenom (checked only
+ * after the cheap gates, so most calls cost nothing). Easy barely builds them,
+ * harder nations a little more — and only where a real chokepoint sits near the
+ * coast (a nation on open ocean never finds a placement, so never builds one).
+ */
+const TOLL_STATION_BY_DIFFICULTY: Record<
+  Difficulty,
+  { cap: number; chanceDenom: number }
+> = {
+  [Difficulty.Easy]: { cap: 1, chanceDenom: 3000 },
+  [Difficulty.Medium]: { cap: 1, chanceDenom: 1200 },
+  [Difficulty.Hard]: { cap: 2, chanceDenom: 700 },
+  [Difficulty.Impossible]: { cap: 3, chanceDenom: 450 },
+};
+
+/** Min ticks between builder launches (a launched builder isn't "owned" yet). */
+const TOLL_STATION_COOLDOWN_TICKS = 600;
+/** How many coastal water tiles to sample when hunting for a strait. */
+const TOLL_STATION_SAMPLE = 30;
+/** Cap on the (pricier) canBuild/strait checks per attempt. */
+const TOLL_STATION_MAX_CANBUILD_CHECKS = 12;
+
+/**
  * Hard / Impossible: one additional defense post is allowed per this fraction
  * of the incoming-to-own-troop ratio (e.g. 0.4 → 1 post at 0–40%, 2 at
  * 40–80%, 3 at 80–120%, …).
@@ -162,6 +187,7 @@ export class NationStructureBehavior {
   }> | null = null;
   private _sharedWaterComponents: Set<number> | null = null;
   private lastStructureTick: number | null = null;
+  private lastTollStationTick: number | null = null;
   private placementsCount = 0;
   private _hasHighStartingGold: boolean | null = null;
   private _postSaveUpStartTick: number | null = null;
@@ -198,6 +224,11 @@ export class NationStructureBehavior {
 
     // Defensive walls along an active front (harder difficulties).
     if (this.tryBuildWall()) {
+      return true;
+    }
+
+    // A toll station on a nearby strait ships funnel through (rare, esp. Easy).
+    if (this.tryBuildTollStation()) {
       return true;
     }
 
@@ -367,6 +398,86 @@ export class NationStructureBehavior {
       return true;
     }
     return false;
+  }
+
+  /**
+   * Occasionally builds a Water Toll Station on a nearby strait — a chokepoint
+   * that bridges two landmasses, where ships funnel through. The station is
+   * built out at sea by a builder ship launched from one of the nation's ports
+   * (SeaBuildExecution). Niche: barely built on Easy, a little more on harder
+   * difficulties, and only where a genuine chokepoint sits near the coast, so a
+   * nation on open ocean never builds one. Built outside the normal pacing.
+   */
+  private tryBuildTollStation(): boolean {
+    const game = this.game;
+    const config = game.config();
+    if (config.isUnitDisabled(UnitType.WaterTollStation)) return false;
+    // Needs an economic base and a port to launch the builder from.
+    if (this.placementsCount === 0) return false;
+    if (this.player.unitsOwned(UnitType.Port) === 0) return false;
+
+    const { difficulty } = config.gameConfig();
+    const tuning = TOLL_STATION_BY_DIFFICULTY[difficulty];
+    if (this.player.unitsOwned(UnitType.WaterTollStation) >= tuning.cap) {
+      return false;
+    }
+    // Don't launch builders back-to-back (an en-route builder isn't owned yet).
+    if (
+      this.lastTollStationTick !== null &&
+      game.ticks() - this.lastTollStationTick < TOLL_STATION_COOLDOWN_TICKS
+    ) {
+      return false;
+    }
+    // Rare: most calls bail here, before the pricier strait scan.
+    if (!this.random.chance(tuning.chanceDenom)) return false;
+    if (this.player.gold() < this.cost(UnitType.WaterTollStation)) return false;
+
+    const candidates = this.coastalStraitCandidates(TOLL_STATION_SAMPLE);
+    let checked = 0;
+    for (const t of candidates) {
+      if (checked++ >= TOLL_STATION_MAX_CANBUILD_CHECKS) break;
+      if (this.player.canBuild(UnitType.WaterTollStation, t) === false)
+        continue;
+      game.addExecution(
+        new SeaBuildExecution(this.player, UnitType.WaterTollStation, t),
+      );
+      this.lastTollStationTick = game.ticks();
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Samples water tiles next to the nation's shore that sit on a shared water
+   * body (where other players' boats travel) — the pool a toll-station strait
+   * is hunted for. Empty for a landlocked nation or one only on isolated water.
+   */
+  private coastalStraitCandidates(limit: number): TileRef[] {
+    const game = this.game;
+    const shared = game.sharedWaterComponents(this.player);
+    const seen = new Set<TileRef>();
+    const candidates: TileRef[] = [];
+    const cap = limit * 5;
+    for (const t of this.player.borderTiles()) {
+      if (!game.isShore(t)) continue;
+      for (const n of game.neighbors(t)) {
+        if (!game.isWater(n) || game.isImpassable(n)) continue;
+        if (seen.has(n)) continue;
+        if (!this.isSharedWater(n, shared)) continue;
+        seen.add(n);
+        candidates.push(n);
+      }
+      if (candidates.length >= cap) break;
+    }
+    return Array.from(this.arraySampler(candidates, limit));
+  }
+
+  /** Ocean is always shared; a lake counts only if boats from others reach it. */
+  private isSharedWater(t: TileRef, shared: Set<number> | null): boolean {
+    if (this.game.isOcean(t)) return true;
+    if (shared === null) return false;
+    const comp = this.game.getWaterComponent(t);
+    return comp !== null && shared.has(comp);
   }
 
   /**
