@@ -17,9 +17,16 @@ Nur noch live gegenzuprüfen (Logik steht, du testest im Spiel):
 
 Noch offen (echte Arbeit):
 
-- [ ] **Schiffe umgehen Zollstationen** (Pathfinding), außer der Umweg ist zu
-      lang → dann durchfahren + zahlen. (Core-Pathfinding, größer.)
 - [ ] **Map-Editor** (ganz unten) + **Reale-Karten-Import** aus Geodaten.
+      (Einziger verbliebener großer Punkt — von dir ausgeklammert.)
+
+- [x] **Schiffe umgehen Zollstationen**: Transport-Schiffe (Expansions-/Angriffs-/
+      Sammel-/Bau-Boote) weichen dem Gate einer feindlichen Zollstation aus
+      (`TollAvoidance` — Sidestep zum gate-freien Nachbarn nächst zum Ziel), mit
+      Schritt-Budget. Klappt der Umweg nicht in der Budget-Grenze bzw. ist die
+      Meerenge der einzige Weg → durchfahren + zahlen. Sicher (No-op ohne
+      Zollstationen, terminiert immer, deterministisch), Render folgt der Route.
+      Trade-Ships vorerst ausgenommen (Motion-Plan-Interpolation). — *im Spiel prüfen.*
 
 - [x] **Zollstation-Verbindungslinien gerendert**: neuer `TollConnectionPass`
       zeichnet je Station zwei bernsteinfarbene Seil-/Straßen-Linien übers Meer
