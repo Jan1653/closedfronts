@@ -35,44 +35,71 @@ export class WallExecution implements Execution {
     }
   }
 
-  // Link this wall to the nearest of the owner's other walls within range by
-  // filling the straight line between them with free wall segments (like a road
-  // drawn between two nodes).
+  // Link this wall into nearby walls by filling the straight line between them
+  // with free wall segments (like a road drawn between two nodes). Connects to
+  // the nearest wall AND the nearest one on the opposite side, so a wall placed
+  // between two walls extends the line in both directions. Candidate walls are
+  // the owner's plus teammates' (team play — link your walls into your team's
+  // barrier).
   private connectToNearbyWall(): void {
     const mg = this.mg;
     const owner = this.wall.owner();
     const from = this.wall.tile();
+    const fx = mg.x(from);
+    const fy = mg.y(from);
     const range = mg.config().wallConnectRange();
     const range2 = range * range;
 
-    // Use the owner's unit list (not the spatial grid, which is indexed a tick
-    // later) so a freshly built wall can connect immediately.
     const walledTiles = new Set<TileRef>();
-    let target: Unit | null = null;
-    let best = Infinity;
-    for (const w of owner.units(UnitType.Wall)) {
+    const candidates: {
+      unit: Unit;
+      dist: number;
+      dx: number;
+      dy: number;
+    }[] = [];
+    for (const w of mg.units(UnitType.Wall)) {
       walledTiles.add(w.tile());
       if (w.id() === this.wall.id()) continue;
+      const wo = w.owner();
+      if (wo !== owner && !wo.isOnSameTeam(owner)) continue; // own or teammate
       const d = mg.euclideanDistSquared(from, w.tile());
-      if (d > 0 && d <= range2 && d < best) {
-        best = d;
-        target = w;
+      if (d <= 0 || d > range2) continue;
+      candidates.push({
+        unit: w,
+        dist: d,
+        dx: mg.x(w.tile()) - fx,
+        dy: mg.y(w.tile()) - fy,
+      });
+    }
+    if (candidates.length === 0) return;
+
+    candidates.sort((a, b) => a.dist - b.dist);
+    const nearest = candidates[0];
+    const targets: Unit[] = [nearest.unit];
+    // Extend the other way too: the nearest wall roughly opposite the first
+    // (direction dot-product < 0), so building between two walls links both.
+    for (const c of candidates) {
+      if (c === nearest) continue;
+      if (c.dx * nearest.dx + c.dy * nearest.dy < 0) {
+        targets.push(c.unit);
+        break;
       }
     }
-    if (target === null) return;
 
-    for (const t of this.lineTiles(from, target.tile())) {
-      if (!mg.isLand(t) || mg.isImpassable(t)) continue;
-      if (walledTiles.has(t)) continue; // already walled
-      const to = mg.owner(t);
-      if (to.isPlayer() && to !== owner) continue; // don't wall enemy land
-      if (!to.isPlayer()) owner.conquer(t); // claim wilderness under the line
-      // Filler segments are free: refund exactly what buildUnit charged.
-      const goldBefore = owner.gold();
-      const seg = owner.buildUnit(UnitType.Wall, t, {});
-      owner.addGold(goldBefore - owner.gold());
-      mg.addExecution(new WallExecution(seg, false));
-      walledTiles.add(t);
+    for (const target of targets) {
+      for (const t of this.lineTiles(from, target.tile())) {
+        if (!mg.isLand(t) || mg.isImpassable(t)) continue;
+        if (walledTiles.has(t)) continue; // already walled
+        const to = mg.owner(t);
+        if (to.isPlayer() && to !== owner) continue; // don't wall others' land
+        if (!to.isPlayer()) owner.conquer(t); // claim wilderness under the line
+        // Filler segments are free: refund exactly what buildUnit charged.
+        const goldBefore = owner.gold();
+        const seg = owner.buildUnit(UnitType.Wall, t, {});
+        owner.addGold(goldBefore - owner.gold());
+        mg.addExecution(new WallExecution(seg, false));
+        walledTiles.add(t);
+      }
     }
   }
 
