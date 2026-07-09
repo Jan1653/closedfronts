@@ -1,4 +1,4 @@
-import { Execution, Game, Player, Unit } from "../game/Game";
+import { Execution, Game, Player, Relation, Unit } from "../game/Game";
 import { manhattanDistFN, TileRef } from "../game/GameMap";
 
 // A defense post under pressure fires bursts of "grenades" that capture the
@@ -60,8 +60,15 @@ export class DefensePostExecution implements Execution {
         // Own and allied tiles are never hit.
         if (p === owner || p.isFriendly(owner) || p.isOnSameTeam(owner))
           continue;
+        // Only take another player's land if we are actually at war with them
+        // (hostile in either direction). A post whose range merely reaches into
+        // a neutral player's territory must NOT annex it.
+        const atWar =
+          owner.relation(p) === Relation.Hostile ||
+          p.relation(owner) === Relation.Hostile;
+        if (!atWar) continue;
       }
-      // Enemy tile or unowned wilderness — grenade it and take it.
+      // Unowned wilderness or a war enemy — grenade it and take it.
       targets.push(t);
     }
 

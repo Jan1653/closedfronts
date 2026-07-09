@@ -32,8 +32,8 @@ describe("DefensePost barrage", () => {
     cy = Math.floor(game.height() / 2);
   });
 
-  test("captures nearby enemy tiles when the front is near", () => {
-    // Owner holds a block; the enemy holds an adjacent block within range.
+  // Owner holds a block; the enemy holds an adjacent block within range.
+  function setUpFront(): TileRef[] {
     for (let x = cx - 2; x <= cx + 1; x++) {
       for (let y = cy - 2; y <= cy + 2; y++) owner.conquer(game.ref(x, y));
     }
@@ -45,6 +45,14 @@ describe("DefensePost barrage", () => {
         enemyTiles.push(t);
       }
     }
+    return enemyTiles;
+  }
+
+  test("captures nearby enemy tiles when at war", () => {
+    const enemyTiles = setUpFront();
+    // At war (hostile) → the barrage may annex their land.
+    owner.updateRelation(enemy, -100);
+    enemy.updateRelation(owner, -100);
 
     const post = owner.buildUnit(UnitType.DefensePost, game.ref(cx, cy), {});
     game.addExecution(new DefensePostExecution(post));
@@ -56,6 +64,19 @@ describe("DefensePost barrage", () => {
     // The barrage captured enemy tiles for the post owner.
     expect(heldAfter).toBeLessThan(heldBefore);
     expect(enemyTiles.some((t) => game.owner(t) === owner)).toBe(true);
+  });
+
+  test("does NOT capture a neutral player's tiles", () => {
+    const enemyTiles = setUpFront();
+    // Relations left neutral → the post's range reaches the other player's land
+    // but must not annex it.
+    const post = owner.buildUnit(UnitType.DefensePost, game.ref(cx, cy), {});
+    game.addExecution(new DefensePostExecution(post));
+
+    executeTicks(game, 8);
+
+    // Every neutral tile is still held by that player.
+    expect(enemyTiles.every((t) => game.owner(t) === enemy)).toBe(true);
   });
 
   test("fires slower at level 1 and faster/harder when upgraded", () => {
