@@ -49,9 +49,8 @@ export interface BuildItemDisplay {
   countable?: boolean;
 }
 
-// Two rows: the first holds the core offensive/economy buildings, the second
-// the defensive + resource "extras" (defense post, toll station, wall, oil
-// pump) — so those always sit in the second row instead of wrapping up top.
+// A single row of build buttons — it just gets wider (and scrolls horizontally
+// if needed) rather than wrapping onto a second row.
 export const buildTable: BuildItemDisplay[][] = [
   [
     {
@@ -117,8 +116,6 @@ export const buildTable: BuildItemDisplay[][] = [
       key: "unit_type.factory",
       countable: true,
     },
-  ],
-  [
     {
       unitType: UnitType.DefensePost,
       icon: shieldIcon,
@@ -213,6 +210,7 @@ export class BuildMenu extends LitElement implements Controller {
       max-width: 95vw;
       max-height: 95vh;
       overflow-y: auto;
+      overflow-x: auto;
     }
     .build-description {
       font-size: 0.6rem;
@@ -220,13 +218,14 @@ export class BuildMenu extends LitElement implements Controller {
     .build-row {
       display: flex;
       justify-content: center;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       width: 100%;
     }
     .build-button {
       position: relative;
       width: 120px;
       height: 140px;
+      flex: 0 0 auto;
       border: 2px solid #444;
       background-color: #2c2c2c;
       color: white;
@@ -376,7 +375,7 @@ export class BuildMenu extends LitElement implements Controller {
         max-height: 70vh;
       }
       .build-button {
-        width: calc(50% - 6px);
+        width: 92px;
         height: 100px;
         margin: 3px;
         padding: 4px;
