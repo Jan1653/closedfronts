@@ -204,6 +204,9 @@ export class MapRenderer {
   applyBonusEvents(events: BonusEvent[]): void {
     this.renderer?.applyBonusEvents(events);
   }
+  applyOilPopups(popups: { x: number; y: number; amount: number }[]): void {
+    this.renderer?.applyOilPopups(popups);
+  }
   applyRailroadDust(tileRefs: number[]): void {
     this.renderer?.applyRailroadDust(tileRefs);
   }

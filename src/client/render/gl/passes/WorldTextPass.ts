@@ -48,6 +48,14 @@ const GHOST_COST_OUTLINE_WIDTH = 1.4;
 const ATTACK_LABEL_SCREEN_SCALE = 17.0;
 const ATTACK_LABEL_OUTLINE_WIDTH = 1.2;
 
+// Oil-production popups: a small amber "+N" that rises off each of the local
+// player's oil pumps once a second, so you can see the pumps feeding your oil.
+const OIL_POPUP_LIFETIME_MS = 1400;
+const OIL_POPUP_RISE_SPEED = 4; // world units/second
+const OIL_POPUP_SCALE = 5;
+const OIL_POPUP_OUTLINE_WIDTH = 1.6;
+const OIL_POPUP_COLOR: readonly [number, number, number] = [1.0, 0.72, 0.15];
+
 // ---------------------------------------------------------------------------
 // Active popup tracking
 // ---------------------------------------------------------------------------
@@ -316,6 +324,31 @@ export class WorldTextPass {
         colorB: s.colorB,
         scale: s.scale,
         outlineWidth: s.outlineWidth,
+      });
+    }
+  }
+
+  /**
+   * Rising amber "+N" popups over the local player's oil pumps. Pushed once a
+   * second by WebGLFrameBuilder (raw tile coords; the vertex shader centers on
+   * the tile). Reuses the popup lifecycle, so they fade + rise like bonuses.
+   */
+  applyOilPopups(popups: { x: number; y: number; amount: number }[]): void {
+    const now = this.now();
+    for (const p of popups) {
+      if (p.amount <= 0) continue;
+      this.active.push({
+        x: p.x,
+        y: p.y - 1,
+        text: "+" + Math.round(p.amount),
+        startMs: now,
+        lifetimeMs: OIL_POPUP_LIFETIME_MS,
+        riseSpeed: OIL_POPUP_RISE_SPEED,
+        colorR: OIL_POPUP_COLOR[0],
+        colorG: OIL_POPUP_COLOR[1],
+        colorB: OIL_POPUP_COLOR[2],
+        scale: OIL_POPUP_SCALE,
+        outlineWidth: OIL_POPUP_OUTLINE_WIDTH,
       });
     }
   }

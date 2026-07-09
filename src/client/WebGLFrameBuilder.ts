@@ -199,8 +199,32 @@ export class WebGLFrameBuilder {
     this.syncSpawnOverlay(gameView);
     this.syncTerrainDeltas(gameView);
     this.syncTollConnections(gameView);
+    this.syncOilPopups(gameView);
     this.resolveDeadUnitExplosions(gameView);
     uploadFrameData(this.view, gameView.frameData());
+  }
+
+  // Once per in-game second, float a "+N" off each of the local player's active
+  // oil pumps (N = that pump's oil output per second) so it's visible where the
+  // oil is coming from. Client-only flair — no sim state, no determinism.
+  private syncOilPopups(gameView: GameView): void {
+    if (gameView.inSpawnPhase()) return;
+    if (gameView.ticks() % 10 !== 0) return;
+    const me = gameView.myPlayer();
+    if (me === null) return;
+    const perPumpPerSecond = gameView.config().oilProductionPerPump(me) * 10;
+    if (perPumpPerSecond <= 0) return;
+    const popups: { x: number; y: number; amount: number }[] = [];
+    for (const pump of me.units(UnitType.OilPump)) {
+      if (!pump.isActive() || pump.isUnderConstruction()) continue;
+      const tile = pump.tile();
+      popups.push({
+        x: gameView.x(tile),
+        y: gameView.y(tile),
+        amount: perPumpPerSecond,
+      });
+    }
+    if (popups.length > 0) this.view.applyOilPopups(popups);
   }
 
   // Push each toll station's two connection lines (station centre → anchor

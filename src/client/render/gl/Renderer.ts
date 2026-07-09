@@ -965,6 +965,10 @@ export class GPURenderer {
     if (filtered.length > 0) this.worldTextPass.applyBonusEvents(filtered);
   }
 
+  applyOilPopups(popups: { x: number; y: number; amount: number }[]): void {
+    if (popups.length > 0) this.worldTextPass.applyOilPopups(popups);
+  }
+
   updateAttackRings(rings: AttackRingInput[]): void {
     this.fxPass.updateAttackRings(rings);
   }
