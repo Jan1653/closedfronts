@@ -5,12 +5,15 @@ import { assetUrl } from "../../../core/AssetUrls";
 import { EventBus } from "../../../core/EventBus";
 import { ClientID } from "../../../core/Schemas";
 import { Config } from "../../../core/configuration/Config";
-import { GameMode, GameType, Gold } from "../../../core/game/Game";
+import { GameMode, GameType, Gold, UnitType } from "../../../core/game/Game";
 import { TileRef } from "../../../core/game/GameMap";
 import { GameUpdateType } from "../../../core/game/GameUpdates";
 import { UserSettings } from "../../../core/game/UserSettings";
 import { Controller } from "../../Controller";
-import { AttackRatioEvent, ToggleOilDepositViewEvent } from "../../InputHandler";
+import {
+  AttackRatioEvent,
+  ToggleOilDepositViewEvent,
+} from "../../InputHandler";
 import { UIState } from "../../UIState";
 import {
   getGamesPlayed,
@@ -56,6 +59,12 @@ export class ControlPanel extends LitElement implements Controller {
 
   @state()
   private _oil: number = 0;
+
+  // Net oil per second (pumps' production minus consumption); shown next to the
+  // oil readout so you can see the pumps actually producing (green) or a deficit
+  // (red).
+  @state()
+  private _oilRate: number = 0;
 
   // Whether the oil-deposit overlay is currently shown (the oil readout doubles
   // as its toggle). Kept in sync by listening to the same toggle event the
@@ -132,6 +141,15 @@ export class ControlPanel extends LitElement implements Controller {
     this._maxTroops = config.maxTroops(player);
     this._gold = player.gold();
     this._oil = player.oil();
+    // Client-side oil rate: active pumps' production minus consumption, per
+    // second (×10 like the troop rate). Positive = pumps are feeding your oil.
+    const oilPumps = player
+      .units(UnitType.OilPump)
+      .filter((u) => u.isActive() && !u.isUnderConstruction()).length;
+    this._oilRate =
+      (oilPumps * config.oilProductionPerPump(player) -
+        config.oilConsumptionRate(player)) *
+      10;
     this._troops = player.troops();
     this._attackingTroops = player
       .outgoingAttacks()
@@ -322,6 +340,19 @@ export class ControlPanel extends LitElement implements Controller {
     this._troopRateIsIncreasing =
       troopIncreaseRate >= this._lastTroopIncreaseRate;
     this._lastTroopIncreaseRate = troopIncreaseRate;
+  }
+
+  // Small green/red "+N"/"−N" next to the oil amount, showing net oil per
+  // second so you can see the pumps producing (or a deficit).
+  private renderOilRate() {
+    const r = Math.round(this._oilRate);
+    if (r === 0) return "";
+    return html`<span
+      class="text-[10px] leading-none tabular-nums shrink-0 ${r > 0
+        ? "text-green-400"
+        : "text-red-400"}"
+      >${r > 0 ? "+" : "−"}${renderNumber(Math.abs(r))}</span
+    >`;
   }
 
   onAttackRatioChange(newRatio: number) {
@@ -532,7 +563,7 @@ export class ControlPanel extends LitElement implements Controller {
         </div>
         <!-- Oil (doubles as the oil-deposit map toggle) -->
         <div
-          class="flex items-center gap-1 shrink-0 border rounded-md font-bold text-sm py-0.5 px-1 w-[4.5rem] cursor-pointer ${this
+          class="flex items-center gap-1 shrink-0 border rounded-md font-bold text-sm py-0.5 px-1 min-w-[4.5rem] cursor-pointer ${this
             ._oilMapOn
             ? "border-sky-300 text-sky-200 bg-sky-400/20 ring-1 ring-sky-300"
             : "border-sky-400 text-sky-400"}"
@@ -542,6 +573,7 @@ export class ControlPanel extends LitElement implements Controller {
         >
           <img src=${oilIcon} width="13" height="13" class="shrink-0" />
           <span class="tabular-nums">${renderNumber(this._oil)}</span>
+          ${this.renderOilRate()}
         </div>
       </div>
       <!-- Row 2: attack ratio | slider -->
@@ -610,6 +642,7 @@ export class ControlPanel extends LitElement implements Controller {
         >
           <img src=${oilIcon} width="13" height="13" />
           <span class="px-0.5">${renderNumber(this._oil)}</span>
+          ${this.renderOilRate()}
         </div>
         <!-- Troop bar -->
         <div class="w-[40%] shrink-0 flex items-center">
