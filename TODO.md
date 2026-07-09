@@ -17,7 +17,30 @@ Nur noch live gegenzuprüfen (Logik steht, du testest im Spiel):
 
 Noch offen (echte Arbeit):
 
+- [ ] **Zollstation-Verbindungen rendern**: sichtbare Linien übers Meer zu den
+      zwei Ankern (wie die Wand-Linie). `connections` wird in
+      `WaterTollStationExecution` berechnet, aber **nicht gezeichnet** → neuer
+      Render-Pass nötig.
+- [ ] **Schiffe umgehen Zollstationen** (Pathfinding), außer der Umweg ist zu
+      lang → dann durchfahren + zahlen. (Core-Pathfinding, größer.)
 - [ ] **Map-Editor** (ganz unten) + **Reale-Karten-Import** aus Geodaten.
+
+Sprachnachricht 4 (Bau-/Öl-/Zoll-Feedback) — erledigt:
+
+- [x] **Ölpumpe skaliert mit Reichsgröße** (weniger am Anfang, mehr beim Wachsen):
+      `oilProductionPerPump = 80 + tiles/130` statt fix 250.
+- [x] **Wand-Umkreis sichtbar** beim Platzieren (Auto-Connect-Radius als Kreis).
+- [x] **Baumenü zweite Reihe**: Verteidigungsposten/Zollstation/Wand/Ölpumpe immer
+      in Reihe 2 (Wand nicht mehr oben).
+- [x] **Zollstation ausgegraut ohne Hafen** (`waterTollStationSpawn` verlangt Port).
+- [x] **Zollstation: Baubalken + viel längere Bauzeit** (5s→30s): Schiff hält an
+      der Meerenge, Struktur „under construction" mit Balken, Versenken bricht ab.
+- [x] **Anzahl ändern: Shift → Tab** (+ Mausrad, wenn Bau-Ghost aktiv). Shift bleibt
+      wie es war; Tab verwirft den Ghost nicht.
+- [x] **Zollstation-Platzierung** unterstützt bereits Ketten: 2 verschiedene Anker
+      (Land+Station, Station+Station, oder zwei Landmassen), nur eine Seite muss
+      Land sein — `tollStationConnections`. (Sichtbar wird's erst mit dem Render
+      oben.)
 
 Erledigt in dieser Runde:
 
