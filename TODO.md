@@ -90,11 +90,14 @@ Alles aus der letzten Sprachnachricht, damit nichts vergessen wird.
 
 **Übersetzungen (Priorität: Deutsch + Englisch VOLLSTÄNDIG; andere Sprachen später):**
 
-- [ ] Alle sichtbaren Texte über `translateText` + `en.json`; **DE + EN komplett**.
-- [ ] „Aktive Einstellungen" (Bau-Toggles im Solo-/Lobby-Setup): **„Boot"** u. a.
-      nicht auf DE übersetzt → übersetzen.
-- [ ] Neue Bauten (**Ölpumpe, Wand, Zollstation**) müssen in „Aktive Einstellungen"
-      **erscheinen** und übersetzt sein (DE + EN).
+- [x] **Regel geklärt:** DE + EN werden im Repo manuell gepflegt (de.json + en.json
+      synchron), Crowdin nur für andere Sprachen — CLAUDE.md entsprechend angepasst.
+- [ ] Alle sichtbaren Texte über `translateText` + `en.json`/`de.json`; **DE + EN
+      komplett** (großer Audit, weiterhin offen).
+- [x] „Aktive Einstellungen": **„Boot"** war auf DE nicht übersetzt (fehlte im
+      `unit_type`-Block der de.json) → `boat/oil_pump/wall/water_toll_station` ergänzt.
+- [x] Neue Bauten (**Ölpumpe, Wand, Zollstation**) **erscheinen** jetzt in „Aktive
+      Einstellungen" (`unitOptions`) und sind DE+EN übersetzt.
 
 **Öl / Ölpumpen-Map:**
 

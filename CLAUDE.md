@@ -67,7 +67,7 @@ The game server only serves `index.html` and the WebSocket. All other assets (JS
 
 ## UI Text / i18n
 
-All user-visible text must go through `translateText()` and have a corresponding entry added to `resources/lang/en.json`. Translations are managed via Crowdin. DO NOT modify any other translation files.
+All user-visible text must go through `translateText()` and have a corresponding entry in `resources/lang/en.json`. **German and English are maintained manually in this repo**: for every new or changed string, keep **both** `resources/lang/en.json` (the source) **and** `resources/lang/de.json` in sync. All other languages are handled via Crowdin — do not hand-edit them.
 
 ## Testing Patterns
 

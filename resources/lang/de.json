@@ -324,7 +324,11 @@
     "atom_bomb": "Atombombe",
     "hydrogen_bomb": "Wasserstoffbombe",
     "mirv": "MIRV-Rakete",
-    "factory": "Fabrik"
+    "factory": "Fabrik",
+    "boat": "Boot",
+    "oil_pump": "Ölpumpe",
+    "wall": "Mauer",
+    "water_toll_station": "Zollstation"
   },
   "user_setting": {
     "title": "Benutzer Einstellungen",
