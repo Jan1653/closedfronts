@@ -1,5 +1,11 @@
 {
   "account_modal": {
+    "avatar_failed": "Upload failed. Please try again.",
+    "avatar_invalid": "That file isn't a supported image.",
+    "avatar_remove": "Remove",
+    "avatar_too_large": "That image is too large.",
+    "avatar_upload": "Upload picture",
+    "avatar_uploading": "Uploading…",
     "cancel_subscription": "Cancel",
     "cancel_subscription_confirm": "Cancel your subscription? It will stay active until the end of the current billing period.",
     "cancel_subscription_failed": "Failed to cancel subscription. Please try again or use Manage.",

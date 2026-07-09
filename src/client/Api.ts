@@ -147,6 +147,49 @@ export function invalidateUserMe() {
   __userMe = null;
 }
 
+/**
+ * Upload the current player's profile picture. `dataUrl` must be a small
+ * base64-encoded image data URL (the caller downscales client-side). Returns the
+ * new avatar URL on success, or an error code the caller maps to a message.
+ */
+export async function uploadAvatar(
+  dataUrl: string,
+): Promise<{ avatarUrl: string } | { error: string }> {
+  try {
+    const response = await fetch(`${getApiBase()}/users/@me/avatar`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: await getAuthHeader(),
+      },
+      body: JSON.stringify({ image: dataUrl }),
+    });
+    if (response.status === 401) return { error: "unauthorized" };
+    if (response.status === 413) return { error: "image_too_large" };
+    if (!response.ok) return { error: "failed" };
+    const body = await response.json().catch(() => null);
+    invalidateUserMe();
+    if (typeof body?.avatarUrl === "string")
+      return { avatarUrl: body.avatarUrl };
+    return { error: "failed" };
+  } catch {
+    return { error: "network" };
+  }
+}
+
+export async function deleteAvatar(): Promise<boolean> {
+  try {
+    const response = await fetch(`${getApiBase()}/users/@me/avatar`, {
+      method: "DELETE",
+      headers: { Authorization: await getAuthHeader() },
+    });
+    invalidateUserMe();
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
 export async function purchaseWithCurrency(
   cosmeticType: "pattern" | "skin" | "flag" | "effect",
   cosmeticName: string,

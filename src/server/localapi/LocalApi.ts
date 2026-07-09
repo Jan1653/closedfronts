@@ -1,5 +1,7 @@
 import express, { type Request, type Response } from "express";
+import fs from "fs";
 import { importJWK, jwtVerify } from "jose";
+import path from "path";
 import cosmeticsRaw from "resources/cosmetics/cosmetics.json";
 import {
   CosmeticsSchema,
@@ -35,6 +37,44 @@ function computeFlares(stats: CosmeticStats): string[] {
   return flares;
 }
 
+// Identify an avatar's real image type from its magic bytes — we never trust the
+// declared data-URL mime. Returns null for anything that isn't PNG/JPEG/WebP.
+function detectImageExt(buf: Buffer): "png" | "jpg" | "webp" | null {
+  if (
+    buf.length >= 8 &&
+    buf[0] === 0x89 &&
+    buf[1] === 0x50 &&
+    buf[2] === 0x4e &&
+    buf[3] === 0x47
+  ) {
+    return "png";
+  }
+  if (
+    buf.length >= 3 &&
+    buf[0] === 0xff &&
+    buf[1] === 0xd8 &&
+    buf[2] === 0xff
+  ) {
+    return "jpg";
+  }
+  if (
+    buf.length >= 12 &&
+    buf.toString("ascii", 0, 4) === "RIFF" &&
+    buf.toString("ascii", 8, 12) === "WEBP"
+  ) {
+    return "webp";
+  }
+  return null;
+}
+
+function avatarMime(ext: string): string {
+  return ext === "png"
+    ? "image/png"
+    : ext === "webp"
+      ? "image/webp"
+      : "image/jpeg";
+}
+
 // Self-hosted replacement for the closed-source auth API. Serves email/password
 // accounts, JWT issuance/refresh (cookie-based) and JWKS, all under /localapi so
 // nginx can route it same-origin. Deliberately dependency-free (JSON store +
@@ -54,6 +94,13 @@ const GAMES_PATH = process.env.LOCALAPI_GAMES_PATH ?? `${DATA_DIR}/games.json`;
 const KEY_PATH =
   process.env.LOCALAPI_KEY_PATH ?? `${DATA_DIR}/jwt-ed25519.json`;
 const CLANS_PATH = process.env.LOCALAPI_CLANS_PATH ?? `${DATA_DIR}/clans.json`;
+// Profile pictures: one small file per account under this dir. Bounded storage
+// (one image per account, each capped below), safe to keep on the same volume.
+const AVATARS_DIR = process.env.LOCALAPI_AVATARS_DIR ?? `${DATA_DIR}/avatars`;
+// Input caps (defence against abuse / unbounded storage). The body parsers
+// enforce byte limits too; these give clear, early rejections.
+const MAX_EMAIL_LENGTH = 254; // RFC 5321 practical max
+const MAX_AVATAR_BYTES = 64 * 1024; // 64 KB decoded — a 128×128 image is far less
 // Shared secret the game server sends when archiving finished games. Matches
 // ServerEnv.apiKey() (process.env.API_KEY). When unset ("") the check is a
 // no-op, matching the game server which also sends "".
@@ -132,6 +179,13 @@ async function main() {
       role: account.role,
     });
 
+  const avatarUrl = (account: Account): string | undefined =>
+    account.avatar
+      ? `/localapi/users/${account.publicId}/avatar?v=${
+          Date.parse(account.avatar.updatedAt) || 0
+        }`
+      : undefined;
+
   const userMe = (account: Account) => {
     const stats = games.statsFor(account.publicId);
     return {
@@ -143,6 +197,7 @@ async function main() {
         // task-locked items the player's stats have unlocked.
         flares: computeFlares(stats),
         stats,
+        avatarUrl: avatarUrl(account),
         achievements: { singleplayerMap: [] as never[] },
         friends: [] as string[],
         clans: clanStore.clansForPlayer(account.publicId),
@@ -157,6 +212,9 @@ async function main() {
   // Auth bodies are tiny; game archive payloads (full turn logs) are large, so
   // parse per-route rather than globally.
   const jsonSmall = express.json({ limit: "16kb" });
+  // Avatar uploads: a base64 data URL. Capped well below MAX_AVATAR_BYTES*~1.4
+  // (base64 overhead) so an oversized upload is rejected by the parser first.
+  const jsonMedium = express.json({ limit: "256kb" });
   const jsonLarge = express.json({ limit: "64mb" });
 
   const r = express.Router();
@@ -176,7 +234,10 @@ async function main() {
     if (typeof email !== "string" || typeof password !== "string") {
       return res.status(400).json({ error: "email_and_password_required" });
     }
-    if (!EMAIL_RE.test(email.trim())) {
+    if (
+      email.trim().length > MAX_EMAIL_LENGTH ||
+      !EMAIL_RE.test(email.trim())
+    ) {
       return res.status(400).json({ error: "invalid_email" });
     }
     if (password.length < 6 || password.length > 200) {
@@ -197,6 +258,9 @@ async function main() {
     const { email, password } = req.body ?? {};
     if (typeof email !== "string" || typeof password !== "string") {
       return res.status(400).json({ error: "email_and_password_required" });
+    }
+    if (email.length > MAX_EMAIL_LENGTH || password.length > 200) {
+      return res.status(401).json({ error: "invalid_credentials" });
     }
     const account = store.verifyLogin(email, password);
     if (!account) {
@@ -241,6 +305,82 @@ async function main() {
     } catch {
       return res.status(401).json({ error: "invalid_token" });
     }
+  });
+
+  // ---- Profile pictures (avatars) -------------------------------------------
+
+  // Upload/replace the caller's avatar. Body { image: <data URL> }. The image is
+  // validated by magic bytes (not the declared mime), size-capped, and written
+  // as the single per-account file (any prior file is removed) — bounded storage.
+  r.post("/users/@me/avatar", jsonMedium, async (req, res) => {
+    const account = await authedAccount(req);
+    if (!account) return res.status(401).json({ error: "unauthorized" });
+    const image = (req.body ?? {}).image;
+    if (typeof image !== "string") {
+      return res.status(400).json({ error: "invalid_image" });
+    }
+    const m = /^data:image\/(?:png|jpe?g|webp);base64,([A-Za-z0-9+/=]+)$/.exec(
+      image,
+    );
+    if (!m) return res.status(400).json({ error: "invalid_image" });
+    const buf = Buffer.from(m[1], "base64");
+    if (buf.length === 0 || buf.length > MAX_AVATAR_BYTES) {
+      return res.status(413).json({ error: "image_too_large" });
+    }
+    const ext = detectImageExt(buf);
+    if (!ext) return res.status(400).json({ error: "invalid_image" });
+    try {
+      fs.mkdirSync(AVATARS_DIR, { recursive: true });
+      // Keep exactly one file per account: drop any prior other-extension file.
+      for (const e of ["png", "jpg", "webp"]) {
+        if (e !== ext) {
+          try {
+            fs.rmSync(path.join(AVATARS_DIR, `${account.publicId}.${e}`));
+          } catch {
+            /* not present */
+          }
+        }
+      }
+      fs.writeFileSync(
+        path.join(AVATARS_DIR, `${account.publicId}.${ext}`),
+        buf,
+        { mode: 0o644 },
+      );
+      store.setAvatar(account, ext);
+    } catch (e) {
+      console.error("avatar write failed", e);
+      return res.status(500).json({ error: "failed" });
+    }
+    res.json({ avatarUrl: avatarUrl(account) });
+  });
+
+  r.delete("/users/@me/avatar", async (req, res) => {
+    const account = await authedAccount(req);
+    if (!account) return res.status(401).json({ error: "unauthorized" });
+    if (account.avatar) {
+      try {
+        fs.rmSync(
+          path.join(AVATARS_DIR, `${account.publicId}.${account.avatar.ext}`),
+        );
+      } catch {
+        /* already gone */
+      }
+      store.clearAvatar(account);
+    }
+    res.json({ ok: true });
+  });
+
+  // Public: serve a player's avatar image (used by userMe.player.avatarUrl).
+  r.get("/users/:publicId/avatar", (req, res) => {
+    const publicId = req.params.publicId;
+    if (!/^[0-9A-Za-z]{1,16}$/.test(publicId)) return res.status(404).end();
+    const account = store.findByPublicId(publicId);
+    if (!account?.avatar) return res.status(404).end();
+    const file = path.join(AVATARS_DIR, `${publicId}.${account.avatar.ext}`);
+    if (!fs.existsSync(file)) return res.status(404).end();
+    res.setHeader("Content-Type", avatarMime(account.avatar.ext));
+    res.setHeader("Cache-Control", "public, max-age=300");
+    fs.createReadStream(file).pipe(res);
   });
 
   // Game-result ingestion from the game server's archive() call. Guarded by the

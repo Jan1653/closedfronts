@@ -3,7 +3,7 @@ import { customElement, state } from "lit/decorators.js";
 import { ClientEnv } from "src/client/ClientEnv";
 import { PlayerStatsTree, UserMeResponse } from "../core/ApiSchemas";
 import { Cosmetics } from "../core/CosmeticSchemas";
-import { fetchPlayerById, getUserMe } from "./Api";
+import { deleteAvatar, fetchPlayerById, getUserMe, uploadAvatar } from "./Api";
 import { loginAccount, logOut, registerAccount } from "./Auth";
 import "./components/baseComponents/stats/DiscordUserHeader";
 import "./components/baseComponents/stats/PlayerGameHistoryView";
@@ -29,6 +29,8 @@ export class AccountModal extends BaseModal {
   @state() private authError: string = "";
   @state() private authBusy: boolean = false;
   @state() private isLoadingUser: boolean = false;
+  @state() private avatarBusy: boolean = false;
+  @state() private avatarError: string = "";
 
   private userMeResponse: UserMeResponse | null = null;
   private statsTree: PlayerStatsTree | null = null;
@@ -154,6 +156,141 @@ export class AccountModal extends BaseModal {
     return html`<friends-list .myPublicId=${myPublicId}></friends-list>`;
   }
 
+  private renderAvatar(): TemplateResult {
+    const url = this.userMeResponse?.player?.avatarUrl;
+    return html`
+      <div class="flex flex-col items-center gap-2">
+        <div
+          class="w-24 h-24 rounded-full overflow-hidden bg-white/10 border border-white/15 flex items-center justify-center"
+        >
+          ${url
+            ? html`<img
+                src=${url}
+                alt="Avatar"
+                class="w-full h-full object-cover"
+              />`
+            : html`<svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="w-12 h-12 text-white/30"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path
+                  d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-4.42 0-8 2.24-8 5v1h16v-1c0-2.76-3.58-5-8-5Z"
+                />
+              </svg>`}
+        </div>
+        <div class="flex gap-2 items-center">
+          <label
+            class="cursor-pointer px-3 py-1.5 rounded-lg bg-malibu-blue/80 hover:bg-malibu-blue text-white text-sm font-bold transition-colors ${this
+              .avatarBusy
+              ? "opacity-60 pointer-events-none"
+              : ""}"
+          >
+            ${this.avatarBusy
+              ? translateText("account_modal.avatar_uploading")
+              : translateText("account_modal.avatar_upload")}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              class="hidden"
+              @change=${this.handleAvatarFile}
+            />
+          </label>
+          ${url
+            ? html`<button
+                @click=${this.handleAvatarRemove}
+                ?disabled=${this.avatarBusy}
+                class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white/70 text-sm transition-colors"
+              >
+                ${translateText("account_modal.avatar_remove")}
+              </button>`
+            : ""}
+        </div>
+        ${this.avatarError
+          ? html`<span class="text-red-400 text-xs">${this.avatarError}</span>`
+          : ""}
+      </div>
+    `;
+  }
+
+  private async downscaleImage(file: File, size = 128): Promise<string> {
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result as string);
+      fr.onerror = () => reject(new Error("read"));
+      fr.readAsDataURL(file);
+    });
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = () => reject(new Error("decode"));
+      i.src = dataUrl;
+    });
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("ctx");
+    // Cover-crop to a centered square so the whole tile is filled.
+    const scale = Math.max(size / img.width, size / img.height);
+    const w = img.width * scale;
+    const h = img.height * scale;
+    ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+    return canvas.toDataURL("image/jpeg", 0.85);
+  }
+
+  private async handleAvatarFile(e: Event): Promise<void> {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = ""; // allow re-selecting the same file
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      this.avatarError = translateText("account_modal.avatar_invalid");
+      this.requestUpdate();
+      return;
+    }
+    // Guard against loading an absurdly large source file into memory (the
+    // downscale bounds the uploaded size; the server enforces its own cap).
+    if (file.size > 10 * 1024 * 1024) {
+      this.avatarError = translateText("account_modal.avatar_too_large");
+      this.requestUpdate();
+      return;
+    }
+    this.avatarBusy = true;
+    this.avatarError = "";
+    this.requestUpdate();
+    try {
+      const dataUrl = await this.downscaleImage(file);
+      const result = await uploadAvatar(dataUrl);
+      if ("error" in result) {
+        this.avatarError = translateText(
+          result.error === "image_too_large"
+            ? "account_modal.avatar_too_large"
+            : "account_modal.avatar_failed",
+        );
+      } else {
+        const me = await getUserMe();
+        if (me) this.userMeResponse = me;
+      }
+    } catch {
+      this.avatarError = translateText("account_modal.avatar_invalid");
+    }
+    this.avatarBusy = false;
+    this.requestUpdate();
+  }
+
+  private async handleAvatarRemove(): Promise<void> {
+    this.avatarBusy = true;
+    this.avatarError = "";
+    this.requestUpdate();
+    await deleteAvatar();
+    const me = await getUserMe();
+    if (me) this.userMeResponse = me;
+    this.avatarBusy = false;
+    this.requestUpdate();
+  }
+
   private renderAccountTab(): TemplateResult {
     return html`
       <div class="flex flex-col gap-6">
@@ -164,6 +301,7 @@ export class AccountModal extends BaseModal {
             >
               ${translateText("account_modal.connected_as")}
             </div>
+            ${this.renderAvatar()}
             <div class="flex items-center gap-8 justify-center flex-wrap">
               <discord-user-header
                 .data=${this.userMeResponse?.user?.discord ?? null}
@@ -333,7 +471,9 @@ export class AccountModal extends BaseModal {
                 .value="${this.email}"
                 @input="${this.handleEmailInput}"
                 class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-malibu-blue/50 focus:border-malibu-blue/50 transition-all font-medium hover:bg-white/10"
-                placeholder="${translateText("account_modal.email_placeholder")}"
+                placeholder="${translateText(
+                  "account_modal.email_placeholder",
+                )}"
                 required
               />
             </div>

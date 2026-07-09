@@ -1,9 +1,4 @@
-import {
-  randomBytes,
-  randomUUID,
-  scryptSync,
-  timingSafeEqual,
-} from "crypto";
+import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from "crypto";
 import fs from "fs";
 import path from "path";
 
@@ -21,6 +16,10 @@ export interface Account {
   createdAt: string; // ISO
   // Opaque session tokens (httpOnly cookie) that can be exchanged for a JWT.
   sessions: string[];
+  // Profile picture metadata; the actual bytes live in a single per-account file
+  // (avatars/<publicId>.<ext>), so storage stays bounded to one small image per
+  // account. Absent = no avatar.
+  avatar?: { ext: string; updatedAt: string };
 }
 
 interface StoreData {
@@ -45,8 +44,7 @@ function verifyPassword(password: string, stored: string): boolean {
 
 // Short public id: 12 url-safe chars, collision-checked against the store.
 function generatePublicId(existing: Set<string>): string {
-  const alphabet =
-    "123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ";
+  const alphabet = "123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ";
   for (let attempt = 0; attempt < 1000; attempt++) {
     let id = "";
     const bytes = randomBytes(12);
@@ -150,6 +148,16 @@ export class AccountStore {
     const account = this.findBySession(session);
     if (!account) return;
     account.sessions = account.sessions.filter((s) => s !== session);
+    this.save();
+  }
+
+  setAvatar(account: Account, ext: string): void {
+    account.avatar = { ext, updatedAt: new Date().toISOString() };
+    this.save();
+  }
+
+  clearAvatar(account: Account): void {
+    delete account.avatar;
     this.save();
   }
 }

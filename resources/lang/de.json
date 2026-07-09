@@ -352,6 +352,12 @@
     "success": "Erfolgreich angemeldet als {email}!"
   },
   "account_modal": {
+    "avatar_failed": "Upload fehlgeschlagen. Bitte erneut versuchen.",
+    "avatar_invalid": "Diese Datei ist kein unterstütztes Bild.",
+    "avatar_remove": "Entfernen",
+    "avatar_too_large": "Dieses Bild ist zu groß.",
+    "avatar_upload": "Bild hochladen",
+    "avatar_uploading": "Wird hochgeladen…",
     "title": "Konto",
     "logged_in_as": "Angemeldet als {email}",
     "fetching_account": "Kontoinformationen werden geladen...",

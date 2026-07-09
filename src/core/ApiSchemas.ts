@@ -85,6 +85,9 @@ export const UserMeResponseSchema = z.object({
     publicId: z.string(),
     adfree: z.boolean(),
     flares: z.string().array().optional(),
+    // Same-origin URL of the player's uploaded profile picture (localapi),
+    // versioned with ?v= so a new upload busts the cache. Absent if none.
+    avatarUrl: z.string().optional(),
     // ClosedFronts: lightweight aggregate stats used to show live progress on
     // task-locked cosmetics ("3 / 10 games on Medium"). Optional — absent for
     // guests or if the backend doesn't provide it.
