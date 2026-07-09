@@ -101,9 +101,9 @@ Alles aus der letzten Sprachnachricht, damit nichts vergessen wird.
 
 **Öl / Ölpumpen-Map:**
 
-- [ ] **Öl-Map schon in der Spawn-Phase** öffnen können (für bessere Startpunkt-
-      Wahl). Overlay zeichnet bereits in der Spawn-Phase (Taste `O`), aber der
-      ControlPanel-Button ist dort ausgeblendet → spawn-tauglichen Zugang schaffen.
+- [x] **Öl-Map schon in der Spawn-Phase** öffnen (für bessere Startpunkt-Wahl):
+      Öl-Toggle-Button in der oberen Steuerleiste (`GameRightSidebar`, in der
+      Spawn-Phase sichtbar, Handy+PC) + Taste `O`. Live verifiziert.
 
 **Zollstation — Mechanik-Redesign (wichtig, ersetzt die sofortige Gutschrift):**
 

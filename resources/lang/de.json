@@ -631,7 +631,8 @@
   "control_panel": {
     "gold": "Gold",
     "troops": "Truppen",
-    "attack_ratio": "Angriffsverhältnis"
+    "attack_ratio": "Angriffsverhältnis",
+    "oil_map": "Öl-Vorkommen-Karte umschalten (O)"
   },
   "player_panel": {
     "gold": "Gold",

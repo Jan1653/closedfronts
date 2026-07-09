@@ -6,7 +6,10 @@ import { GameType } from "../../../core/game/Game";
 import "../../components/DoomsdayClockPanel";
 import { Controller } from "../../Controller";
 import { crazyGamesSDK } from "../../CrazyGamesSDK";
-import { TogglePauseIntentEvent } from "../../InputHandler";
+import {
+  TogglePauseIntentEvent,
+  ToggleOilDepositViewEvent,
+} from "../../InputHandler";
 import { PauseGameIntentEvent, SendWinnerEvent } from "../../Transport";
 import { translateText } from "../../Utils";
 import { GameView } from "../../view";
@@ -19,6 +22,7 @@ const FastForwardIconSolid = assetUrl("images/FastForwardIconSolidWhite.svg");
 const pauseIcon = assetUrl("images/PauseIconWhite.svg");
 const playIcon = assetUrl("images/PlayIconWhite.svg");
 const settingsIcon = assetUrl("images/SettingIconWhite.svg");
+const oilIcon = assetUrl("images/OilPumpIconWhite.svg");
 const fullscreenIcon = assetUrl("images/FullscreenIconWhite.svg");
 const exitFullscreenIcon = assetUrl("images/ExitFullscreenIconWhite.svg");
 
@@ -38,6 +42,13 @@ export class GameRightSidebar extends LitElement implements Controller {
 
   @state()
   private isPaused: boolean = false;
+
+  // Oil-deposit overlay toggle state. Kept in sync with the ControlPanel button
+  // and the O keybind by listening to the same toggle event. This top-bar button
+  // is available during the spawn phase too, so the deposit map can be consulted
+  // while picking a start position.
+  @state()
+  private _oilMapOn: boolean = false;
 
   @state()
   private isFullscreen: boolean = false;
@@ -77,6 +88,11 @@ export class GameRightSidebar extends LitElement implements Controller {
 
     this.eventBus.on(SendWinnerEvent, () => {
       this.hasWinner = true;
+      this.requestUpdate();
+    });
+
+    this.eventBus.on(ToggleOilDepositViewEvent, () => {
+      this._oilMapOn = !this._oilMapOn;
       this.requestUpdate();
     });
 
@@ -205,6 +221,10 @@ export class GameRightSidebar extends LitElement implements Controller {
     window.location.href = "/";
   }
 
+  private onOilMapButtonClick() {
+    this.eventBus.emit(new ToggleOilDepositViewEvent());
+  }
+
   private onSettingsButtonClick() {
     this.eventBus.emit(
       new ShowSettingsModalEvent(true, this._isSinglePlayer, this.isPaused),
@@ -245,6 +265,17 @@ export class GameRightSidebar extends LitElement implements Controller {
 
         <!-- Buttons -->
         ${this.maybeRenderReplayButtons()}
+
+        <!-- Oil-deposit map toggle (usable during spawn to pick a start) -->
+        <div
+          class="cursor-pointer rounded p-0.5 ${this._oilMapOn
+            ? "bg-sky-400/30 ring-1 ring-sky-300"
+            : ""}"
+          @click=${this.onOilMapButtonClick}
+          title=${translateText("control_panel.oil_map")}
+        >
+          <img src=${oilIcon} alt="oil map" width="20" height="20" />
+        </div>
 
         <div class="cursor-pointer" @click=${this.onSettingsButtonClick}>
           <img src=${settingsIcon} alt="settings" width="20" height="20" />
