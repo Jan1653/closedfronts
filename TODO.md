@@ -75,6 +75,17 @@ Alles aus der letzten Sprachnachricht, damit nichts vergessen wird.
       `WarshipCaptureTracker`); Kapern startet den Krieg (beide Seiten feindlich),
       auch wenn man vorher neutral war. `OilPumpExecution` neu; Tests in
       `OilEconomy.test.ts`.
+- [x] **Eigene Clans erstellen/beitreten** (localapi Stage 3): `clans.ts`
+      (ClansStore) + volle Endpunkte; Client `createClan` + „Clan erstellen"-Form
+      im ClanModal. localapi jetzt in `npm run dev` (Proxy + `LOCALAPI_ISSUER`
+      auf :9000 → kein Auto-Logout). Live verifiziert.
+- [x] **Eigene Skins + Effekte mit Freischalt-Aufgaben** (statt Store): Katalog
+      `resources/cosmetics/cosmetics.json` (8 Muster + Effekte), von der localapi
+      unter `/cosmetics.json` ausgeliefert. Kostenlos = für alle; task-gesperrt =
+      erst wenn Spielstats die Aufgabe erfüllen (Flares aus `computeFlares`).
+      Gesperrte Items erscheinen ausgegraut mit Schloss + lokalisierter Aufgabe
+      + Live-Fortschritt beim Hover („Gewinne 5 Partien (0/5)"). `unlock`-Feld im
+      Cosmetic-Schema; `userMe` liefert `flares` + `stats`. Live verifiziert.
 
 ### 0.8 Feedback-Backlog (Sprachnachricht 2) — NEU, offen
 
