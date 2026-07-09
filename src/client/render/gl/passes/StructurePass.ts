@@ -320,6 +320,8 @@ export class StructurePass {
 
     for (const unit of units.values()) {
       if (!unit.isActive) continue;
+      // Walls are drawn as bold own-colour blocks by WallPass, not as icons.
+      if (unit.unitType === UT_WALL) continue;
       const atlasIdx = this.typeToAtlasCol.get(unit.unitType);
       if (atlasIdx === undefined) continue;
 

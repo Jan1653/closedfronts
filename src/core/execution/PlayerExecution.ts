@@ -48,6 +48,16 @@ export class PlayerExecution implements Execution {
         continue;
       }
 
+      // Structures that legitimately stand on water (the water toll station and
+      // sea-based oil pumps) sit on tiles that never have a player owner. They
+      // must not be reclaimed/deleted for lack of a land owner — otherwise they
+      // vanish ("explode") the tick after they are built. Ownership of these
+      // changes only through their own mechanics (e.g. warship capture for the
+      // toll station), never through the land-owner reconciliation below.
+      if (this.mg!.isWater(u.tile())) {
+        continue;
+      }
+
       const owner = this.mg!.owner(u.tile());
       if (!owner?.isPlayer()) {
         u.delete();

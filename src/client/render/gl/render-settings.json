@@ -118,6 +118,12 @@
     "railAlpha": 1,
     "railThickness": 1
   },
+  "wall": {
+    "sizeTiles": 1.4,
+    "satBoost": 1.5,
+    "valBoost": 1.05,
+    "underConstructionAlpha": 0.45
+  },
   "structure": {
     "iconSize": 60,
     "dotsZoomThreshold": 1.2,

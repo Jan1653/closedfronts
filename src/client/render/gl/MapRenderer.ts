@@ -272,6 +272,9 @@ export class MapRenderer {
   setGridView(active: boolean): void {
     this.renderer?.setGridView(active);
   }
+  setOilDepositView(active: boolean): void {
+    this.renderer?.setOilDepositView(active);
+  }
   setShowPatterns(active: boolean): void {
     this.renderer?.setShowPatterns(active);
   }

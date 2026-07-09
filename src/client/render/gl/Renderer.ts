@@ -42,6 +42,7 @@ import { NamePass } from "./passes/name-pass";
 import { NightCompositePass } from "./passes/NightCompositePass";
 import { NukeTelegraphPass } from "./passes/NukeTelegraphPass";
 import { NukeTrajectoryPass } from "./passes/NukeTrajectoryPass";
+import { OilDepositPass } from "./passes/OilDepositPass";
 import { PointLightPass } from "./passes/PointLightPass";
 import { RailroadPass } from "./passes/RailroadPass";
 import { RangeCirclePass } from "./passes/RangeCirclePass";
@@ -56,6 +57,7 @@ import { TerrainPass } from "./passes/TerrainPass";
 import { TerritoryPass } from "./passes/TerritoryPass";
 import { TrailPass } from "./passes/TrailPass";
 import { UnitPass } from "./passes/UnitPass";
+import { WallPass } from "./passes/WallPass";
 import { WorldTextPass } from "./passes/WorldTextPass";
 import type { RenderSettings } from "./RenderSettings";
 import { AffiliationPalette } from "./utils/Affiliation";
@@ -122,6 +124,7 @@ export class GPURenderer {
   private lightmapPass: LightmapPass;
   private nightCompositePass: NightCompositePass;
   private structurePass: StructurePass;
+  private wallPass: WallPass;
   private structureLevelPass: StructureLevelPass;
   private unitPass: UnitPass;
   private namePass: NamePass;
@@ -139,6 +142,8 @@ export class GPURenderer {
   private heatManager: HeatManager;
   private affiliationPalette: AffiliationPalette;
   private coordinateGridPass: CoordinateGridPass;
+  private oilDepositPass: OilDepositPass;
+  private oilDepositView = false;
   private spawnOverlayPass: SpawnOverlayPass;
   private inSpawnPhase = false;
 
@@ -526,6 +531,8 @@ export class GPURenderer {
       this.effectTex,
       this.settings,
     );
+    // Walls render as bold own-colour blocks (like the railroad), not icons.
+    this.wallPass = new WallPass(gl, header, this.paletteTex, this.settings);
     this.structureLevelPass = new StructureLevelPass(gl, header, this.settings);
     this.unitPass = new UnitPass(
       gl,
@@ -587,6 +594,7 @@ export class GPURenderer {
     this.unitPass.setAffiliationTex(affTex);
     this.structurePass.setAffiliationTex(affTex);
     this.trailPass.setAffiliationTex(affTex);
+    this.oilDepositPass = new OilDepositPass(gl, mapW, mapH);
     this.coordinateGridPass = new CoordinateGridPass(
       gl,
       mapW,
@@ -873,6 +881,7 @@ export class GPURenderer {
   updateStructures(units: Map<number, UnitState>): void {
     this.lastStructures = units;
     this.structurePass.updateStructures(units);
+    this.wallPass.updateStructures(units);
     this.structureLevelPass.updateStructures(units);
     this.samRadiusPass.updateStructures(units);
     this.unitPass.setStructures(units);
@@ -1041,6 +1050,11 @@ export class GPURenderer {
 
   setShowPatterns(active: boolean): void {
     this.territoryPass.setShowPatterns(active);
+  }
+
+  setOilDepositView(active: boolean): void {
+    this.oilDepositView = active;
+    this.oilDepositPass.setEnabled(active);
   }
 
   setGridView(active: boolean): void {
@@ -1243,6 +1257,7 @@ export class GPURenderer {
     this.rangeCirclePass.draw(cam);
     this.nukeTrajectoryPass.draw(cam);
     this.crosshairPass.draw(cam);
+    if (pe.structure) this.wallPass.draw(cam);
     if (pe.structure) this.structurePass.draw(cam, zoom);
     if (pe.structure) this.structureLevelPass.draw(cam, zoom);
     if (pe.bar) this.barPass.draw(cam);
@@ -1260,6 +1275,7 @@ export class GPURenderer {
 
     // Grid shows on either trigger; names hide only under alt-view (space
     // hold), not under the persistent M-key gridView toggle.
+    if (this.oilDepositView) this.oilDepositPass.draw(cam);
     if (this.gridView || this.altView) this.coordinateGridPass.draw(cam, zoom);
     if (pe.name && !this.altView)
       this.namePass.draw(cam, this.nightCompositePass.getAmbient());
@@ -1292,12 +1308,14 @@ export class GPURenderer {
     this.heatManager.dispose();
     this.affiliationPalette.dispose();
     this.coordinateGridPass.dispose();
+    this.oilDepositPass.dispose();
     this.spawnOverlayPass.dispose();
     this.railroadPass.dispose();
     this.rangeCirclePass.dispose();
     this.samRadiusPass.dispose();
     this.crosshairPass.dispose();
     this.structurePass.dispose();
+    this.wallPass.dispose();
     this.structureLevelPass.dispose();
     this.unitPass.dispose();
     this.namePass.dispose();

@@ -20,12 +20,13 @@ Alles aus der letzten Sprachnachricht, damit nichts vergessen wird.
       **render-settings.json** `shapes`-Einträge ergänzt.
 - [x] **Behebt den Hover-Cross-Highlight** (getrennte Atlas-Spalten).
 
-### 0.2 „Explosion" der Zollstation beim Platzieren
+### 0.2 „Explosion" der Zollstation beim Platzieren — ERLEDIGT
 
-- [x] Core-Test beweist: die Station bleibt in der Simulation **aktiv/lebendig**,
-      sie explodiert dort NICHT → reines **Client-Rendering-Thema**.
-- [ ] **Nach dem Icon-Fix erneut prüfen** (Ghost/Icon jetzt korrekt → sehr
-      wahrscheinlich behoben). Falls es dann noch „explodiert": live diagnostizieren.
+- [x] **Echte Ursache gefunden & behoben:** `PlayerExecution.tick()` löscht JEDE
+      Struktur, deren Kachel keinen Spieler-Besitzer hat — Wasser hat nie einen,
+      also wurde Zollstation/See-Ölpumpe jeden Tick gelöscht (= die „Explosion").
+      Fix: Wasser-Strukturen sind von dieser Reklamation ausgenommen. Regressions-
+      test in `WaterTollStation.test.ts` (läuft mit aktiver PlayerExecution).
 
 ### 0.3 Hotkey-Reihenfolge + Beschriftung — ERLEDIGT
 
@@ -54,6 +55,95 @@ Alles aus der letzten Sprachnachricht, damit nichts vergessen wird.
 - [x] **Schneller + stärker pro Level** (kürzeres Intervall + mehr Granaten/Burst).
 - [x] Radius wächst beim Stacken (beibehalten).
 - [x] **Teurer** (150k→750k statt 100k→500k).
+
+---
+
+### 0.7 Diese Session zusätzlich erledigt
+
+- [x] **Öl-Vorkommen als unregelmäßige Blobs** statt Einzelpixel: gemeinsame,
+      deterministische Funktion `src/core/game/OilDeposits.ts` (`isOilDepositAt`),
+      von `Config.isOilDeposit` UND dem Client-Overlay genutzt (kein Drift).
+      Test in `OilEconomy.test.ts` beweist Cluster-Bildung (>90 % Nachbarschaft).
+- [x] **Wände wie Zugstrecken**: neuer `WallPass` (GPU) zeichnet Wände als kräftige,
+      gesättigte Eigenfarb-Blöcke (statt Icon), ~1,4 Kacheln groß → Wandketten
+      verschmelzen zur Linie. `StructurePass` überspringt Wände. Settings in
+      `render-settings.json` → `wall`.
+- [x] **Öl-Map-Overlay** (`OilDepositPass`): zeigt Deposit-Blobs als öligen Tint;
+      Toggle über die **Öl-Anzeige im ControlPanel** (klickbar, Handy+PC) **und**
+      Taste **`O`**. Live verifiziert (Blobs sichtbar, Shader kompilieren).
+- [x] **Kriegsschiff kapert Ölpumpen + Zollstationen** (geteilter
+      `WarshipCaptureTracker`); Kapern startet den Krieg (beide Seiten feindlich),
+      auch wenn man vorher neutral war. `OilPumpExecution` neu; Tests in
+      `OilEconomy.test.ts`.
+
+### 0.8 Feedback-Backlog (Sprachnachricht 2) — NEU, offen
+
+**Menü / Seite:**
+
+- [ ] **Logo klickbar → Startseite**: Klick auf das „ClosedFronts"-Logo oben links
+      führt zurück ins Hauptmenü.
+- [ ] **Versions-Anzeige entfernen** (das „v-XXX"/Versions-Ding).
+- [ ] **Lobby: Namensänderung** auch während man in einer Lobby ist (Desktop
+      **und** Handy).
+- [ ] **Clans**: Clan-Erstellung funktioniert nicht — Erstellen ermöglichen;
+      Leaderboard-/Clans-Flow prüfen (kann man überhaupt einen Clan anlegen?).
+
+**Übersetzungen (Priorität: Deutsch + Englisch VOLLSTÄNDIG; andere Sprachen später):**
+
+- [ ] Alle sichtbaren Texte über `translateText` + `en.json`; **DE + EN komplett**.
+- [ ] „Aktive Einstellungen" (Bau-Toggles im Solo-/Lobby-Setup): **„Boot"** u. a.
+      nicht auf DE übersetzt → übersetzen.
+- [ ] Neue Bauten (**Ölpumpe, Wand, Zollstation**) müssen in „Aktive Einstellungen"
+      **erscheinen** und übersetzt sein (DE + EN).
+
+**Öl / Ölpumpen-Map:**
+
+- [ ] **Öl-Map schon in der Spawn-Phase** öffnen können (für bessere Startpunkt-
+      Wahl). Overlay zeichnet bereits in der Spawn-Phase (Taste `O`), aber der
+      ControlPanel-Button ist dort ausgeblendet → spawn-tauglichen Zugang schaffen.
+
+**Zollstation — Mechanik-Redesign (wichtig, ersetzt die sofortige Gutschrift):**
+
+- [ ] Maut wird **NICHT sofort** beim Durchfahren gutgeschrieben. Stattdessen:
+  - [ ] Man braucht einen **Hafen** und muss **am Wasser** sein, um überhaupt zu
+        kassieren.
+  - [ ] Durchfahrende **feindliche/neutrale** Schiffe „hinterlegen" Maut an der
+        Station (gesammelt, noch nicht ausgezahlt).
+  - [ ] Ein **Einsammel-Schiff** fährt vom **eigenen Hafen** zur Zollstation und
+        wieder **zurück zum selben Hafen** (nicht zu einem anderen Hafen). Erst bei
+        **Ankunft am Hafen** wird das gesammelte Geld **eingelöst**.
+  - [ ] Gegner können mit **Kriegsschiffen** den Weg abschneiden → wird das
+        Einsammel-Schiff versenkt, geht das gesammelte Geld **komplett verloren**.
+  - [ ] Schiff nutzt denselben Typ/Optik (**Strahl/Trail**) wie das Expansions-
+        Transportschiff, kommt aber **aus dem Hafen**.
+
+**Sea-Build (Zollstation/Ölpumpe im Meer):**
+
+- [ ] Bau-Schiff kommt **aus dem Hafen** (Hafen nötig), gleicher Schiffstyp/Optik
+      (Trail/Strahl) wie das Expansions-Transportschiff. (SeaBuildExecution startet
+      bereits am nächsten Hafen — Optik/Trail-Konsistenz nachziehen.)
+
+**Verteidigungsposten:**
+
+- [ ] Umkreis-/Granaten-Einnahme darf **kein neutrales** Gegner-Land einnehmen,
+      solange man **nicht im Krieg** mit dem Besitzer ist (nur Wildnis + echte
+      Kriegsgegner).
+
+**KI (alle Schwierigkeiten, angemessen skaliert):**
+
+- [ ] KI baut/nutzt **Ölpumpen** (Öl-Ökonomie verstehen).
+- [ ] KI baut **Zollstationen**, **Wände**, **Verteidigungsposten** sinnvoll und
+      versteht deren Funktion.
+- [ ] KI versteht **Krieg** inkl. der neuen Kaper-Mechanik (Kriegsschiff).
+
+**Test-Hinweis:**
+
+- [ ] Eigene Live-Tests **ohne Bots und ohne Nations** starten (sonst sofortiger Tod).
+
+**Workflow:**
+
+- [ ] Änderungen direkt nach **`main`** committen/pushen (Nutzerwunsch). Achtung:
+      jeder Push wipet laufende Spiele (Auto-Deploy) — siehe [[closedfronts-deployment]].
 
 ---
 
@@ -153,3 +243,36 @@ Alles aus der letzten Sprachnachricht, damit nichts vergessen wird.
 - [x] Klickbare Start-Datei (`start-game.bat`)
 - [ ] Jedes Feature explizit auf **Mobile-UI** verifizieren
 - [ ] Icons-Encoder-Skript als Tool ablegen (reproduzierbar)
+
+---
+
+## 7. Map-Editor (GANZ UNTEN — erst wenn sonst nichts mehr offen ist)
+
+Nur umsetzen, wenn die restliche TODO leer ist **und** explizit „mach die TODO"
+gesagt wird. Hier die vollständige Spezifikation, damit nichts verloren geht.
+
+**Hauptmenü / Community:**
+
+- [ ] Neuer Button **„Map erstellen"** und ein neuer **„Maps"-Reiter** im Hauptmenü.
+- [ ] Startseite zeigt die **meistgelikten** Community-Maps.
+- [ ] **Filter** im Maps-Reiter: „Neueste", „Beliebteste" (meistgelikt), evtl. „Meine".
+- [ ] Mit Account: Maps **liken**.
+- [ ] Auf einer Community-Map ein **„+"** drücken → landet in der eigenen Auswahl
+      unter **„Custom Maps"** (im Solo-/Lobby-Map-Picker auswählbar).
+
+**Editor-Funktionen:**
+
+- [ ] **Terrain-Tools**: Land / Wasser / Gebirge / … setzen (Pinsel, Radierer,
+      Füllen, evtl. Höhen/Terrain-Typen wie im bestehenden Map-Format).
+- [ ] **Größe einstellbar** mit **fester Min-/Max-Grenze** (Grenzen definieren).
+- [ ] Map **benennen**.
+- [ ] Speichern **privat** ODER **veröffentlichen** — beides an den **Account**
+      gebunden/verlinkt (private Maps erscheinen nur beim Ersteller).
+
+**Technik (bei Umsetzung klären):**
+
+- [ ] Speicherformat kompatibel zum bestehenden Terrain-Loader
+      (`TerrainMapFileLoader` / bestehendes bin-Format) halten.
+- [ ] Backend: `localapi`-Endpunkte für Maps (CRUD), Likes, Listing/Filter —
+      siehe [[closedfronts-localapi]].
+- [ ] Mobile-UI berücksichtigen (Querschnittsregel).

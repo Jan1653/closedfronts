@@ -9,6 +9,7 @@ export function getDefaultKeybinds(isMac: boolean): Record<string, string> {
   return {
     toggleView: "Space",
     coordinateGrid: "KeyM",
+    oilDepositView: "KeyO",
     buildCity: "Digit1",
     buildFactory: "Digit2",
     buildPort: "Digit3",

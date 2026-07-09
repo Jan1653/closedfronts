@@ -9,10 +9,18 @@
 
 import { EventBus } from "../../core/EventBus";
 import { Controller } from "../Controller";
-import { AlternateViewEvent, ToggleCoordinateGridEvent } from "../InputHandler";
+import {
+  AlternateViewEvent,
+  ToggleCoordinateGridEvent,
+  ToggleOilDepositViewEvent,
+} from "../InputHandler";
 import { MapRenderer } from "../render/gl";
 
 export class ViewModeController implements Controller {
+  // Oil-deposit overlay is a pure toggle: this controller owns the on/off state
+  // so any emitter (keybind or HUD oil readout) just flips it.
+  private oilDepositView = false;
+
   constructor(
     private eventBus: EventBus,
     private view: MapRenderer,
@@ -25,5 +33,9 @@ export class ViewModeController implements Controller {
     this.eventBus.on(ToggleCoordinateGridEvent, (e) =>
       this.view.setGridView(e.enabled),
     );
+    this.eventBus.on(ToggleOilDepositViewEvent, () => {
+      this.oilDepositView = !this.oilDepositView;
+      this.view.setOilDepositView(this.oilDepositView);
+    });
   }
 }

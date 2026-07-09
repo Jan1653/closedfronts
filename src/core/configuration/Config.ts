@@ -2,6 +2,7 @@ import { z } from "zod";
 import { PlayerView } from "../../client/view";
 import { AssetManifest } from "../AssetUrls";
 import { DoomsdayClockSpeed } from "../game/DoomsdayClock";
+import { isOilDepositAt } from "../game/OilDeposits";
 import {
   Difficulty,
   Game,
@@ -933,16 +934,11 @@ export class Config {
     return 5;
   }
 
-  // Oil pumps can only sit on an oil deposit. Deposits are a fixed, sparse,
-  // seed-independent property of map coordinates (deterministic integer hash,
-  // no floating point), scattered so a player usually has a few within reach.
+  // Oil pumps can only sit on an oil deposit. The deposit map is a shared,
+  // deterministic function of coordinates (see OilDeposits.isOilDepositAt) so
+  // the client's overlay and the simulation always agree.
   isOilDeposit(mg: Game, tile: TileRef): boolean {
-    const x = mg.x(tile);
-    const y = mg.y(tile);
-    let h = (Math.imul(x, 73856093) ^ Math.imul(y, 19349663)) >>> 0;
-    h = (h ^ (h >>> 13)) >>> 0;
-    h = Math.imul(h, 0x5bd1e995) >>> 0;
-    return h % 11 === 0;
+    return isOilDepositAt(mg.x(tile), mg.y(tile));
   }
 
   maxOil(): number {

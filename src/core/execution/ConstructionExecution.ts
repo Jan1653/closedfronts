@@ -6,6 +6,7 @@ import { FactoryExecution } from "./FactoryExecution";
 import { MirvExecution } from "./MIRVExecution";
 import { MissileSiloExecution } from "./MissileSiloExecution";
 import { NukeExecution } from "./NukeExecution";
+import { OilPumpExecution } from "./OilPumpExecution";
 import { PortExecution } from "./PortExecution";
 import { SAMLauncherExecution } from "./SAMLauncherExecution";
 import { WallExecution } from "./WallExecution";
@@ -153,7 +154,9 @@ export class ConstructionExecution implements Execution {
         this.mg.addExecution(new WallExecution(this.structure!));
         break;
       case UnitType.OilPump:
-        // Passive producer; oil is aggregated per tick in PlayerExecution.
+        // Passive producer (oil is aggregated per tick in PlayerExecution); the
+        // execution only handles warship capture.
+        this.mg.addExecution(new OilPumpExecution(this.structure!));
         break;
       default:
         console.warn(

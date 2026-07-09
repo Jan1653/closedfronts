@@ -75,16 +75,16 @@ export class MobileNavBar extends LitElement {
         <div
           class="flex flex-col text-malibu-blue mb-4 ml-[clamp(0.2rem,0.4vw,0.4vh)]"
         >
-          <div class="flex flex-col items-center gap-1">
+          <div
+            class="nav-menu-item flex flex-col items-center gap-1 cursor-pointer"
+            data-page="page-play"
+            aria-label="ClosedFronts"
+          >
             <img
               src=${assetUrl("images/ClosedFrontsLogo.svg")}
               alt="ClosedFronts"
               class="w-auto h-auto max-w-[220px] max-h-[4.5rem]"
             />
-            <div
-              id="game-version"
-              class="l-header__highlightText text-center"
-            ></div>
           </div>
         </div>
         <!-- Mobile Navigation Menu Items -->

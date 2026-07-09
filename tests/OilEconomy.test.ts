@@ -1,11 +1,13 @@
 import { ConstructionExecution } from "../src/core/execution/ConstructionExecution";
 import { OilExplosionExecution } from "../src/core/execution/OilExplosionExecution";
+import { OilPumpExecution } from "../src/core/execution/OilPumpExecution";
 import { SeaBuildExecution } from "../src/core/execution/SeaBuildExecution";
 import {
   Game,
   Player,
   PlayerInfo,
   PlayerType,
+  Relation,
   UnitType,
 } from "../src/core/game/Game";
 import { setup } from "./util/Setup";
@@ -88,6 +90,36 @@ describe("Oil economy", () => {
     player.buildUnit(UnitType.OilPump, dep, {});
     // Another pump on the same deposit is still allowed (stacking).
     expect(player.canBuild(UnitType.OilPump, dep)).toBe(dep);
+  });
+
+  test("deposits form blobs, not scattered single pixels", () => {
+    const config = game.config();
+    const isDep = (x: number, y: number) =>
+      game.isValidCoord(x, y) && config.isOilDeposit(game, game.ref(x, y));
+    let deposits = 0;
+    let withDepositNeighbor = 0;
+    // Sample a large interior region and, for every deposit tile, check whether
+    // at least one orthogonal neighbour is also a deposit. Single-pixel deposits
+    // would almost never have a deposit neighbour; blobs almost always do.
+    const maxY = Math.min(game.height() - 1, 300);
+    const maxX = Math.min(game.width() - 1, 300);
+    for (let y = 1; y < maxY; y++) {
+      for (let x = 1; x < maxX; x++) {
+        if (!isDep(x, y)) continue;
+        deposits++;
+        if (
+          isDep(x + 1, y) ||
+          isDep(x - 1, y) ||
+          isDep(x, y + 1) ||
+          isDep(x, y - 1)
+        ) {
+          withDepositNeighbor++;
+        }
+      }
+    }
+    expect(deposits).toBeGreaterThan(100); // deposits still exist in reach
+    // The overwhelming majority sit next to another deposit → they cluster.
+    expect(withDepositNeighbor / deposits).toBeGreaterThan(0.9);
   });
 
   test("oil pumps can only be built on an oil deposit", () => {
@@ -265,5 +297,48 @@ describe("Oil economy", () => {
     const pumps = p.units(UnitType.OilPump);
     expect(pumps.length).toBe(1);
     expect(pumps[0].tile()).toBe(seaDep);
+  });
+
+  test("an enemy warship captures a sea oil pump and starts a war", async () => {
+    const g = await setup("world", { infiniteGold: true, instantBuild: true }, [
+      new PlayerInfo("p1", PlayerType.Human, null, "p1"),
+      new PlayerInfo("p2", PlayerType.Human, null, "p2"),
+    ]);
+    const p1 = g.player("p1");
+    const p2 = g.player("p2");
+    const config = g.config();
+
+    // A sea deposit with a water neighbour to park the capturing warship on.
+    let seaDep: number | null = null;
+    let waterN: number | null = null;
+    outer: for (let y = 0; y < g.height(); y++) {
+      for (let x = 0; x < g.width(); x++) {
+        const t = g.ref(x, y);
+        if (!g.isWater(t) || g.isImpassable(t)) continue;
+        if (!config.isOilDeposit(g, t)) continue;
+        const n = g
+          .neighbors(t)
+          .find((nb) => g.isWater(nb) && !g.isImpassable(nb));
+        if (n !== undefined) {
+          seaDep = t;
+          waterN = n;
+          break outer;
+        }
+      }
+    }
+    expect(seaDep).not.toBeNull();
+
+    const pump = p1.buildUnit(UnitType.OilPump, seaDep!, {});
+    g.addExecution(new OilPumpExecution(pump));
+    expect(pump.owner()).toBe(p1);
+
+    // p2 (not yet at war) parks a warship next to the pump and holds position.
+    p2.buildUnit(UnitType.Warship, waterN!, { patrolTile: waterN! });
+    executeTicks(g, 80);
+
+    // The pump changed hands, and capturing it started the war (both hostile).
+    expect(pump.owner()).toBe(p2);
+    expect(p1.relation(p2)).toBe(Relation.Hostile);
+    expect(p2.relation(p1)).toBe(Relation.Hostile);
   });
 });

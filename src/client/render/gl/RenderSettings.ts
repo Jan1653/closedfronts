@@ -168,6 +168,16 @@ export interface RenderSettings {
     /** Track width multiplier (1 = default width). */
     railThickness: number;
   };
+  wall: {
+    /** Block size in world tiles. >1 fuses adjacent/diagonal walls into a line. */
+    sizeTiles: number;
+    /** Saturation multiplier on the owner color (stronger own color). */
+    satBoost: number;
+    /** Value (brightness) multiplier on the owner color. */
+    valBoost: number;
+    /** Alpha for a wall still under construction. */
+    underConstructionAlpha: number;
+  };
   structure: {
     iconSize: number;
     dotsZoomThreshold: number;

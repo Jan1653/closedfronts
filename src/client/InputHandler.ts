@@ -186,6 +186,9 @@ export class ToggleCoordinateGridEvent implements GameEvent {
   constructor(public readonly enabled: boolean) {}
 }
 
+/** Toggle the oil-deposit overlay (keybind or the HUD oil readout). */
+export class ToggleOilDepositViewEvent implements GameEvent {}
+
 export class TickMetricsEvent implements GameEvent {
   constructor(
     public readonly tickExecutionDuration?: number,
@@ -549,6 +552,14 @@ export class InputHandler {
         this.eventBus.emit(
           new ToggleCoordinateGridEvent(this.coordinateGridEnabled),
         );
+      }
+
+      if (
+        this.keybindMatchesEvent(e, this.keybinds.oilDepositView) &&
+        !e.repeat
+      ) {
+        e.preventDefault();
+        this.eventBus.emit(new ToggleOilDepositViewEvent());
       }
 
       if (e.code === "Escape") {

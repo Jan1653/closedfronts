@@ -52,18 +52,17 @@ export class DesktopNavBar extends LitElement {
       <nav
         class="hidden lg:flex w-full bg-zinc-900/90 backdrop-blur-md items-center justify-center gap-8 py-4 shrink-0 z-50 relative"
       >
-        <div class="flex flex-col items-center justify-center">
-          <div class="h-8">
-            <img
-              class="block h-full aspect-[1364/259]"
-              src=${assetUrl("images/ClosedFrontsLogo.svg")}
-              alt="ClosedFronts"
-            />
-          </div>
-          <div
-            id="game-version"
-            class="l-header__highlightText text-center"
-          ></div>
+        <div
+          class="nav-menu-item h-8 flex items-center justify-center cursor-pointer"
+          data-page="page-play"
+          aria-label="ClosedFronts"
+          title="ClosedFronts"
+        >
+          <img
+            class="block h-full aspect-[1364/259]"
+            src=${assetUrl("images/ClosedFrontsLogo.svg")}
+            alt="ClosedFronts"
+          />
         </div>
         <button
           class="nav-menu-item ${currentPage === "page-play"

@@ -1,4 +1,5 @@
 import { ConstructionExecution } from "../src/core/execution/ConstructionExecution";
+import { PlayerExecution } from "../src/core/execution/PlayerExecution";
 import { SeaBuildExecution } from "../src/core/execution/SeaBuildExecution";
 import { WaterTollStationExecution } from "../src/core/execution/WaterTollStationExecution";
 import {
@@ -102,6 +103,25 @@ describe("WaterTollStation", () => {
       new ConstructionExecution(p1, UnitType.WaterTollStation, strait!),
     );
     executeTicks(game, 20);
+    const stations = p1.units(UnitType.WaterTollStation);
+    expect(stations.length).toBe(1);
+    expect(stations[0].isActive()).toBe(true);
+    expect(stations[0].tile()).toBe(strait);
+  });
+
+  test("survives an active PlayerExecution (does not explode on water)", () => {
+    // Regression: PlayerExecution deletes any structure whose tile has no
+    // player owner. Water tiles never do, so without the water-structure
+    // exemption the station is deleted the tick after it is built ("explodes").
+    const strait = findStraitTile();
+    expect(strait).not.toBeNull();
+    p1.conquer(firstLandTile()); // player must own territory to build
+    const station = p1.buildUnit(UnitType.WaterTollStation, strait!, {});
+    game.addExecution(new WaterTollStationExecution(station));
+    game.addExecution(new PlayerExecution(p1));
+
+    executeTicks(game, 20);
+
     const stations = p1.units(UnitType.WaterTollStation);
     expect(stations.length).toBe(1);
     expect(stations[0].isActive()).toBe(true);

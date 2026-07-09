@@ -1,11 +1,8 @@
 import { Execution, Game, Unit, UnitType } from "../game/Game";
 import { TileRef } from "../game/GameMap";
 import { tollStationConnections } from "../game/TollStationUtils";
+import { WarshipCaptureTracker } from "./StructureCapture";
 
-// How close (manhattan distance) an enemy warship must be to begin capturing.
-const CAPTURE_RANGE = 3;
-// Ticks an enemy warship must hold position next to the station to capture it.
-const CAPTURE_TICKS = 60;
 // How close (manhattan distance) a boat must be to the station to be tolled.
 const TOLL_GATE_RADIUS = 2;
 // Gold charged once per pass to enemy/neutral boats.
@@ -19,10 +16,9 @@ export class WaterTollStationExecution implements Execution {
   // and (in phase 2) for the toll corridor. Empty if placement was degenerate.
   private connections: TileRef[] = [];
 
-  // Capture state. When at war, an enemy warship parks next to the station and
-  // fills a progress bar; it can be interrupted by destroying/repelling it.
-  private captor: Unit | null = null;
-  private captureProgress = 0;
+  // Capture: an enemy warship parks next to the station and fills a progress
+  // bar; capturing it turns the two players hostile (starts the war).
+  private readonly capture = new WarshipCaptureTracker();
 
   // Boats currently inside the toll gate that have already paid this pass.
   // Cleared when they leave, so a later pass is charged again.
@@ -44,7 +40,7 @@ export class WaterTollStationExecution implements Execution {
       return;
     }
     this.collectToll();
-    this.handleCapture();
+    this.capture.tick(this.mg, this.station);
   }
 
   // Charge enemy/neutral boats a one-time gold toll for passing through the
@@ -77,44 +73,6 @@ export class WaterTollStationExecution implements Execution {
     // Forget boats that have left the gate so a later pass is charged again.
     for (const boat of this.paidBoats) {
       if (!inGate.has(boat)) this.paidBoats.delete(boat);
-    }
-  }
-
-  private handleCapture(): void {
-    const owner = this.station.owner();
-
-    // Enemy warships in range that are actually at war with the owner (not
-    // allied and not on the same team). Allies never capture.
-    const enemyWarships = this.mg
-      .nearbyUnits(this.station.tile(), CAPTURE_RANGE, [UnitType.Warship])
-      .map(({ unit }) => unit)
-      .filter(
-        (w) =>
-          w.isActive() &&
-          w.owner() !== owner &&
-          !w.owner().isFriendly(owner) &&
-          !w.owner().isOnSameTeam(owner),
-      );
-
-    // Interrupt: the captor died or left range (e.g. repelled by defenders).
-    if (this.captor !== null && !enemyWarships.includes(this.captor)) {
-      this.captor = null;
-      this.captureProgress = 0;
-    }
-
-    if (this.captor === null) {
-      if (enemyWarships.length === 0) {
-        this.captureProgress = 0;
-        return;
-      }
-      this.captor = enemyWarships[0];
-    }
-
-    this.captureProgress++;
-    if (this.captureProgress >= CAPTURE_TICKS) {
-      this.station.setOwner(this.captor.owner());
-      this.captor = null;
-      this.captureProgress = 0;
     }
   }
 

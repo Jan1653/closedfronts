@@ -10,7 +10,7 @@ import { TileRef } from "../../../core/game/GameMap";
 import { GameUpdateType } from "../../../core/game/GameUpdates";
 import { UserSettings } from "../../../core/game/UserSettings";
 import { Controller } from "../../Controller";
-import { AttackRatioEvent } from "../../InputHandler";
+import { AttackRatioEvent, ToggleOilDepositViewEvent } from "../../InputHandler";
 import { UIState } from "../../UIState";
 import {
   getGamesPlayed,
@@ -57,6 +57,12 @@ export class ControlPanel extends LitElement implements Controller {
   @state()
   private _oil: number = 0;
 
+  // Whether the oil-deposit overlay is currently shown (the oil readout doubles
+  // as its toggle). Kept in sync by listening to the same toggle event the
+  // keybind emits, so button and hotkey never disagree.
+  @state()
+  private _oilMapOn: boolean = false;
+
   @state()
   private _attackingTroops: number = 0;
 
@@ -82,6 +88,12 @@ export class ControlPanel extends LitElement implements Controller {
   init() {
     this.attackRatio = new UserSettings().attackRatio();
     this.uiState.attackRatio = this.attackRatio;
+    // The oil-deposit overlay is a pure toggle; flip our badge state whenever
+    // it fires, whichever source (this button or the keybind) triggered it.
+    this.eventBus.on(ToggleOilDepositViewEvent, () => {
+      this._oilMapOn = !this._oilMapOn;
+      this.requestUpdate();
+    });
     this.eventBus.on(AttackRatioEvent, (event) => {
       let newAttackRatio = this.attackRatio + event.attackRatio / 100;
 
@@ -316,6 +328,10 @@ export class ControlPanel extends LitElement implements Controller {
     this.uiState.attackRatio = newRatio;
   }
 
+  private toggleOilMap() {
+    this.eventBus.emit(new ToggleOilDepositViewEvent());
+  }
+
   setVisibile(visible: boolean) {
     this._isVisible = visible;
     this.requestUpdate();
@@ -514,11 +530,15 @@ export class ControlPanel extends LitElement implements Controller {
           <img src=${goldCoinIcon} width="13" height="13" class="shrink-0" />
           <span class="tabular-nums">${renderNumber(this._gold)}</span>
         </div>
-        <!-- Oil -->
+        <!-- Oil (doubles as the oil-deposit map toggle) -->
         <div
-          class="flex items-center gap-1 shrink-0 border rounded-md border-sky-400 font-bold text-sky-400 text-sm py-0.5 px-1 w-[4.5rem]"
+          class="flex items-center gap-1 shrink-0 border rounded-md font-bold text-sm py-0.5 px-1 w-[4.5rem] cursor-pointer ${this
+            ._oilMapOn
+            ? "border-sky-300 text-sky-200 bg-sky-400/20 ring-1 ring-sky-300"
+            : "border-sky-400 text-sky-400"}"
           translate="no"
-          title="Oil"
+          title=${translateText("control_panel.oil_map")}
+          @click=${() => this.toggleOilMap()}
         >
           <img src=${oilIcon} width="13" height="13" class="shrink-0" />
           <span class="tabular-nums">${renderNumber(this._oil)}</span>
@@ -578,11 +598,15 @@ export class ControlPanel extends LitElement implements Controller {
           <img src=${goldCoinIcon} width="13" height="13" />
           <span class="px-0.5">${renderNumber(this._gold)}</span>
         </div>
-        <!-- Oil -->
+        <!-- Oil (doubles as the oil-deposit map toggle) -->
         <div
-          class="flex items-center justify-center p-1 gap-0.5 border rounded-md border-sky-400 font-bold text-sky-400 text-xs w-1/5 shrink-0"
+          class="flex items-center justify-center p-1 gap-0.5 border rounded-md font-bold text-xs w-1/5 shrink-0 cursor-pointer ${this
+            ._oilMapOn
+            ? "border-sky-300 text-sky-200 bg-sky-400/20 ring-1 ring-sky-300"
+            : "border-sky-400 text-sky-400"}"
           translate="no"
-          title="Oil"
+          title=${translateText("control_panel.oil_map")}
+          @click=${() => this.toggleOilMap()}
         >
           <img src=${oilIcon} width="13" height="13" />
           <span class="px-0.5">${renderNumber(this._oil)}</span>
