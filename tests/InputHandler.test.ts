@@ -66,6 +66,7 @@ describe("InputHandler AutoUpgrade", () => {
         ghostStructure: null,
         rocketDirectionUp: true,
         buildQuantity: 1,
+        mobilePlacementTile: null,
       },
       mockCanvas,
       eventBus,

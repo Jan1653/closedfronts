@@ -27,6 +27,19 @@ export class TouchEvent implements GameEvent {
 }
 
 /**
+ * Mobile two-step build: emitted instead of TouchEvent when a build is active
+ * (uiState.ghostStructure) and the user taps the map. It positions the build
+ * ghost at the tapped tile (no hover on touch) WITHOUT placing — the bottom
+ * "Build" button confirms. Keeps the map pannable (drags still pan).
+ */
+export class MobilePlacementTapEvent implements GameEvent {
+  constructor(
+    public readonly x: number,
+    public readonly y: number,
+  ) {}
+}
+
+/**
  * Event emitted when one or more warships are selected or deselected.
  * For single selection: unit is set, units is empty.
  * For multi selection: units contains all selected warships, unit is null.
@@ -439,7 +452,10 @@ export class InputHandler {
         // Hold Tab while a build ghost is active + scroll to set how many copies
         // to place. Tab doesn't discard the ghost (unlike Shift), so the preview
         // stays put. Otherwise scroll zooms / adjusts the attack ratio as usual.
-        if (this.activeKeys.has("Tab") && this.uiState.ghostStructure !== null) {
+        if (
+          this.activeKeys.has("Tab") &&
+          this.uiState.ghostStructure !== null
+        ) {
           this.onQuantityScroll(e);
         } else {
           this.onScroll(e);
@@ -823,6 +839,14 @@ export class InputHandler {
       if (event.pointerType === "touch") {
         if (this.suppressNextTap) {
           this.suppressNextTap = false;
+          event.preventDefault();
+          return;
+        }
+        // Mobile two-step build: a tap while a build is active positions the
+        // ghost at the tapped tile (confirmed later via the Build button),
+        // instead of the normal tap action (warship move / player info).
+        if (this.uiState.ghostStructure !== null) {
+          this.eventBus.emit(new MobilePlacementTapEvent(event.x, event.y));
           event.preventDefault();
           return;
         }

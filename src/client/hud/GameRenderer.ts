@@ -32,6 +32,8 @@ import { ImmunityTimer } from "./layers/ImmunityTimer";
 import { InGamePromo } from "./layers/InGamePromo";
 import { Leaderboard } from "./layers/Leaderboard";
 import { MainRadialMenu } from "./layers/MainRadialMenu";
+import { MobileBuildBar } from "./layers/MobileBuildBar";
+import { MobileBuildControls } from "./layers/MobileBuildControls";
 import { MultiTabModal } from "./layers/MultiTabModal";
 import { PerformanceOverlay } from "./layers/PerformanceOverlay";
 import { PlayerInfoOverlay } from "./layers/PlayerInfoOverlay";
@@ -59,6 +61,7 @@ export function createRenderer(
     ghostStructure: null,
     rocketDirectionUp: true,
     buildQuantity: 1,
+    mobilePlacementTile: null,
   };
 
   //hide when the game renders
@@ -212,6 +215,26 @@ export function createRenderer(
   unitDisplay.eventBus = eventBus;
   unitDisplay.uiState = uiState;
 
+  const mobileBuildBar = document.querySelector(
+    "mobile-build-bar",
+  ) as MobileBuildBar;
+  if (!(mobileBuildBar instanceof MobileBuildBar)) {
+    console.error("mobile build bar not found");
+  }
+  mobileBuildBar.game = game;
+  mobileBuildBar.eventBus = eventBus;
+  mobileBuildBar.uiState = uiState;
+
+  const mobileBuildControls = document.querySelector(
+    "mobile-build-controls",
+  ) as MobileBuildControls;
+  if (!(mobileBuildControls instanceof MobileBuildControls)) {
+    console.error("mobile build controls not found");
+  }
+  mobileBuildControls.game = game;
+  mobileBuildControls.eventBus = eventBus;
+  mobileBuildControls.uiState = uiState;
+
   const playerPanel = document.querySelector("player-panel") as PlayerPanel;
   if (!(playerPanel instanceof PlayerPanel)) {
     console.error("player panel not found");
@@ -319,6 +342,8 @@ export function createRenderer(
     leaderboard,
     gameLeftSidebar,
     unitDisplay,
+    mobileBuildBar,
+    mobileBuildControls,
     gameRightSidebar,
     controlPanel,
     playerInfo,

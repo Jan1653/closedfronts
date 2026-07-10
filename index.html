@@ -321,6 +321,21 @@
     <!-- Game modals and overlays -->
     <emoji-table></emoji-table>
     <build-menu></build-menu>
+
+    <!-- Mobile build: item bar (right edge) + placement controls (bottom center).
+         Both render nothing on desktop / out of game. -->
+    <div
+      class="fixed right-0 top-1/2 -translate-y-1/2 z-[210] pointer-events-none"
+      style="padding-right: env(safe-area-inset-right)"
+    >
+      <mobile-build-bar></mobile-build-bar>
+    </div>
+    <div
+      class="fixed bottom-0 left-1/2 -translate-x-1/2 z-[210] pointer-events-none flex justify-center"
+      style="padding-bottom: env(safe-area-inset-bottom)"
+    >
+      <mobile-build-controls></mobile-build-controls>
+    </div>
     <win-modal></win-modal>
     <game-starting-modal></game-starting-modal>
     <div

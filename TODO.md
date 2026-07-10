@@ -124,11 +124,16 @@ Reihenfolge laut Nutzer: **erst die einfachen Sachen.** Alles hier gesammelt.
 - [ ] **Truppen-Angriffs-Bar (wie viel Truppen beim Angriff)** funktioniert am
       Handy schlecht → **nach links (links-mittig)** verlegen, wieder bedienbar.
 - [ ] **Öl-Bar** ans Truppen-Bar-Design angleichen (siehe A).
-- [ ] **Bau-Bar rechts** (Handy): alle baubaren Sachen in einer Leiste rechts.
-      Klick auf ein Bau-Item → Karte weiter verschiebbar, aber Tippen auf eine
-      Kachel zeigt die **Vorschau wie am PC**; unten Mitte **Bauen-Button** +
-      **Abbrechen-Button**. Gilt auch für **Bomben**.
-- [ ] **Mengen-Slider** unten Mitte, wenn man gerade baut (mehrere bauen).
+- [x] **Bau-Bar rechts** (Handy) + zweistufiges Tap-Placement: neue Komponenten
+      `mobile-build-bar` (rechte vertikale Leiste, alle baubaren Sachen inkl.
+      Bomben) + `mobile-build-controls` (unten Mitte: Bauen/Abbrechen + Mengen-
+      Stepper). Item antippen → `ghostStructure` gesetzt; auf Kachel tippen setzt
+      die Ghost-Position (neues `MobilePlacementTapEvent` statt `TouchEvent`, Karte
+      bleibt verschiebbar), „Bauen" bestätigt über das bestehende
+      `ConfirmGhostStructureEvent`. Nutzt die vorhandene Ghost-Vorschau-Infra
+      (funktioniert auch für Bomben). Logik im Browser verifiziert (Bar rendert/
+      armt, Controls Bauen/Abbrechen/Menge). **Touch-Flow noch auf dem Gerät
+      gegenzuprüfen.** *(Der Mengen-Stepper deckt „mehrere bauen" ab.)*
 - [x] **„Catching Up" kommt zu oft** — Ursache: `GameView.isCatchingUp()` gab
       schon bei `pendingTurns > 1` true (2 gepufferte Turns = normales Jitter,
       v. a. am Handy). Schwelle auf `> 5` angehoben (~0,6 s echter Rückstand),

@@ -23,6 +23,7 @@ import { UserSettings } from "../../core/game/UserSettings";
 import { Controller } from "../Controller";
 import {
   ConfirmGhostStructureEvent,
+  MobilePlacementTapEvent,
   MouseMoveEvent,
   MouseUpEvent,
 } from "../InputHandler";
@@ -106,6 +107,10 @@ export class BuildPreviewController implements Controller {
       this.requestConfirmStructure(
         new MouseUpEvent(this.mousePos.x, this.mousePos.y),
       ),
+    );
+    // Mobile: a tap positions the ghost at the tapped tile (no auto-confirm).
+    this.eventBus.on(MobilePlacementTapEvent, (e) =>
+      this.onMobilePlacementTap(e),
     );
 
     // Re-emit the ghost each render frame at the cursor's current world
@@ -559,6 +564,17 @@ export class BuildPreviewController implements Controller {
     this.mousePos.y = e.y;
   }
 
+  // Mobile tap: move the ghost to the tapped tile and remember it so the
+  // bottom-centre "Build" button knows a placement target exists. No confirm.
+  private onMobilePlacementTap(e: MobilePlacementTapEvent) {
+    this.mousePos.x = e.x;
+    this.mousePos.y = e.y;
+    const tile = this.transformHandler.screenToWorldCoordinates(e.x, e.y);
+    this.uiState.mobilePlacementTile = this.game.isValidCoord(tile.x, tile.y)
+      ? this.game.ref(tile.x, tile.y)
+      : null;
+  }
+
   private createGhostStructure(type: PlayerBuildableUnitType | null) {
     if (type === null) return;
     if (this.game.myPlayer() === null) return;
@@ -579,6 +595,7 @@ export class BuildPreviewController implements Controller {
     this.pendingConfirm = null;
     this.ghostUnit = null;
     this.lastGhostData = null;
+    this.uiState.mobilePlacementTile = null;
     this.view.updateGhostPreview(null);
     this.clearNukeTrajectory();
   }
