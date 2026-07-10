@@ -129,8 +129,11 @@ Reihenfolge laut Nutzer: **erst die einfachen Sachen.** Alles hier gesammelt.
       Kachel zeigt die **Vorschau wie am PC**; unten Mitte **Bauen-Button** +
       **Abbrechen-Button**. Gilt auch für **Bomben**.
 - [ ] **Mengen-Slider** unten Mitte, wenn man gerade baut (mehrere bauen).
-- [ ] **„Catching Up"** kommt am Handy (und allgemein) zu oft → Ursache finden,
-      reduzieren (Tick-/Netz-Performance).
+- [x] **„Catching Up" kommt zu oft** — Ursache: `GameView.isCatchingUp()` gab
+      schon bei `pendingTurns > 1` true (2 gepufferte Turns = normales Jitter,
+      v. a. am Handy). Schwelle auf `> 5` angehoben (~0,6 s echter Rückstand),
+      zusammen mit der bestehenden 10-Tick-Sustain-Bedingung im `HeadsUpMessage`.
+      Rein kosmetisch (Client holt so oder so auf), treibt nur den Banner.
 
 ### D. Zollstation (Feinschliff)
 

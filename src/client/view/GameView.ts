@@ -264,7 +264,13 @@ export class GameView implements GameMap {
   }
 
   public isCatchingUp(): boolean {
-    return (this.lastUpdate?.pendingTurns ?? 0) > 1;
+    // Only report a genuine backlog. A pending turn or two is normal jitter
+    // (especially on mobile, where the worker often trails the incoming turn
+    // stream by a couple of ticks while still keeping up) — flagging that
+    // spammed the "Catching up" banner. Require a real, sustained backlog
+    // (~0.6s worth of turns) before showing it. The client fast-forwards to
+    // catch up either way; this only gates the cosmetic indicator.
+    return (this.lastUpdate?.pendingTurns ?? 0) > 5;
   }
 
   public update(gu: GameUpdateViewData) {
