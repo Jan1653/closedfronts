@@ -998,6 +998,15 @@
     "published": "Published to community",
     "publish_failed": "Publishing failed",
     "publish_login": "Sign in to publish maps",
+    "osm_title": "From a real place (OSM)",
+    "osm_placeholder": "City or region…",
+    "osm_generate": "Generate",
+    "osm_loading": "Generating…",
+    "osm_enter_place": "Enter a place first",
+    "osm_not_found": "Place not found",
+    "osm_done": "Generated — touch it up, then save",
+    "osm_failed": "Could not load map data",
+    "osm_attribution": "Terrain © OpenStreetMap contributors",
     "canvas_hint": "Draw with the selected tile. Enable Fill for a bucket fill."
   },
   "community_maps": {

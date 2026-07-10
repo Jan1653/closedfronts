@@ -5,6 +5,10 @@ import {
   isLandPaint,
   PaintTile,
 } from "../../../core/game/CustomMapBuilder";
+import {
+  gridSizeForBBox,
+  rasterizePolygons,
+} from "../../../core/game/OsmRaster";
 import { publishCommunityMap } from "../../Api";
 import { getAuthHeader } from "../../Auth";
 import { translateText } from "../../Utils";
@@ -26,6 +30,7 @@ import {
   serializeCustomMap,
 } from "./CustomMapStore";
 import "./CustomMapThumb";
+import { fetchOsmWaterPolygons, geocodePlace } from "./OsmSource";
 import { playCustomMapSolo } from "./playCustomMap";
 
 const MIN_SIZE = 40;
@@ -47,6 +52,8 @@ export class MapEditorModal extends BaseModal {
   @state() private savedMaps: CustomMap[] = [];
   @state() private notice: string | null = null;
   @state() private noticeError = false;
+  @state() private osmQuery = "";
+  @state() private osmBusy = false;
 
   // Not @state: painting mutates these directly and blits imperatively so
   // continuous strokes don't thrash Lit's render loop.
@@ -356,6 +363,50 @@ export class MapEditorModal extends BaseModal {
     );
   }
 
+  // ---- Import from a real map (OSM, Phase A: land + inland water) ----
+
+  private async importFromOsm() {
+    const query = this.osmQuery.trim();
+    if (!query) {
+      this.showNotice(translateText("map_editor.osm_enter_place"), true);
+      return;
+    }
+    this.osmBusy = true;
+    try {
+      const bbox = await geocodePlace(query);
+      if (!bbox) {
+        this.showNotice(translateText("map_editor.osm_not_found"), true);
+        return;
+      }
+      const { width, height } = gridSizeForBBox(bbox, MAX_SIZE);
+      const water = await fetchOsmWaterPolygons(bbox);
+      // Land background with OSM water areas (lakes/rivers) cut out; the editor
+      // still flood-fills ocean/shoreline at compile time. Coastlines/terrain
+      // types come in a later phase.
+      const paint = rasterizePolygons(
+        bbox,
+        width,
+        height,
+        water,
+        PaintTile.Water,
+        PaintTile.Plains,
+      );
+      this.editingId = null;
+      this.name = query.slice(0, 40);
+      this.gridW = width;
+      this.gridH = height;
+      this.paint = paint;
+      await this.updateComplete;
+      this.rebuildImage();
+      this.showNotice(translateText("map_editor.osm_done"), false);
+    } catch (e) {
+      console.error("OSM import failed", e);
+      this.showNotice(translateText("map_editor.osm_failed"), true);
+    } finally {
+      this.osmBusy = false;
+    }
+  }
+
   private newMap() {
     this.editingId = null;
     this.name = "";
@@ -393,7 +444,8 @@ export class MapEditorModal extends BaseModal {
           <!-- Controls -->
           <div class="w-full lg:w-64 shrink-0 flex flex-col gap-4">
             ${this.renderPalette()} ${this.renderBrushControls()}
-            ${this.renderSizeControls()} ${this.renderNameAndSave()}
+            ${this.renderSizeControls()} ${this.renderOsmImport()}
+            ${this.renderNameAndSave()}
           </div>
         </div>
 
@@ -512,6 +564,41 @@ export class MapEditorModal extends BaseModal {
           (v) => this.setSize(this.gridW, v),
           translateText("map_editor.height"),
         )}
+      </div>
+    `;
+  }
+
+  private renderOsmImport(): TemplateResult {
+    return html`
+      <div class="flex flex-col gap-2 rounded-lg border border-white/10 p-2">
+        <label class="text-xs text-white/70">
+          ${translateText("map_editor.osm_title")}
+        </label>
+        <input
+          type="text"
+          .value=${this.osmQuery}
+          @input=${(e: Event) =>
+            (this.osmQuery = (e.target as HTMLInputElement).value)}
+          @keydown=${(e: KeyboardEvent) => {
+            if (e.key === "Enter" && !this.osmBusy) void this.importFromOsm();
+          }}
+          placeholder=${translateText("map_editor.osm_placeholder")}
+          maxlength="80"
+          ?disabled=${this.osmBusy}
+          class="w-full rounded-md bg-black/40 border border-white/10 px-3 py-2 text-white text-sm"
+        />
+        <button
+          @click=${() => this.importFromOsm()}
+          ?disabled=${this.osmBusy}
+          class="rounded-lg px-3 py-2 text-sm font-semibold bg-malibu-blue hover:bg-aquarius transition-colors disabled:opacity-50"
+        >
+          ${this.osmBusy
+            ? translateText("map_editor.osm_loading")
+            : translateText("map_editor.osm_generate")}
+        </button>
+        <p class="text-[10px] text-white/40 leading-tight">
+          ${translateText("map_editor.osm_attribution")}
+        </p>
       </div>
     `;
   }
