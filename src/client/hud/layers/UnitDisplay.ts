@@ -23,6 +23,8 @@ const mirvIcon = assetUrl("images/MIRVIcon.svg");
 const missileSiloIcon = assetUrl("images/MissileSiloIconWhite.svg");
 const hydrogenBombIcon = assetUrl("images/MushroomCloudIconWhite.svg");
 const atomBombIcon = assetUrl("images/NukeIconWhite.svg");
+const electricBombIcon = assetUrl("images/ElectricBombIconWhite.svg");
+const oilStorageIcon = assetUrl("images/OilStorageIconWhite.svg");
 const portIcon = assetUrl("images/PortIcon.svg");
 const samLauncherIcon = assetUrl("images/SamLauncherIconWhite.svg");
 const defensePostIcon = assetUrl("images/ShieldIconWhite.svg");
@@ -46,6 +48,7 @@ export class UnitDisplay extends LitElement implements Controller {
   private _samLauncher = 0;
   private _wall = 0;
   private _oilPump = 0;
+  private _oilStorage = 0;
   private _waterTollStation = 0;
   private allDisabled = false;
   private _hoveredUnit: PlayerBuildableUnitType | null = null;
@@ -79,6 +82,7 @@ export class UnitDisplay extends LitElement implements Controller {
     switch (item) {
       case UnitType.AtomBomb:
       case UnitType.HydrogenBomb:
+      case UnitType.ElectricBomb:
       case UnitType.MIRV:
         return (
           this.cost(item) <= (player?.gold() ?? 0n) &&
@@ -109,6 +113,7 @@ export class UnitDisplay extends LitElement implements Controller {
     this._warships = player.totalUnitLevels(UnitType.Warship);
     this._wall = player.totalUnitLevels(UnitType.Wall);
     this._oilPump = player.totalUnitLevels(UnitType.OilPump);
+    this._oilStorage = player.totalUnitLevels(UnitType.OilStorage);
     this._waterTollStation = player.totalUnitLevels(UnitType.WaterTollStation);
     this.requestUpdate();
   }
@@ -129,9 +134,7 @@ export class UnitDisplay extends LitElement implements Controller {
 
     return html`
       <div class="border-t border-white/10 p-0.5 w-full">
-        <div
-          class="flex flex-wrap justify-center gap-0.5 w-full"
-        >
+        <div class="flex flex-wrap justify-center gap-0.5 w-full">
           ${this.renderUnitItem(
             cityIcon,
             this._cities,
@@ -203,6 +206,13 @@ export class UnitDisplay extends LitElement implements Controller {
             this.keybinds["buildMIRV"]?.key ?? "0",
           )}
           ${this.renderUnitItem(
+            electricBombIcon,
+            null,
+            UnitType.ElectricBomb,
+            "electric_bomb",
+            "",
+          )}
+          ${this.renderUnitItem(
             wallIcon,
             this._wall,
             UnitType.Wall,
@@ -215,6 +225,13 @@ export class UnitDisplay extends LitElement implements Controller {
             UnitType.OilPump,
             "oil_pump",
             "Alt 2",
+          )}
+          ${this.renderUnitItem(
+            oilStorageIcon,
+            this._oilStorage,
+            UnitType.OilStorage,
+            "oil_storage",
+            "",
           )}
           ${this.renderUnitItem(
             tollStationIcon,

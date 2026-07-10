@@ -496,13 +496,20 @@ export class ControlPanel extends LitElement implements Controller {
     return Math.max(0, Math.min(100, (this._oil / base) * 100));
   }
 
-  // Small green/red "+N/s" chip showing net oil per second, overlaid in the bar.
+  // Oil value as a plain integer so it visibly ticks up/down every second (the
+  // K-rounded renderNumber barely changed at oil-tank sizes → looked frozen).
+  private oilAmount(n: number): string {
+    return Math.max(0, Math.round(n)).toString();
+  }
+
+  // Small green/red "+N/s" chip showing net oil per second. Rendered INLINE
+  // (not absolutely positioned) so it never overlaps the amount.
   private renderOilRateChip(size: "sm" | "lg") {
     const r = Math.round(this._oilRate);
     if (r === 0) return html``;
-    const cls = size === "lg" ? "text-xs" : "text-[9px]";
+    const cls = size === "lg" ? "text-[11px]" : "text-[9px]";
     return html`<span
-      class="absolute top-1/2 -translate-y-1/2 right-1 ${cls} font-bold tabular-nums leading-none pointer-events-none drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)] ${r >
+      class="${cls} font-bold tabular-nums leading-none drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)] ${r >
       0
         ? "text-green-300"
         : "text-red-300"}"
@@ -529,33 +536,29 @@ export class ControlPanel extends LitElement implements Controller {
           style="transform: scaleX(${fill / 100});"
         ></div>
         <div
-          class="absolute inset-0 flex items-center text-lg font-bold leading-none pointer-events-none"
+          class="absolute inset-0 flex items-center justify-center gap-1 text-sm font-bold leading-none pointer-events-none px-1"
         >
-          <span class="flex-1 flex justify-end h-full items-center pr-0.5">
-            <span class="text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]"
-              >${renderNumber(this._oil)}</span
-            >
-          </span>
           <span
-            class="h-full flex items-center px-0.5 text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]"
+            class="text-white tabular-nums drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]"
+            >${this.oilAmount(this._oil)}</span
+          >
+          ${this.renderOilRateChip("lg")}
+          <span class="text-white/70 drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]"
             >/</span
           >
-          <span class="flex-1 flex justify-start h-full items-center pl-0.5">
-            <span
-              class="text-white tabular-nums drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]"
-              >${renderNumber(this._maxOil)}</span
-            >
-            <img
-              src=${oilIcon}
-              alt=""
-              aria-hidden="true"
-              width="18"
-              height="18"
-              class="shrink-0 drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)] ml-1"
-            />
-          </span>
+          <span
+            class="text-white tabular-nums drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]"
+            >${this.oilAmount(this._maxOil)}</span
+          >
+          <img
+            src=${oilIcon}
+            alt=""
+            aria-hidden="true"
+            width="16"
+            height="16"
+            class="shrink-0 drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]"
+          />
         </div>
-        ${this.renderOilRateChip("lg")}
       </div>
     `;
   }
@@ -577,21 +580,22 @@ export class ControlPanel extends LitElement implements Controller {
           style="transform: scaleX(${fill / 100});"
         ></div>
         <div
-          class="absolute inset-0 flex items-center justify-center gap-0.5 text-xs font-bold leading-none pointer-events-none"
+          class="absolute inset-0 flex items-center justify-center gap-0.5 text-[11px] font-bold leading-none pointer-events-none px-0.5"
         >
           <img
             src=${oilIcon}
             alt=""
             aria-hidden="true"
-            width="11"
-            height="11"
-            class="drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]"
+            width="10"
+            height="10"
+            class="shrink-0 drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]"
           />
-          <span class="text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]"
-            >${renderNumber(this._oil)}</span
+          <span
+            class="text-white tabular-nums drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]"
+            >${this.oilAmount(this._oil)}</span
           >
+          ${this.renderOilRateChip("sm")}
         </div>
-        ${this.renderOilRateChip("sm")}
       </div>
     `;
   }
