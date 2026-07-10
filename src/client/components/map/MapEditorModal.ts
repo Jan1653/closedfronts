@@ -8,6 +8,7 @@ import {
 import {
   applyCoastlineSea,
   clampBBox,
+  denoisePaint,
   gridSizeForBBox,
   rasterizeLinesInto,
   rasterizePolygons,
@@ -406,11 +407,13 @@ export class MapEditorModal extends BaseModal {
       // cleanly separate the area, so a coastal bbox never floods to all-water).
       const coast = await fetchOsmCoastlines(bbox);
       applyCoastlineSea(paint, bbox, width, height, coast, PaintTile.Water);
+      // Clean speckles into solid areas before drawing thin rivers on top.
+      const clean = denoisePaint(paint, width, height);
       // Waterway centre-lines (rivers/streams) drawn as continuous strokes so
       // narrow rivers appear and never break into dots.
       const rivers = await fetchOsmWaterways(bbox);
       rasterizeLinesInto(
-        paint,
+        clean,
         bbox,
         width,
         height,
@@ -422,7 +425,7 @@ export class MapEditorModal extends BaseModal {
       this.name = query.slice(0, 40);
       this.gridW = width;
       this.gridH = height;
-      this.paint = paint;
+      this.paint = clean;
       await this.updateComplete;
       this.rebuildImage();
       this.showNotice(

@@ -251,6 +251,54 @@ export function applyCoastlineSea(
   return { applied: true };
 }
 
+/**
+ * Remove lone speckles from a rasterised grid: a cell with very few same-value
+ * neighbours and a clear opposite majority is flipped to that majority. One
+ * pass over the 8-neighbourhood, reading the original so changes don't cascade.
+ * Produces solid coherent areas (the "grobe zusammenhängende Flächen" goal)
+ * without touching solid regions. Run BEFORE drawing thin rivers so their
+ * 1-cell strokes survive. Returns a cleaned copy.
+ */
+export function denoisePaint(
+  grid: Uint8Array,
+  width: number,
+  height: number,
+): Uint8Array {
+  const out = new Uint8Array(grid);
+  const counts = new Map<number, number>();
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const self = grid[y * width + x];
+      counts.clear();
+      let same = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const nx = x + dx;
+          const ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+          const v = grid[ny * width + nx];
+          counts.set(v, (counts.get(v) ?? 0) + 1);
+          if (v === self) same++;
+        }
+      }
+      // Only touch clear speckles: at most 2 same-value neighbours and a strong
+      // (≥5) opposite majority.
+      if (same > 2) continue;
+      let bestVal = self;
+      let bestCount = 0;
+      for (const [v, c] of counts) {
+        if (c > bestCount) {
+          bestCount = c;
+          bestVal = v;
+        }
+      }
+      if (bestVal !== self && bestCount >= 5) out[y * width + x] = bestVal;
+    }
+  }
+  return out;
+}
+
 /** Longitude/latitude → fractional grid cell (x right, y down = south). */
 export function lonLatToCell(
   bbox: GeoBBox,
