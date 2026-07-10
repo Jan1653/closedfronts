@@ -652,9 +652,10 @@ verifizierbar → im Browser live testen.
 - [x] **Flüsse durchgehend**: `waterway`-Linien als kontinuierliche Striche
       (`rasterizeLinesInto`, Sub-Zellen-Schritte, keine Lücken) — verifiziert.
 - [x] **Bbox-Deckelung** (`clampBBox`): riesige Orte (Region/Land) → Stadt-Zentrum.
-- [ ] **Küstenlinien** (`natural=coastline`) → Meer korrekt (aktuell: Küstenorte
-      zeigen Meer als Land). Phase B. **Risiko:** Flood-Fill kann bei offener
-      Küste die ganze Karte fluten — braucht Schutz + Live-Test.
+- [x] **Küstenlinien** (`natural=coastline`) → Meer (`applyCoastlineSea`,
+      Commit `0fd5a0f`): Flood-Fill von der See-Seite (OSM Land-links-Regel) mit
+      **Guard** — leckt der Fill auf die Landseite oder flutet >95%, wird er
+      verworfen (Karte bleibt Land, keine Regression). Live-Test empfohlen.
 - [ ] **Terrain-Typen** aus `landuse`/Höhe (DEM) — mappt nicht sauber aufs
       Höhen-Modell, braucht Konzept. Phase B/C.
 - [ ] **Entrauschen** (Streu-Pixel), erst grobe Flächen, dann verfeinern.
