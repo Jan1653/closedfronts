@@ -35,6 +35,13 @@ export async function renderHtmlContent(htmlPath: string): Promise<string> {
       assetManifest,
       cdnBase,
     ),
+    // iOS ignores the manifest icons; it needs an apple-touch-icon PNG for the
+    // home-screen icon of the installed web app.
+    appleTouchIconHref: buildAssetUrl(
+      "icons/icon512_rounded.png",
+      assetManifest,
+      cdnBase,
+    ),
     gameplayScreenshotUrl: buildAssetUrl(
       "images/GameplayScreenshot.png",
       assetManifest,

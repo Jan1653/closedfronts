@@ -10,6 +10,18 @@
     <link rel="manifest" href="<%- manifestHref %>" />
     <link rel="icon" type="image/svg+xml" href="<%- faviconHref %>" />
 
+    <!-- PWA / installed-web-app: run standalone (fullscreen), dark theme,
+         and iOS home-screen support (Apple ignores the manifest for these). -->
+    <meta name="theme-color" content="#1e1e1e" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="apple-mobile-web-app-title" content="ClosedFronts" />
+    <link rel="apple-touch-icon" href="<%- appleTouchIconHref %>" />
+
     <!-- Preload styles -->
     <style>
       .preload {
@@ -110,7 +122,6 @@
       async
       defer
     ></script>
-
   </head>
 
   <body

@@ -13,7 +13,7 @@
       "type": "image/png"
     }
   ],
-  "orientation": "portrait",
+  "orientation": "any",
   "display_override": ["fullscreen", "minimal-ui"],
   "display": "standalone",
   "dir": "auto",
@@ -21,5 +21,7 @@
   "name": "ClosedFronts",
   "short_name": "ClosedFronts",
   "start_url": "/",
-  "id": "/"
+  "id": "/",
+  "theme_color": "#1e1e1e",
+  "background_color": "#1e1e1e"
 }

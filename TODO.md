@@ -106,8 +106,16 @@ Reihenfolge laut Nutzer: **erst die einfachen Sachen.** Alles hier gesammelt.
       verfügbar** → Button fehlt dort; echte „Vollbild"-Lösung auf iOS ist die
       **PWA/Zum-Home-Bildschirm**. Offen: Button auch am Handy sichtbar/erreichbar
       machen (Android) + iOS-Fallback (PWA-Hinweis).
-- [ ] **PWA-Installation** sauber: „Zum Home-Bildschirm" → läuft als App gut
-      (Manifest/Standalone prüfen, Safe-Areas, kein Doppel-Scroll).
+- [x] **PWA-Installation** sauber: Apple-Meta-Tags ergänzt
+      (`apple-mobile-web-app-capable=yes` → iOS-Standalone/Vollbild,
+      `status-bar-style=black-translucent`, `apple-mobile-web-app-title`,
+      **apple-touch-icon** = icon512_rounded.png), `theme-color` +
+      `mobile-web-app-capable`; Manifest um `theme_color`/`background_color`
+      ergänzt und **`orientation: "portrait" → "any"`** (Landscape war vorher
+      gesperrt!). Apple-Touch-Icon CDN-aware in **beiden** HTML-Renderern
+      (`RenderHtml.ts` **und** `vite.config.ts`/vite-plugin-html — Letzteres fehlte,
+      hätte den Dev-Server gebrochen). Safe-Areas waren schon da. Im Browser
+      verifiziert (Head-Tags, Icon 200/PNG, Manifest orientation=any).
 - [x] **iOS-Banner zeigt Roh-Keys** (`ios_banner.text/how/later/never`): rendert
       am Boot vor dem Laden der Übersetzungen → `ios-add-to-home-screen-banner`
       in die `LangSelector.applyTranslation`-Re-Render-Liste aufgenommen (gleicher
