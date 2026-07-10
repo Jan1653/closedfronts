@@ -347,6 +347,7 @@
     "osm_enter_place": "Zuerst einen Ort eingeben",
     "osm_not_found": "Ort nicht gefunden",
     "osm_done": "Generiert — nachbessern, dann speichern",
+    "osm_capped": "Bereich war groß — Zentrum generiert. Nachbessern, dann speichern",
     "osm_failed": "Kartendaten konnten nicht geladen werden",
     "osm_attribution": "Terrain © OpenStreetMap-Mitwirkende",
     "canvas_hint": "Male mit der gewählten Kachel. Für den Farbeimer „Füllen“ aktivieren."

@@ -6,6 +6,7 @@ import {
   PaintTile,
 } from "../../../core/game/CustomMapBuilder";
 import {
+  clampBBox,
   gridSizeForBBox,
   rasterizeLinesInto,
   rasterizePolygons,
@@ -378,11 +379,14 @@ export class MapEditorModal extends BaseModal {
     }
     this.osmBusy = true;
     try {
-      const bbox = await geocodePlace(query);
-      if (!bbox) {
+      const found = await geocodePlace(query);
+      if (!found) {
         this.showNotice(translateText("map_editor.osm_not_found"), true);
         return;
       }
+      // Broad queries (regions/countries) return a huge box — cap to a
+      // city-sized area so Overpass stays fast and the map stays detailed.
+      const { bbox, capped } = clampBBox(found, 1.5, 1.0);
       const { width, height } = gridSizeForBBox(bbox, MAX_SIZE);
       // Land background with OSM water areas (lakes, wide rivers) cut out; the
       // editor still flood-fills ocean/shoreline at compile time. Coastlines and
@@ -415,7 +419,10 @@ export class MapEditorModal extends BaseModal {
       this.paint = paint;
       await this.updateComplete;
       this.rebuildImage();
-      this.showNotice(translateText("map_editor.osm_done"), false);
+      this.showNotice(
+        translateText(capped ? "map_editor.osm_capped" : "map_editor.osm_done"),
+        false,
+      );
     } catch (e) {
       console.error("OSM import failed", e);
       this.showNotice(translateText("map_editor.osm_failed"), true);

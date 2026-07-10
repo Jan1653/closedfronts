@@ -37,6 +37,36 @@ function inverseMercatorY(y: number): number {
 }
 
 /**
+ * Center-crop a bbox so neither span exceeds the given maximum (degrees).
+ * Nominatim returns country/region-sized boxes for broad queries, which would
+ * time out Overpass and produce an unusably coarse map — cap to a city-sized
+ * area around the center. Returns `{ bbox, capped }`.
+ */
+export function clampBBox(
+  bbox: GeoBBox,
+  maxLonSpan: number,
+  maxLatSpan: number,
+): { bbox: GeoBBox; capped: boolean } {
+  const lonSpan = bbox.maxLon - bbox.minLon;
+  const latSpan = bbox.maxLat - bbox.minLat;
+  const capped = lonSpan > maxLonSpan || latSpan > maxLatSpan;
+  if (!capped) return { bbox, capped };
+  const cLon = (bbox.minLon + bbox.maxLon) / 2;
+  const cLat = (bbox.minLat + bbox.maxLat) / 2;
+  const hLon = Math.min(lonSpan, maxLonSpan) / 2;
+  const hLat = Math.min(latSpan, maxLatSpan) / 2;
+  return {
+    bbox: {
+      minLon: cLon - hLon,
+      maxLon: cLon + hLon,
+      minLat: cLat - hLat,
+      maxLat: cLat + hLat,
+    },
+    capped: true,
+  };
+}
+
+/**
  * Grid dimensions for a bbox that preserve its on-screen (Mercator) aspect
  * ratio, with the longer side at `maxDim` and both sides clamped to
  * [minDim, maxDim]. Keeps generated maps within the editor's size limits (and
