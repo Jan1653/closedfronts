@@ -818,6 +818,7 @@
     "crowded": "Crowded modifier",
     "disable_alliances": "Disable alliances",
     "donate_gold": "Donate gold",
+    "donate_oil": "Donate oil",
     "donate_troops": "Donate troops",
     "doomsday_clock": "Doomsday Clock",
     "empty_team": "Empty",
@@ -1181,8 +1182,10 @@
     "kick_confirm": "Kick {name}?\n\nThey won't be able to rejoin this game.",
     "kicked": "Already kicked",
     "moderation": "Moderation",
+    "oil": "Oil",
     "send_alliance": "Send Alliance",
     "send_gold": "Send Gold",
+    "send_oil": "Send Oil",
     "send_troops": "Send Troops",
     "start_trade": "Start Trading",
     "start_trade_all": "Start Trading with All",
@@ -1335,6 +1338,12 @@
     "available_tooltip": "Your current available gold",
     "slider_tooltip": "{percent}% • {amount}",
     "title_with_name": "Send Gold to {name}"
+  },
+  "send_oil_modal": {
+    "aria_slider": "Oil slider",
+    "available_tooltip": "Your current available oil",
+    "slider_tooltip": "{percent}% • {amount}",
+    "title_with_name": "Send Oil to {name}"
   },
   "send_troops_modal": {
     "aria_slider": "Troops slider",

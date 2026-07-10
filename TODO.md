@@ -31,8 +31,13 @@ Reihenfolge laut Nutzer: **erst die einfachen Sachen.** Alles hier gesammelt.
 - [x] **Öl-Überschuss automatisch verkaufen**: Tank voll + Pumpe pumpt weiter →
       Überschuss → Gold (`floor(excess / oilSellDivisor=12)`, also sehr wenig).
       Im Sim verifiziert (Öl bleibt am Cap, Gold steigt).
-- [ ] **Öl verschenken (Alliierte)**: „Öl schenken"-Button; nur wenn erlaubt.
-      **Game-Einstellung** dafür in den Lobby-/Game-Settings (an/aus).
+- [x] **Öl verschenken (Alliierte)**: „Öl senden"-Button im Spieler-Panel (nur
+      bei Alliierten sichtbar via `canDonateOil`), öffnet die `SendResourceModal`
+      im neuen **oil-Modus** (blau, Menge bis zum Empfänger-Öl-Cap). Voller
+      Intent/Execution-Pfad (`donate_oil` → `DonateOilExecution`), Empfänger nimmt
+      nur, was unter seinen Cap passt. **Game-Einstellung** „Öl spenden" im
+      HostLobbyModal (Default an). DE/EN-Keys. Im Sim verifiziert (Transfer, Cap,
+      Setting-aus blockt Menschen, Allianz nötig) + Modal-Render geprüft.
 - [ ] **KI lernt das alles**: Öllager bauen, Pumpen stapeln, Öl managen,
       ggf. Öl an Alliierte schenken.
 - [ ] **Öl-Bar wie Truppen-Bar** (PC **und** Handy): gleiches Aussehen; die

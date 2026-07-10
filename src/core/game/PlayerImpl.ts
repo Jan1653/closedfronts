@@ -971,6 +971,36 @@ export class PlayerImpl implements Player {
     return true;
   }
 
+  canDonateOil(recipient: Player): boolean {
+    if (recipient === this) {
+      return false;
+    }
+    if (
+      !this.isAlive() ||
+      !recipient.isAlive() ||
+      !this.isFriendly(recipient)
+    ) {
+      return false;
+    }
+    if (
+      recipient.type() === PlayerType.Human &&
+      this.mg.config().donateOil() === false
+    ) {
+      return false;
+    }
+    for (const donation of this.sentDonations) {
+      if (donation.recipient === recipient) {
+        if (
+          this.mg.ticks() - donation.tick <
+          this.mg.config().donateCooldown()
+        ) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
   canDonateTroops(recipient: Player): boolean {
     if (recipient === this) {
       return false;
@@ -1037,6 +1067,32 @@ export class PlayerImpl implements Player {
       senderId: this.id(),
       recipientId: recipient.id(),
       amount: removed,
+    });
+    return true;
+  }
+
+  donateOil(recipient: Player, amount: number): boolean {
+    if (recipient === this) return false;
+    if (amount <= 0) return false;
+    const r = recipient as PlayerImpl;
+    // The recipient can only take what fits under their own oil cap.
+    const cap = this.mg.config().maxOil(recipient);
+    const accepted = Math.min(
+      Math.floor(amount),
+      Math.floor(this._oil),
+      Math.max(0, cap - r._oil),
+    );
+    if (accepted <= 0) return false;
+    this._oil -= accepted;
+    r._oil += accepted;
+
+    this.sentDonations.push(new Donation(recipient, this.mg.ticks()));
+    this.mg.addUpdate({
+      type: GameUpdateType.DonateEvent,
+      donationType: "oil",
+      senderId: this.id(),
+      recipientId: recipient.id(),
+      amount: BigInt(accepted),
     });
     return true;
   }

@@ -770,6 +770,7 @@
     "instant_build": "Sofortiges Bauen",
     "infinite_gold": "Unendlich Gold",
     "donate_gold": "Gold spenden",
+    "donate_oil": "Öl spenden",
     "infinite_troops": "Unendlich Truppen",
     "donate_troops": "Truppen spenden",
     "compact_map": "Kompakte Karte",
@@ -1264,6 +1265,7 @@
   "player_panel": {
     "gold": "Gold",
     "troops": "Truppen",
+    "oil": "Öl",
     "betrayals": "Verräter",
     "traitor": "Verräter",
     "trading": "Handel",
@@ -1285,6 +1287,7 @@
     "send_alliance": "Allianz senden",
     "send_troops": "Truppen senden",
     "send_gold": "Gold senden",
+    "send_oil": "Öl senden",
     "emotes": "Emojis",
     "arc_down": "Bogen nach unten",
     "arc_up": "Bogen nach oben",
@@ -1306,6 +1309,12 @@
     "title_with_name": "Gold an {name} senden",
     "available_tooltip": "Verfügbares Gold",
     "aria_slider": "Mengenregler",
+    "slider_tooltip": "{percent} % • {amount}"
+  },
+  "send_oil_modal": {
+    "title_with_name": "Öl an {name} senden",
+    "available_tooltip": "Verfügbares Öl",
+    "aria_slider": "Ölregler",
     "slider_tooltip": "{percent} % • {amount}"
   },
   "replay_panel": {

@@ -707,6 +707,8 @@ export interface Player {
   // Donation
   canDonateGold(recipient: Player): boolean;
   canDonateTroops(recipient: Player): boolean;
+  canDonateOil(recipient: Player): boolean;
+  donateOil(recipient: Player, amount: number): boolean;
   donateTroops(recipient: Player, troops: number): boolean;
   donateGold(recipient: Player, gold: Gold): boolean;
   canDeleteUnit(): boolean;
@@ -945,6 +947,7 @@ export interface PlayerInteraction {
   canTarget: boolean;
   canDonateGold: boolean;
   canDonateTroops: boolean;
+  canDonateOil: boolean;
   canEmbargo: boolean;
   allianceInfo?: AllianceInfo;
 }

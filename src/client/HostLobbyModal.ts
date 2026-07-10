@@ -73,6 +73,7 @@ export class HostLobbyModal extends BaseModal {
   @state() private spawnImmunityDurationMinutes: number | undefined = undefined;
   @state() private infiniteGold: boolean = false;
   @state() private donateGold: boolean = false;
+  @state() private donateOil: boolean = true;
   @state() private infiniteTroops: boolean = false;
   @state() private donateTroops: boolean = false;
   @state() private maxTimer: boolean = false;
@@ -519,6 +520,10 @@ export class HostLobbyModal extends BaseModal {
                     checked: this.donateTroops,
                   },
                   {
+                    labelKey: "host_modal.donate_oil",
+                    checked: this.donateOil,
+                  },
+                  {
                     labelKey: "host_modal.infinite_gold",
                     checked: this.infiniteGold,
                   },
@@ -779,6 +784,7 @@ export class HostLobbyModal extends BaseModal {
     this.spawnImmunityDurationMinutes = undefined;
     this.infiniteGold = false;
     this.donateGold = false;
+    this.donateOil = true;
     this.infiniteTroops = false;
     this.donateTroops = false;
     this.maxTimer = false;
@@ -885,6 +891,9 @@ export class HostLobbyModal extends BaseModal {
         break;
       case "host_modal.donate_troops":
         this.handleDonateTroopsChange(checked);
+        break;
+      case "host_modal.donate_oil":
+        this.handleDonateOilChange(checked);
         break;
       case "host_modal.infinite_gold":
         this.handleInfiniteGoldChange(checked);
@@ -1137,6 +1146,11 @@ export class HostLobbyModal extends BaseModal {
     this.putGameConfig();
   };
 
+  private handleDonateOilChange = (val: boolean) => {
+    this.donateOil = val;
+    this.putGameConfig();
+  };
+
   private handleInfiniteTroopsChange = (val: boolean) => {
     this.infiniteTroops = val;
     this.putGameConfig();
@@ -1302,6 +1316,7 @@ export class HostLobbyModal extends BaseModal {
             bots: this.bots,
             infiniteGold: this.infiniteGold,
             donateGold: this.donateGold,
+            donateOil: this.donateOil,
             infiniteTroops: this.infiniteTroops,
             donateTroops: this.donateTroops,
             instantBuild: this.instantBuild,

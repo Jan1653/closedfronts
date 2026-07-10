@@ -41,6 +41,7 @@ export type Intent =
   | EmojiIntent
   | DonateGoldIntent
   | DonateTroopsIntent
+  | DonateOilIntent
   | BuildUnitIntent
   | EmbargoIntent
   | QuickChatIntent
@@ -68,6 +69,7 @@ export type TargetPlayerIntent = z.infer<typeof TargetPlayerIntentSchema>;
 export type EmojiIntent = z.infer<typeof EmojiIntentSchema>;
 export type DonateGoldIntent = z.infer<typeof DonateGoldIntentSchema>;
 export type DonateTroopsIntent = z.infer<typeof DonateTroopIntentSchema>;
+export type DonateOilIntent = z.infer<typeof DonateOilIntentSchema>;
 export type EmbargoIntent = z.infer<typeof EmbargoIntentSchema>;
 export type BuildUnitIntent = z.infer<typeof BuildUnitIntentSchema>;
 export type UpgradeStructureIntent = z.infer<
@@ -309,6 +311,7 @@ export const GameConfigSchema = z.object({
   difficulty: z.enum(Difficulty),
   donateGold: z.boolean(), // Configures donations to humans only
   donateTroops: z.boolean(), // Configures donations to humans only
+  donateOil: z.boolean().optional(), // Gift oil to allies (defaults to allowed)
   gameType: z.enum(GameType),
   gameMode: z.enum(GameMode),
   rankedType: z.enum(RankedType).optional(), // Only set for ranked games.
@@ -503,6 +506,12 @@ export const DonateTroopIntentSchema = z.object({
   troops: z.number().nonnegative().nullable(),
 });
 
+export const DonateOilIntentSchema = z.object({
+  type: z.literal("donate_oil"),
+  recipient: ID,
+  oil: z.number().nonnegative().nullable(),
+});
+
 export const BuildUnitIntentSchema = z.object({
   type: z.literal("build_unit"),
   unit: z.enum(UnitType),
@@ -597,6 +606,7 @@ export const IntentSchema = z.discriminatedUnion("type", [
   EmojiIntentSchema,
   DonateGoldIntentSchema,
   DonateTroopIntentSchema,
+  DonateOilIntentSchema,
   BuildUnitIntentSchema,
   UpgradeStructureIntentSchema,
   EmbargoIntentSchema,

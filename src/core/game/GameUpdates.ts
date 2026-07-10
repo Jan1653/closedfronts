@@ -161,7 +161,7 @@ export interface ConquestUpdate {
 
 export interface DonateEventUpdate {
   type: GameUpdateType.DonateEvent;
-  donationType: "troops" | "gold";
+  donationType: "troops" | "gold" | "oil";
   senderId: PlayerID;
   recipientId: PlayerID;
   amount: bigint;

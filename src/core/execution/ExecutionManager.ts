@@ -11,6 +11,7 @@ import { BoatRetreatExecution } from "./BoatRetreatExecution";
 import { ConstructionExecution } from "./ConstructionExecution";
 import { DeleteUnitExecution } from "./DeleteUnitExecution";
 import { DonateGoldExecution } from "./DonateGoldExecution";
+import { DonateOilExecution } from "./DonateOilExecution";
 import { DonateTroopsExecution } from "./DonateTroopExecution";
 import { EmbargoAllExecution } from "./EmbargoAllExecution";
 import { EmbargoExecution } from "./EmbargoExecution";
@@ -92,6 +93,8 @@ export class Executor {
         );
       case "donate_gold":
         return new DonateGoldExecution(player, intent.recipient, intent.gold);
+      case "donate_oil":
+        return new DonateOilExecution(player, intent.recipient, intent.oil);
       case "embargo":
         return new EmbargoExecution(player, intent.targetID, intent.action);
       case "embargo_all":

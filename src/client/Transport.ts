@@ -119,6 +119,13 @@ export class SendDonateTroopsIntentEvent implements GameEvent {
   ) {}
 }
 
+export class SendDonateOilIntentEvent implements GameEvent {
+  constructor(
+    public readonly recipient: PlayerView,
+    public readonly oil: number | null,
+  ) {}
+}
+
 export class SendQuickChatEvent implements GameEvent {
   constructor(
     public readonly recipient: PlayerView,
@@ -243,6 +250,9 @@ export class Transport {
     this.eventBus.on(SendEmojiIntentEvent, (e) => this.onSendEmojiIntent(e));
     this.eventBus.on(SendDonateGoldIntentEvent, (e) =>
       this.onSendDonateGoldIntent(e),
+    );
+    this.eventBus.on(SendDonateOilIntentEvent, (e) =>
+      this.onSendDonateOilIntent(e),
     );
     this.eventBus.on(SendDonateTroopsIntentEvent, (e) =>
       this.onSendDonateTroopIntent(e),
@@ -552,6 +562,14 @@ export class Transport {
       type: "donate_troops",
       recipient: event.recipient.id(),
       troops: event.troops,
+    });
+  }
+
+  private onSendDonateOilIntent(event: SendDonateOilIntentEvent) {
+    this.sendIntent({
+      type: "donate_oil",
+      recipient: event.recipient.id(),
+      oil: event.oil,
     });
   }
 

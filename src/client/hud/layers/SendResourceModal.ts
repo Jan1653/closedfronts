@@ -4,6 +4,7 @@ import { EventBus } from "../../../core/EventBus";
 import { within } from "../../../core/Util";
 import {
   SendDonateGoldIntentEvent,
+  SendDonateOilIntentEvent,
   SendDonateTroopsIntentEvent,
 } from "../../Transport";
 import { UIState } from "../../UIState";
@@ -15,7 +16,7 @@ export class SendResourceModal extends LitElement {
   @property({ attribute: false }) eventBus: EventBus | null = null;
 
   @property({ type: Boolean }) open: boolean = false;
-  @property({ type: String }) mode: "troops" | "gold" = "troops";
+  @property({ type: String }) mode: "troops" | "gold" | "oil" = "troops";
 
   @property({ type: Object }) total: number | bigint = 0;
   @property({ type: Object }) uiState: UIState | null = null; // to seed initial %
@@ -98,6 +99,10 @@ export class SendResourceModal extends LitElement {
       const myTroops = Number(myPlayer.troops());
       if (amount > myTroops) return;
       this.eventBus.emit(new SendDonateTroopsIntentEvent(target, amount));
+    } else if (this.mode === "oil") {
+      const myOil = Number(myPlayer.oil());
+      if (amount > myOil) return;
+      this.eventBus.emit(new SendDonateOilIntentEvent(target, amount));
     } else {
       const myGold = Number(myPlayer.gold());
       if (amount > myGold) return;
@@ -138,14 +143,22 @@ export class SendResourceModal extends LitElement {
     return within(p, 0, 100);
   }
 
-  /** Internal capacity only for troops; gold is unlimited. */
+  /** Internal capacity for troops (max troops) and oil (recipient's oil cap);
+   *  gold is unlimited. */
   private getCapacityLeft(): number | null {
     if (!this.isTargetAlive()) return 0;
-    if (this.mode !== "troops") return null;
     if (!this.gameView || !this.target) return null;
-    const current = this.toNum(this.target.troops());
-    const max = this.toNum(this.gameView.config().maxTroops(this.target));
-    return Math.max(0, max - current);
+    if (this.mode === "troops") {
+      const current = this.toNum(this.target.troops());
+      const max = this.toNum(this.gameView.config().maxTroops(this.target));
+      return Math.max(0, max - current);
+    }
+    if (this.mode === "oil") {
+      const current = this.toNum(this.target.oil());
+      const max = this.toNum(this.gameView.config().maxOil(this.target));
+      return Math.max(0, max - current);
+    }
+    return null; // gold: unlimited
   }
 
   private getPercentBasis(): number {
@@ -176,9 +189,9 @@ export class SendResourceModal extends LitElement {
   }
 
   private getFillColor(): string {
-    return this.mode === "troops"
-      ? "rgb(168 85 247)" /* purple */
-      : "rgb(234 179 8)" /* amber */;
+    if (this.mode === "troops") return "rgb(168 85 247)"; /* purple */
+    if (this.mode === "oil") return "rgb(56 189 248)"; /* sky blue */
+    return "rgb(234 179 8)"; /* amber (gold) */
   }
 
   private getMinKeepRatio(): number {
@@ -197,21 +210,27 @@ export class SendResourceModal extends LitElement {
     title: (name: string) =>
       this.mode === "troops"
         ? translateText("send_troops_modal.title_with_name", { name })
-        : translateText("send_gold_modal.title_with_name", { name }),
+        : this.mode === "oil"
+          ? translateText("send_oil_modal.title_with_name", { name })
+          : translateText("send_gold_modal.title_with_name", { name }),
 
     availableChip: () => translateText("common.available"),
 
     availableTooltip: () =>
       this.mode === "troops"
         ? translateText("send_troops_modal.available_tooltip")
-        : translateText("send_gold_modal.available_tooltip"),
+        : this.mode === "oil"
+          ? translateText("send_oil_modal.available_tooltip")
+          : translateText("send_gold_modal.available_tooltip"),
 
     max: () => translateText("common.preset_max"),
 
     ariaSlider: () =>
       this.mode === "troops"
         ? translateText("send_troops_modal.aria_slider")
-        : translateText("send_gold_modal.aria_slider"),
+        : this.mode === "oil"
+          ? translateText("send_oil_modal.aria_slider")
+          : translateText("send_gold_modal.aria_slider"),
 
     summarySend: () => translateText("common.summary_send"),
     summaryKeep: () => translateText("common.summary_keep"),
@@ -229,10 +248,15 @@ export class SendResourceModal extends LitElement {
             percent,
             amount: amountStr,
           })
-        : translateText("send_gold_modal.slider_tooltip", {
-            percent,
-            amount: amountStr,
-          }),
+        : this.mode === "oil"
+          ? translateText("send_oil_modal.slider_tooltip", {
+              percent,
+              amount: amountStr,
+            })
+          : translateText("send_gold_modal.slider_tooltip", {
+              percent,
+              amount: amountStr,
+            }),
 
     capacityNote: (amountStr: string) =>
       translateText("send_troops_modal.capacity_note", { amount: amountStr }),

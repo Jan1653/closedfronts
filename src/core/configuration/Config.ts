@@ -271,6 +271,10 @@ export class Config {
   donateTroops(): boolean {
     return this._gameConfig.donateTroops;
   }
+  // Gifting oil to allies. Optional in the config; defaults to allowed.
+  donateOil(): boolean {
+    return this._gameConfig.donateOil ?? true;
+  }
   goldMultiplier(): number {
     return this._gameConfig.goldMultiplier ?? 1;
   }

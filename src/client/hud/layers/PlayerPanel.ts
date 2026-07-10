@@ -46,6 +46,7 @@ const allianceIcon = assetUrl("images/AllianceIconWhite.svg");
 const chatIcon = assetUrl("images/ChatIconWhite.svg");
 const donateGoldIcon = assetUrl("images/DonateGoldIconWhite.svg");
 const donateTroopIcon = assetUrl("images/DonateTroopIconWhite.svg");
+const donateOilIcon = assetUrl("images/OilPumpIconWhite.svg");
 const emojiIcon = assetUrl("images/EmojiIconWhite.svg");
 const shieldIcon = assetUrl("images/ShieldIconWhite.svg");
 const stopTradingIcon = assetUrl("images/StopIconWhite.png");
@@ -67,7 +68,7 @@ export class PlayerPanel extends LitElement implements Controller {
   private kickedPlayerIDs = new Set<string>();
 
   @state() private sendTarget: PlayerView | null = null;
-  @state() private sendMode: "troops" | "gold" | "none" = "none";
+  @state() private sendMode: "troops" | "gold" | "oil" | "none" = "none";
   @state() public isVisible: boolean = false;
   @state() private allianceExpiryText: string | null = null;
   @state() private allianceExpirySeconds: number | null = null;
@@ -233,6 +234,12 @@ export class PlayerPanel extends LitElement implements Controller {
     this.sendMode = "gold";
   }
 
+  private openSendOil(target: PlayerView) {
+    this.suppressNextHide = true;
+    this.sendTarget = target;
+    this.sendMode = "oil";
+  }
+
   private handleDonateTroopClick(
     e: Event,
     myPlayer: PlayerView,
@@ -249,6 +256,15 @@ export class PlayerPanel extends LitElement implements Controller {
   ) {
     e.stopPropagation();
     this.openSendGold(other);
+  }
+
+  private handleDonateOilClick(
+    e: Event,
+    myPlayer: PlayerView,
+    other: PlayerView,
+  ) {
+    e.stopPropagation();
+    this.openSendOil(other);
   }
 
   private closeSend = () => {
@@ -732,6 +748,7 @@ export class PlayerPanel extends LitElement implements Controller {
     const myPlayer = this.g.myPlayer();
     const canDonateGold = this.actions?.interaction?.canDonateGold;
     const canDonateTroops = this.actions?.interaction?.canDonateTroops;
+    const canDonateOil = this.actions?.interaction?.canDonateOil;
     const canSendAllianceRequest =
       this.actions?.interaction?.canSendAllianceRequest;
     const canSendEmoji =
@@ -791,6 +808,17 @@ export class PlayerPanel extends LitElement implements Controller {
                 iconAlt: "Gold",
                 title: translateText("player_panel.send_gold"),
                 label: translateText("player_panel.gold"),
+                type: "normal",
+              })
+            : ""}
+          ${canDonateOil
+            ? actionButton({
+                onClick: (e: MouseEvent) =>
+                  this.handleDonateOilClick(e, my, other),
+                icon: donateOilIcon,
+                iconAlt: "Oil",
+                title: translateText("player_panel.send_oil"),
+                label: translateText("player_panel.oil"),
                 type: "normal",
               })
             : ""}
@@ -894,6 +922,7 @@ export class PlayerPanel extends LitElement implements Controller {
     const other = owner as PlayerView;
     const myGoldNum = my.gold();
     const myTroopsNum = Number(my.troops());
+    const myOilNum = Number(my.oil());
 
     return html`
       <style>
@@ -970,7 +999,9 @@ export class PlayerPanel extends LitElement implements Controller {
                             .mode=${this.sendMode}
                             .total=${this.sendMode === "troops"
                               ? myTroopsNum
-                              : myGoldNum}
+                              : this.sendMode === "oil"
+                                ? myOilNum
+                                : myGoldNum}
                             .uiState=${this.uiState}
                             .myPlayer=${my}
                             .target=${this.sendTarget}
