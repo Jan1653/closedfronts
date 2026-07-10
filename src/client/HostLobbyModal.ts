@@ -38,6 +38,8 @@ import "./components/GameConfigSettings";
 import "./components/InputCard";
 import "./components/LobbyNameEditor";
 import "./components/LobbyPlayerView";
+import { CustomMap, listCustomMaps } from "./components/map/CustomMapStore";
+import "./components/map/CustomMapThumb";
 import "./components/ToggleInputCard";
 import { modalHeader } from "./components/ui/ModalHeader";
 import { crazyGamesSDK } from "./CrazyGamesSDK";
@@ -58,6 +60,10 @@ import {
 @customElement("host-lobby-modal")
 export class HostLobbyModal extends BaseModal {
   @state() private selectedMap: GameMapType = GameMapType.World;
+  // Hand-drawn maps (localStorage). A selected one overrides the official map:
+  // its paint grid is relayed to every client via config.customMap.
+  @state() private customMaps: CustomMap[] = [];
+  @state() private selectedCustomMapId: string | null = null;
   @state() private selectedDifficulty: Difficulty = Difficulty.Easy;
   @state() private nations: number = 0;
   @state() private defaultNationCount: number = 0;
@@ -308,6 +314,56 @@ export class HostLobbyModal extends BaseModal {
     void this.handlePublicListingToggle(isPublic);
   }
 
+  private renderCustomMapsStrip() {
+    if (this.customMaps.length === 0) return nothing;
+    return html`
+      <div class="mb-6">
+        <h4
+          class="text-xs font-bold text-white/40 uppercase tracking-widest mb-3 pl-2"
+        >
+          ${translateText("map_editor.your_maps")}
+        </h4>
+        <div class="flex gap-3 overflow-x-auto custom-scrollbar pb-2">
+          ${this.customMaps.map((m) => {
+            const selected = this.selectedCustomMapId === m.id;
+            return html`<button
+              type="button"
+              @click=${() => this.selectCustomMap(m.id)}
+              class="shrink-0 w-40 p-2 flex flex-col gap-2 rounded-xl border transition-all duration-200 active:scale-95 ${selected
+                ? "bg-malibu-blue/20 border-malibu-blue/50 shadow-[var(--shadow-malibu-blue-strong)]"
+                : "bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20"}"
+            >
+              <div
+                class="w-full aspect-[2/1] overflow-hidden rounded-lg bg-black/30"
+              >
+                <custom-map-thumb .map=${m}></custom-map-thumb>
+              </div>
+              <div class="min-w-0">
+                <div
+                  class="text-xs font-bold text-white truncate text-left leading-tight"
+                >
+                  ${m.name}
+                </div>
+                <div class="text-[10px] text-white/40 text-left">
+                  ${m.width}×${m.height}
+                </div>
+              </div>
+            </button>`;
+          })}
+        </div>
+        ${this.selectedCustomMap
+          ? html`<div
+              class="mt-2 px-3 py-2 rounded-lg bg-malibu-blue/15 border border-malibu-blue/30 text-xs text-white/80"
+            >
+              ${translateText("single_modal.custom_map_active", {
+                name: this.selectedCustomMap.name,
+              })}
+            </div>`
+          : nothing}
+      </div>
+    `;
+  }
+
   protected renderBody() {
     const secondsRemaining =
       this.lobbyStartAt !== null
@@ -470,6 +526,7 @@ export class HostLobbyModal extends BaseModal {
         <div
           class="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-6 mr-1 mx-auto w-full max-w-5xl"
         >
+          ${this.renderCustomMapsStrip()}
           <game-config-settings
             class="block"
             .sectionGapClass=${"space-y-10"}
@@ -667,6 +724,7 @@ export class HostLobbyModal extends BaseModal {
   }
 
   protected onOpen(): void {
+    this.customMaps = listCustomMaps();
     // Re-armed here (not in onClose's reset) so that once
     // closeWithoutLeaving() disarms it, no close cascade — e.g. another
     // modal's close() navigating via showPage, which force-closes this one —
@@ -774,6 +832,7 @@ export class HostLobbyModal extends BaseModal {
 
     // Reset all transient form state to ensure clean slate
     this.selectedMap = GameMapType.World;
+    this.selectedCustomMapId = null;
     this.selectedDifficulty = Difficulty.Easy;
     this.nations = 0;
     this.defaultNationCount = 0;
@@ -826,6 +885,7 @@ export class HostLobbyModal extends BaseModal {
   private async handleSelectRandomMap() {
     this.useRandomMap = true;
     this.selectedMap = getRandomMapType();
+    this.selectedCustomMapId = null;
     await this.loadNationCount();
     this.putGameConfig();
   }
@@ -837,7 +897,20 @@ export class HostLobbyModal extends BaseModal {
   private async handleMapSelection(value: GameMapType) {
     this.selectedMap = value;
     this.useRandomMap = false;
+    this.selectedCustomMapId = null;
     await this.loadNationCount();
+    this.putGameConfig();
+  }
+
+  private get selectedCustomMap(): CustomMap | null {
+    return (
+      this.customMaps.find((m) => m.id === this.selectedCustomMapId) ?? null
+    );
+  }
+
+  private selectCustomMap(id: string) {
+    this.selectedCustomMapId = this.selectedCustomMapId === id ? null : id;
+    if (this.selectedCustomMapId !== null) this.useRandomMap = false;
     this.putGameConfig();
   }
 
@@ -1309,6 +1382,16 @@ export class HostLobbyModal extends BaseModal {
         detail: {
           config: {
             gameMap: this.selectedMap,
+            // Send the hand-drawn map (or null to clear it — never undefined,
+            // which JSON.stringify would drop, leaving a stale map on the host).
+            customMap: this.selectedCustomMap
+              ? {
+                  name: this.selectedCustomMap.name,
+                  width: this.selectedCustomMap.width,
+                  height: this.selectedCustomMap.height,
+                  paint: this.selectedCustomMap.paint,
+                }
+              : null,
             gameMapSize: this.compactMap
               ? GameMapSize.Compact
               : GameMapSize.Normal,

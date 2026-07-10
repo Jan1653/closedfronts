@@ -291,6 +291,12 @@ export class GameServer {
     if (gameConfig.doomsdayClock !== undefined) {
       this.gameConfig.doomsdayClock = gameConfig.doomsdayClock;
     }
+    if (gameConfig.customMap !== undefined) {
+      // A hand-drawn map (private lobbies only). `null` clears it — the host
+      // sends null when switching back to an official map (undefined would be
+      // dropped by JSON.stringify and leave the custom map in place).
+      this.gameConfig.customMap = gameConfig.customMap ?? undefined;
+    }
     if (gameConfig.anonymizeNames !== undefined) {
       this.gameConfig.anonymizeNames = gameConfig.anonymizeNames;
     }
