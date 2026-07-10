@@ -20,6 +20,8 @@ import "./components/baseComponents/Button";
 import "./components/baseComponents/Modal";
 import { BaseModal } from "./components/BaseModal";
 import "./components/GameConfigSettings";
+import { CustomMap, listCustomMaps } from "./components/map/CustomMapStore";
+import "./components/map/CustomMapThumb";
 import { MEDAL_ORDER, medalIcon } from "./components/map/Medals";
 import "./components/ToggleInputCard";
 import { modalHeader } from "./components/ui/ModalHeader";
@@ -113,6 +115,10 @@ export class SinglePlayerModal extends BaseModal {
   protected routerName = "single-player";
 
   @state() private selectedMap: GameMapType = DEFAULT_OPTIONS.selectedMap;
+  // Hand-drawn maps from the editor (localStorage). When one is selected it
+  // overrides the official map: the game runs on config.customMap instead.
+  @state() private customMaps: CustomMap[] = [];
+  @state() private selectedCustomMapId: string | null = null;
   @state() private selectedDifficulty: Difficulty =
     DEFAULT_OPTIONS.selectedDifficulty;
   @state() private nations: number = 0;
@@ -326,6 +332,56 @@ export class SinglePlayerModal extends BaseModal {
     </div>`;
   }
 
+  private renderCustomMapsStrip(): TemplateResult | null {
+    if (this.customMaps.length === 0) return null;
+    return html`
+      <div class="mb-6">
+        <h4
+          class="text-xs font-bold text-white/40 uppercase tracking-widest mb-3 pl-2"
+        >
+          ${translateText("map_editor.your_maps")}
+        </h4>
+        <div class="flex gap-3 overflow-x-auto custom-scrollbar pb-2">
+          ${this.customMaps.map((m) => {
+            const selected = this.selectedCustomMapId === m.id;
+            return html`<button
+              type="button"
+              @click=${() => this.selectCustomMap(m.id)}
+              class="shrink-0 w-40 p-2 flex flex-col gap-2 rounded-xl border transition-all duration-200 active:scale-95 ${selected
+                ? "bg-malibu-blue/20 border-malibu-blue/50 shadow-[var(--shadow-malibu-blue-strong)]"
+                : "bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20"}"
+            >
+              <div
+                class="w-full aspect-[2/1] overflow-hidden rounded-lg bg-black/30"
+              >
+                <custom-map-thumb .map=${m}></custom-map-thumb>
+              </div>
+              <div class="min-w-0">
+                <div
+                  class="text-xs font-bold text-white truncate text-left leading-tight"
+                >
+                  ${m.name}
+                </div>
+                <div class="text-[10px] text-white/40 text-left">
+                  ${m.width}×${m.height}
+                </div>
+              </div>
+            </button>`;
+          })}
+        </div>
+        ${this.selectedCustomMap
+          ? html`<div
+              class="mt-2 px-3 py-2 rounded-lg bg-malibu-blue/15 border border-malibu-blue/30 text-xs text-white/80"
+            >
+              ${translateText("single_modal.custom_map_active", {
+                name: this.selectedCustomMap.name,
+              })}
+            </div>`
+          : null}
+      </div>
+    `;
+  }
+
   protected renderBody() {
     const inputCards = [
       html`<toggle-input-card
@@ -386,6 +442,7 @@ export class SinglePlayerModal extends BaseModal {
         <div
           class="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-6 pt-4 pb-6 mr-1 mx-auto w-full max-w-5xl"
         >
+          ${this.renderCustomMapsStrip()}
           <game-config-settings
             class="block"
             .sectionGapClass=${"space-y-6"}
@@ -523,6 +580,7 @@ export class SinglePlayerModal extends BaseModal {
   protected onClose(): void {
     // Reset all transient form state to ensure clean slate
     this.selectedMap = DEFAULT_OPTIONS.selectedMap;
+    this.selectedCustomMapId = null;
     this.selectedDifficulty = DEFAULT_OPTIONS.selectedDifficulty;
     this.gameMode = DEFAULT_OPTIONS.gameMode;
     this.useRandomMap = DEFAULT_OPTIONS.useRandomMap;
@@ -549,12 +607,14 @@ export class SinglePlayerModal extends BaseModal {
   }
 
   protected onOpen(): void {
+    this.customMaps = listCustomMaps();
     void this.loadNationCount();
   }
 
   private handleSelectRandomMap() {
     this.useRandomMap = true;
     this.selectedMap = getRandomMapType();
+    this.selectedCustomMapId = null;
     void this.loadNationCount();
   }
 
@@ -565,7 +625,20 @@ export class SinglePlayerModal extends BaseModal {
   private handleMapSelection(value: GameMapType) {
     this.selectedMap = value;
     this.useRandomMap = false;
+    // Picking an official map cancels any hand-drawn map selection.
+    this.selectedCustomMapId = null;
     void this.loadNationCount();
+  }
+
+  private selectCustomMap(id: string) {
+    this.selectedCustomMapId = this.selectedCustomMapId === id ? null : id;
+    if (this.selectedCustomMapId !== null) this.useRandomMap = false;
+  }
+
+  private get selectedCustomMap(): CustomMap | null {
+    return (
+      this.customMaps.find((m) => m.id === this.selectedCustomMapId) ?? null
+    );
   }
 
   private handleConfigMapSelected = (e: Event) => {
@@ -785,8 +858,15 @@ export class SinglePlayerModal extends BaseModal {
       finalMaxTimerValue = Math.max(1, Math.min(120, this.maxTimerValue));
     }
 
+    // Hand-drawn map (from the editor) overrides the official map selection:
+    // the terrain compiles from config.customMap on both threads. Custom maps
+    // have no nations.
+    const custom = this.selectedCustomMap;
+
     console.log(
-      `Starting single player game with map: ${GameMapType[this.selectedMap as keyof typeof GameMapType]}${this.useRandomMap ? " (Randomly selected)" : ""}`,
+      custom
+        ? `Starting single player game on custom map: ${custom.name}`
+        : `Starting single player game with map: ${GameMapType[this.selectedMap as keyof typeof GameMapType]}${this.useRandomMap ? " (Randomly selected)" : ""}`,
     );
     const clientID = generateID();
     const gameID = generateID();
@@ -831,10 +911,19 @@ export class SinglePlayerModal extends BaseModal {
               disabledUnits: this.disabledUnits
                 .map((u) => Object.values(UnitType).find((ut) => ut === u))
                 .filter((ut): ut is UnitType => ut !== undefined),
-              nations: sliderToNationsConfig(
-                this.nations,
-                this.defaultNationCount,
-              ),
+              nations: custom
+                ? "disabled"
+                : sliderToNationsConfig(this.nations, this.defaultNationCount),
+              ...(custom
+                ? {
+                    customMap: {
+                      name: custom.name,
+                      width: custom.width,
+                      height: custom.height,
+                      paint: custom.paint,
+                    },
+                  }
+                : {}),
               ...(this.goldMultiplier && this.goldMultiplierValue
                 ? { goldMultiplier: this.goldMultiplierValue }
                 : {}),

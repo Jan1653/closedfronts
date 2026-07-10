@@ -1387,6 +1387,7 @@
     "bots": "Tribes: ",
     "bots_disabled": "Disabled",
     "compact_map": "Compact Map",
+    "custom_map_active": "Custom map “{name}” selected — the official map below is ignored.",
     "disable_alliances": "Disable alliances",
     "doomsday_clock": "Doomsday Clock",
     "enables_title": "Disable Units",

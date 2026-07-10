@@ -444,6 +444,7 @@
   },
   "single_modal": {
     "title": "Einzelspieler",
+    "custom_map_active": "Eigene Karte „{name}“ gewählt — die offizielle Karte unten wird ignoriert.",
     "random_spawn": "Zufälliger Spawn",
     "allow_alliances": "Bündnisse erlauben",
     "options_title": "Optionen",
