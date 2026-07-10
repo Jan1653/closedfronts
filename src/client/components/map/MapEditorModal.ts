@@ -6,6 +6,7 @@ import {
   PaintTile,
 } from "../../../core/game/CustomMapBuilder";
 import {
+  applyCoastlineSea,
   clampBBox,
   gridSizeForBBox,
   rasterizeLinesInto,
@@ -33,6 +34,7 @@ import {
 } from "./CustomMapStore";
 import "./CustomMapThumb";
 import {
+  fetchOsmCoastlines,
   fetchOsmWaterPolygons,
   fetchOsmWaterways,
   geocodePlace,
@@ -400,6 +402,10 @@ export class MapEditorModal extends BaseModal {
         PaintTile.Water,
         PaintTile.Plains,
       );
+      // Coastline → sea (guarded: leaves the map as land if the coast doesn't
+      // cleanly separate the area, so a coastal bbox never floods to all-water).
+      const coast = await fetchOsmCoastlines(bbox);
+      applyCoastlineSea(paint, bbox, width, height, coast, PaintTile.Water);
       // Waterway centre-lines (rivers/streams) drawn as continuous strokes so
       // narrow rivers appear and never break into dots.
       const rivers = await fetchOsmWaterways(bbox);

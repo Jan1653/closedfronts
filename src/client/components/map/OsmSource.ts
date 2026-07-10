@@ -150,3 +150,32 @@ export async function fetchOsmWaterways(
   }
   return parseOverpassWaterways(await res.json());
 }
+
+/**
+ * Overpass QL for coastline ways — the land/sea boundary. OSM orders these so
+ * land is on the left; applyCoastlineSea uses that to fill the sea.
+ */
+export function buildCoastlineQuery(bbox: GeoBBox): string {
+  const b = `${bbox.minLat},${bbox.minLon},${bbox.maxLat},${bbox.maxLon}`;
+  return [
+    "[out:json][timeout:25];",
+    `way["natural"="coastline"](${b});`,
+    "out geom;",
+  ].join("\n");
+}
+
+/** Fetch coastline ways for a bbox from Overpass (parsed as polylines). */
+export async function fetchOsmCoastlines(
+  bbox: GeoBBox,
+  endpoint: string = DEFAULT_OVERPASS,
+): Promise<Ring[]> {
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain" },
+    body: buildCoastlineQuery(bbox),
+  });
+  if (!res.ok) {
+    throw new Error(`Overpass ${res.status}: ${res.statusText}`);
+  }
+  return parseOverpassWaterways(await res.json());
+}

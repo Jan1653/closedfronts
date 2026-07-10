@@ -146,6 +146,111 @@ export function rasterizeLinesInto(
   }
 }
 
+/**
+ * Fill the sea from OSM `natural=coastline` ways. OSM orders coastlines so land
+ * is on the LEFT of travel; in the y-down grid that puts the sea on the
+ * right-hand normal (-dy, dx). We rasterize the coast as a barrier, seed the sea
+ * side, and flood-fill Water up to the coast.
+ *
+ * Safety: if the sea fill leaks to the land side (an open/incomplete coast in
+ * the bbox) or floods almost the whole grid, we DISCARD it and leave the grid
+ * untouched — never regress a land map into an all-water one. Returns whether it
+ * was applied. Mutates `grid` only on success.
+ */
+export function applyCoastlineSea(
+  grid: Uint8Array,
+  bbox: GeoBBox,
+  width: number,
+  height: number,
+  coastlines: ReadonlyArray<Ring>,
+  sea: PaintTile,
+): { applied: boolean } {
+  if (coastlines.length === 0) return { applied: false };
+  const n = width * height;
+
+  // Coast cells act as the flood-fill barrier (and stay land = shoreline).
+  const barrier = new Uint8Array(n);
+  rasterizeLinesInto(
+    barrier,
+    bbox,
+    width,
+    height,
+    coastlines,
+    1 as PaintTile,
+    0,
+  );
+
+  const inBounds = (x: number, y: number) =>
+    x >= 0 && y >= 0 && x < width && y < height;
+  const OFF = 2; // cells to step off the coast onto each side
+  const seaSeeds: number[] = [];
+  const landSeeds: number[] = [];
+  const seed = (arr: number[], x: number, y: number) => {
+    const rx = Math.round(x);
+    const ry = Math.round(y);
+    if (inBounds(rx, ry) && barrier[ry * width + rx] === 0) {
+      arr.push(ry * width + rx);
+    }
+  };
+  for (const line of coastlines) {
+    for (let i = 0; i + 1 < line.length; i++) {
+      const a = lonLatToCell(bbox, width, height, line[i][0], line[i][1]);
+      const b = lonLatToCell(
+        bbox,
+        width,
+        height,
+        line[i + 1][0],
+        line[i + 1][1],
+      );
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const rnx = -dy / len; // right-hand normal = sea side
+      const rny = dx / len;
+      const mx = (a.x + b.x) / 2;
+      const my = (a.y + b.y) / 2;
+      seed(seaSeeds, mx + rnx * OFF, my + rny * OFF);
+      seed(landSeeds, mx - rnx * OFF, my - rny * OFF);
+    }
+  }
+
+  // Flood-fill the sea side over non-barrier cells (4-connectivity).
+  const visited = new Uint8Array(n);
+  const queue: number[] = [];
+  for (const s of seaSeeds)
+    if (!visited[s]) {
+      visited[s] = 1;
+      queue.push(s);
+    }
+  let head = 0;
+  let filled = queue.length;
+  while (head < queue.length) {
+    const i = queue[head++];
+    const x = i % width;
+    const y = (i / width) | 0;
+    const tryCell = (nx: number, ny: number) => {
+      if (!inBounds(nx, ny)) return;
+      const ni = ny * width + nx;
+      if (visited[ni] || barrier[ni] !== 0) return;
+      visited[ni] = 1;
+      filled++;
+      queue.push(ni);
+    };
+    tryCell(x - 1, y);
+    tryCell(x + 1, y);
+    tryCell(x, y - 1);
+    tryCell(x, y + 1);
+  }
+
+  // Guards: a leak onto the land side, or flooding nearly everything, means the
+  // coast didn't cleanly separate the bbox — keep the land map instead.
+  if (filled > 0.95 * n) return { applied: false };
+  for (const l of landSeeds) if (visited[l]) return { applied: false };
+
+  for (let i = 0; i < n; i++) if (visited[i] && barrier[i] === 0) grid[i] = sea;
+  return { applied: true };
+}
+
 /** Longitude/latitude → fractional grid cell (x right, y down = south). */
 export function lonLatToCell(
   bbox: GeoBBox,
