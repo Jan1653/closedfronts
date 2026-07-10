@@ -16,15 +16,21 @@ Reihenfolge laut Nutzer: **erst die einfachen Sachen.** Alles hier gesammelt.
 - [x] **Öl wird mehr gebraucht** — Verbrauch hoch (`tiles/100` statt `/120`,
       `cityOilConsumption` 2→3).
 - [x] **Ohne Öl wirklich sehr langsam** — `oilShortageSpeedFactor` 0.3 → 0.12.
-- [ ] **Ölpumpen stapeln → Level (2, 3, …)**: aufeinander bauen erhöht das
-      Level; höheres Level = größerer **Pump-Radius** und pumpt über den Radius.
-      (Aktuell: mehrere Pumpen am selben Ort erlaubt, aber kein Level/Radius-Boost.)
-- [ ] **Ölpumpe weggebombt → Atomexplosion** (statt der jetzigen kleinen
-      Öl-Explosion in Pump-Radius-Größe: echte Nuke-Detonation auslösen).
-- [ ] **Öllager-Gebäude** (neuer Bau): vergrößert die **Öl-Kapazität** (`maxOil`
-      wird dynamisch = Basis + Summe Öllager). Ohne Öllager kleiner Tank.
-- [ ] **Öl-Überschuss automatisch verkaufen**: wenn Tank voll und Pumpe pumpt
-      weiter → sehr wenig Gold pro Tick (Auto-Verkauf).
+- [x] **Ölpumpen stapeln → Level (2, 3, …)**: Ölpumpe ist jetzt aufrüstbar
+      (`upgradable`), draufbauen erhöht das Level. Produktion skaliert mit Level
+      (Σ Level × Basis in `updateOil`), **Explosionsradius wächst mit Level**
+      (`oilPumpRadius(level)` = 15 + 5·Level). Im Sim verifiziert.
+- [~] **Ölpumpe weggebombt → Atomexplosion**: die Öl-Sekundärexplosion ist jetzt
+      **level-skaliert** (bis Atombomben-Radius) und kratert Land/zerstört Einheiten
+      (`OilExplosionExecution(tile, level)`). *Echte Atom-Mushroom-VISUAL-FX noch
+      offen (FX-Pass-Plumbing) — Politur.*
+- [x] **Öllager-Gebäude** (neuer Bau `UnitType.OilStorage`): vergrößert die
+      **Öl-Kapazität** — `maxOil(player)` = Basis 5000 + Σ (Öllager-Level × 8000).
+      Aufrüstbar. Im Baumenü + eigenes Icon + DE/EN. Karten-Icon vorerst = Ölpumpe
+      (eigene Atlas-Spalte = Politur). Im Sim verifiziert.
+- [x] **Öl-Überschuss automatisch verkaufen**: Tank voll + Pumpe pumpt weiter →
+      Überschuss → Gold (`floor(excess / oilSellDivisor=12)`, also sehr wenig).
+      Im Sim verifiziert (Öl bleibt am Cap, Gold steigt).
 - [ ] **Öl verschenken (Alliierte)**: „Öl schenken"-Button; nur wenn erlaubt.
       **Game-Einstellung** dafür in den Lobby-/Game-Settings (an/aus).
 - [ ] **KI lernt das alles**: Öllager bauen, Pumpen stapeln, Öl managen,

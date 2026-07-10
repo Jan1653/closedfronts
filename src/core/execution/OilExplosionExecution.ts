@@ -11,7 +11,10 @@ export class OilExplosionExecution implements Execution {
   private mg: Game;
   private active: boolean = true;
 
-  constructor(private tile: TileRef) {}
+  constructor(
+    private tile: TileRef,
+    private level: number = 1,
+  ) {}
 
   init(mg: Game, ticks: number): void {
     this.mg = mg;
@@ -19,7 +22,7 @@ export class OilExplosionExecution implements Execution {
 
   tick(ticks: number): void {
     const mg = this.mg;
-    const outer = mg.config().oilPumpRadius();
+    const outer = mg.config().oilPumpRadius(this.level);
     const outer2 = outer * outer;
 
     // Destroy units caught in the blast (but not other in-flight bombs).

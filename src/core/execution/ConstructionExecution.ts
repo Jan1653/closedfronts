@@ -162,6 +162,9 @@ export class ConstructionExecution implements Execution {
         // execution only handles warship capture.
         this.mg.addExecution(new OilPumpExecution(this.structure!));
         break;
+      case UnitType.OilStorage:
+        // Passive: just raises maxOil (read in PlayerImpl.updateOil). No exec.
+        break;
       default:
         console.warn(
           `unit type ${this.constructionType} cannot be constructed`,
@@ -191,6 +194,7 @@ export class ConstructionExecution implements Execution {
       case UnitType.WaterTollStation:
       case UnitType.Wall:
       case UnitType.OilPump:
+      case UnitType.OilStorage:
         return true;
       default:
         return false;

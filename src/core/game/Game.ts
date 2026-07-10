@@ -191,6 +191,9 @@ export enum UnitType {
   WaterTollStation = "Water Toll Station",
   Wall = "Wall",
   OilPump = "Oil Pump",
+  // Raises your oil storage capacity. Stack/upgrade for more; without any, your
+  // tank is tiny and pumps quickly overflow (excess auto-sells for a pittance).
+  OilStorage = "Oil Storage",
 }
 
 export enum TrainType {
@@ -224,6 +227,7 @@ export const Structures = unitTypeGroup([
   UnitType.WaterTollStation,
   UnitType.Wall,
   UnitType.OilPump,
+  UnitType.OilStorage,
 ] as const);
 
 export const BuildMenus = unitTypeGroup([
@@ -303,6 +307,8 @@ export interface UnitParamsMap {
   [UnitType.Wall]: Record<string, never>;
 
   [UnitType.OilPump]: Record<string, never>;
+
+  [UnitType.OilStorage]: Record<string, never>;
 
   [UnitType.MIRV]: {
     targetTile?: number;

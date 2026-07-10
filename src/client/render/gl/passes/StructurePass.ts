@@ -21,6 +21,7 @@ import {
   UT_FACTORY,
   UT_MISSILE_SILO,
   UT_OIL_PUMP,
+  UT_OIL_STORAGE,
   UT_PORT,
   UT_SAM_LAUNCHER,
   UT_WALL,
@@ -161,6 +162,13 @@ export class StructurePass {
 
     // Oil Pump, Wall and Water Toll Station now have their own atlas columns
     // (STRUCTURE_ORDER above), so no placeholder column aliasing is needed.
+
+    // Oil Storage has no dedicated atlas column yet — draw it with the oil pump
+    // icon (distinct build-menu icon; map icon is a follow-up).
+    const oilPumpCol = STRUCTURE_ORDER.indexOf(UT_OIL_PUMP);
+    if (oilPumpCol >= 0) {
+      this.typeToAtlasCol.set(UT_OIL_STORAGE, oilPumpCol);
+    }
 
     // Compile shaders
     this.program = createProgram(

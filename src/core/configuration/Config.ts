@@ -513,6 +513,18 @@ export class Config {
             UnitType.OilPump,
           ),
           constructionDuration: this.instantBuild() ? 0 : 3 * 10,
+          // Stackable: building on it levels it up (more oil, bigger radius).
+          upgradable: true,
+        };
+        break;
+      case UnitType.OilStorage:
+        info = {
+          cost: this.costWrapper(
+            (numUnits: number) => Math.min(1_000_000, (numUnits + 1) * 150_000),
+            UnitType.OilStorage,
+          ),
+          constructionDuration: this.instantBuild() ? 0 : 3 * 10,
+          upgradable: true,
         };
         break;
       default:
@@ -996,12 +1008,40 @@ export class Config {
     return isOilDepositAt(mg.x(tile), mg.y(tile));
   }
 
-  maxOil(): number {
+  // Base tank size with no oil storage built. Deliberately small so a pump
+  // quickly overflows it — you build oil storage to hold more.
+  baseMaxOil(): number {
     return 5000;
   }
 
+  // Extra capacity per oil-storage level.
+  oilStorageBonus(): number {
+    return 8000;
+  }
+
+  // Total capacity: the base tank plus every (active, enabled) oil storage's
+  // level worth of bonus. Disabled (EMP'd) storage doesn't count. Without a
+  // player it's just the base tank.
+  maxOil(player?: Player | PlayerView): number {
+    if (player === undefined) return this.baseMaxOil();
+    let bonus = 0;
+    for (const u of player.units(UnitType.OilStorage)) {
+      if (u.isActive() && !u.isUnderConstruction() && !u.isDisabled()) {
+        bonus += u.level() * this.oilStorageBonus();
+      }
+    }
+    return this.baseMaxOil() + bonus;
+  }
+
   startingOil(): number {
-    return this.maxOil();
+    return this.baseMaxOil();
+  }
+
+  // When the tank is full and pumps keep producing, the overflow auto-sells for
+  // a trickle of gold: gold earned = floor(excessOil / this divisor). Big number
+  // => very little gold, so storage/spending still matters far more than dumping.
+  oilSellDivisor(): number {
+    return 12;
   }
 
   // Speed multiplier applied to movement when a player has run out of oil.
@@ -1012,9 +1052,9 @@ export class Config {
   }
 
   // The radius an oil pump "pumps" over — also the radius of its explosion when
-  // the pump is hit by a bomb.
-  oilPumpRadius(): number {
-    return 20;
+  // the pump is hit by a bomb. Grows as the pump is stacked/levelled up.
+  oilPumpRadius(level: number = 1): number {
+    return 15 + level * 5;
   }
 
   // Ticks a sea-build transport ship must hold position on the target tile

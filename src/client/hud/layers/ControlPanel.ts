@@ -143,13 +143,14 @@ export class ControlPanel extends LitElement implements Controller {
     this._oil = player.oil();
     // Client-side oil rate: active pumps' production minus consumption, per
     // second (×10 like the troop rate). Positive = pumps are feeding your oil.
-    const oilPumps = player
-      .units(UnitType.OilPump)
-      .filter(
-        (u) => u.isActive() && !u.isUnderConstruction() && !u.isDisabled(),
-      ).length;
+    let pumpLevels = 0;
+    for (const u of player.units(UnitType.OilPump)) {
+      if (u.isActive() && !u.isUnderConstruction() && !u.isDisabled()) {
+        pumpLevels += u.level();
+      }
+    }
     this._oilRate =
-      (oilPumps * config.oilProductionPerPump(player) -
+      (pumpLevels * config.oilProductionPerPump(player) -
         config.oilConsumptionRate(player)) *
       10;
     this._troops = player.troops();

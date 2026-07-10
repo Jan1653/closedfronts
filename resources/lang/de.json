@@ -871,6 +871,7 @@
     "factory": "Fabrik",
     "boat": "Boot",
     "oil_pump": "Ölpumpe",
+    "oil_storage": "Öllager",
     "wall": "Mauer",
     "water_toll_station": "Zollstation"
   },
@@ -1115,6 +1116,7 @@
       "city": "Erhöht die Bevölkerungsgrenze",
       "factory": "Baut Eisenbahnen und schickt Züge auf die Strecke",
       "oil_pump": "Produziert Öl, das deine Schiffe und Züge schnell hält",
+      "oil_storage": "Erhöht, wie viel Öl du lagern kannst",
       "wall": "Durch Angriffe sehr schwer zu durchbrechen; nutze Bomben oder Feuer von Verteidigungsposten",
       "water_toll_station": "Verlangt feindlichen Booten einen Gold-Zoll für die Durchfahrt; von Kriegsschiffen kaperbar"
     },

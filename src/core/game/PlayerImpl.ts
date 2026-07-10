@@ -1196,10 +1196,15 @@ export class PlayerImpl implements Player {
 
   updateOil(): void {
     const config = this.mg.config();
-    const pumps = this.units(UnitType.OilPump).filter(
-      (u) => u.isActive() && !u.isUnderConstruction() && !u.isDisabled(),
-    ).length;
-    const production = pumps * config.oilProductionPerPump(this);
+    // Each pump level produces a full pump's worth of oil, so stacking a pump
+    // (levelling it up) makes it pump more.
+    let pumpLevels = 0;
+    for (const p of this.units(UnitType.OilPump)) {
+      if (p.isActive() && !p.isUnderConstruction() && !p.isDisabled()) {
+        pumpLevels += p.level();
+      }
+    }
+    const production = pumpLevels * config.oilProductionPerPump(this);
     const consumption = config.oilConsumptionRate(this);
 
     // Expanding burns fuel: charge oil for tiles gained since the last tick.
@@ -1211,13 +1216,15 @@ export class PlayerImpl implements Player {
     this._lastTilesOwned = tiles;
     const expansion = gained * config.oilExpansionCostPerTile();
 
-    this._oil = Math.max(
-      0,
-      Math.min(
-        config.maxOil(),
-        this._oil + production - consumption - expansion,
-      ),
-    );
+    const cap = config.maxOil(this);
+    let next = this._oil + production - consumption - expansion;
+    if (next > cap) {
+      // Tank full: the overflow auto-sells for a trickle of gold.
+      const gold = Math.floor((next - cap) / config.oilSellDivisor());
+      if (gold > 0) this.addGold(BigInt(gold));
+      next = cap;
+    }
+    this._oil = Math.max(0, next);
   }
 
   useOil(amount: number): void {
@@ -1487,6 +1494,8 @@ export class PlayerImpl implements Player {
         return this.wallSpawn(targetTile);
       case UnitType.OilPump:
         return this.oilPumpSpawn(targetTile);
+      case UnitType.OilStorage:
+        return this.landBasedStructureSpawn(targetTile, validTiles);
       default:
         assertNever(unitType);
     }

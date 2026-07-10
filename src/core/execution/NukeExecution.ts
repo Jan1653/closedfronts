@@ -436,12 +436,13 @@ export class NukeExecution implements Execution {
     const outer2 = magnitude.outer * magnitude.outer;
     const dst = this.dst;
     const destroyer = this.player;
-    const explodingOilPumps: TileRef[] = [];
+    const explodingOilPumps: { tile: TileRef; level: number }[] = [];
     for (const unit of mg.units()) {
       const type = unit.type();
       if (
         type === UnitType.AtomBomb ||
         type === UnitType.HydrogenBomb ||
+        type === UnitType.ElectricBomb ||
         type === UnitType.MIRVWarhead ||
         type === UnitType.MIRV ||
         type === UnitType.SAMMissile
@@ -449,14 +450,15 @@ export class NukeExecution implements Execution {
         continue;
       }
       if (mg.euclideanDistSquared(dst, unit.tile()) < outer2) {
-        if (type === UnitType.OilPump) explodingOilPumps.push(unit.tile());
+        if (type === UnitType.OilPump)
+          explodingOilPumps.push({ tile: unit.tile(), level: unit.level() });
         unit.delete(true, destroyer);
       }
     }
-    // An oil pump caught in the blast goes up in a hydrogen-bomb-sized
-    // secondary explosion.
-    for (const pumpTile of explodingOilPumps) {
-      mg.addExecution(new OilExplosionExecution(pumpTile));
+    // An oil pump caught in the blast goes up in its own big secondary
+    // explosion, sized by the pump's level (a stacked pump = a bigger boom).
+    for (const pump of explodingOilPumps) {
+      mg.addExecution(new OilExplosionExecution(pump.tile, pump.level));
     }
 
     this.redrawBuildings(magnitude.outer + SPRITE_RADIUS);
