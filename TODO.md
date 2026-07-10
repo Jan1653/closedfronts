@@ -603,16 +603,24 @@ gesagt wird. Hier die vollständige Spezifikation, damit nichts verloren geht.
 - [x] Editor-Liste zeigt **Canvas-Thumbnails** pro Karte.
       → Überbrückt das Teilen, bis der Community-Browser/das Backend steht.
 
-**Community / Account (offen — braucht localapi-Backend):**
+**Turn 5 (ERLEDIGT — Commit `21677c0`):** Community-Backend (localapi).
 
-- [ ] Neuer **„Maps"-Reiter** im Hauptmenü.
+- [x] `MapsStore` (datei-gestützt) + `/localapi/maps`-Endpunkte: browse
+      (sort likes/new, Suche, betrachter-abhängiges `likedByMe`), publish
+      (auth, Dimensions-/Paint-Validierung), detail mit paint, like/unlike,
+      delete (nur Autor), `/maps/mine`. Client-API-Wrapper in `Api.ts`.
+- [x] End-to-end per curl verifiziert (register→publish→like→detail→delete→404,
+      401/400-Fehlerpfade). ⚠️ Dev-localapi (8090) muss neu gestartet werden,
+      damit die Routen lokal greifen (kein Auto-Restart).
+
+**Community-Frontend (offen — nutzt jetzt die fertige API):**
+
+- [ ] Neuer **„Maps"-Reiter** im Hauptmenü mit Filtern („Beliebteste"/„Neueste"/
+      „Meine") — nutzt `browseCommunityMaps`.
 - [ ] Startseite zeigt die **meistgelikten** Community-Maps.
-- [ ] **Filter** im Maps-Reiter: „Neueste", „Beliebteste" (meistgelikt), evtl. „Meine".
-- [ ] Mit Account: Maps **liken**.
-- [ ] Auf einer Community-Map ein **„+"** drücken → landet in der eigenen Auswahl
-      unter **„Custom Maps"** (im Solo-/Lobby-Map-Picker auswählbar).
-- [ ] Speichern **veröffentlichen** — an den **Account** gebunden/verlinkt
-      (private Maps erscheinen nur beim Ersteller; localapi-Backend nötig).
+- [ ] **Liken**-Button (`likeCommunityMap`), **„+"** → in eigene Custom-Maps
+      übernehmen (`getCommunityMap` → localStorage), im Solo-Picker spielbar.
+- [ ] Editor: **„Veröffentlichen"**-Button (`publishCommunityMap`, auth-gated).
 
 **Reale Karten importieren (aus Geodaten eine Map generieren):**
 
