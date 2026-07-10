@@ -148,9 +148,10 @@ Reihenfolge laut Nutzer: **erst die einfachen Sachen.** Alles hier gesammelt.
       Einsammel-Schiff-Design entfernt** (pendingGold/collector/Hafen-Abholung
       raus) — `WaterTollStationExecution` deutlich schlanker. Im Sim verifiziert
       (Gegner-Boot zahlt, Besitzer direkt gutgeschrieben, kein Einsammel-Schiff).
-      *Hinweis: `WaterTollStation.test.ts` ist vorbestehend kaputt (alte
-      `connections===2`-Annahme + Hafen-Pflicht + langsame „world"-Karte) —
-      separater Test-Cleanup nötig.*
+- [x] **`WaterTollStation.test.ts` repariert** (war vorbestehend kaputt): Helper
+      auf die neue Verbindungsregel umgestellt (`>= 1` statt `=== 2`),
+      Platzierungs-Tests bauen den erforderlichen Hafen, Map von der sehr langsamen
+      „world" auf `ocean_and_land`. **10/10 grün in 5,5 s** (vorher 240 s / 9 rot).
 - [ ] **Verbindungsregel**: Station kann mit **2 verschiedenen Landmassen** ODER
       **1 Landmasse** verbunden sein — aber **nicht 2×** mit **derselben**
       Landmasse (außer die Verbindung ist sehr weit weg).

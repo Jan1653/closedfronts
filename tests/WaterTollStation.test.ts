@@ -20,10 +20,14 @@ describe("WaterTollStation", () => {
   let p2: Player;
 
   beforeEach(async () => {
-    game = await setup("world", { infiniteGold: true, instantBuild: true }, [
-      new PlayerInfo("p1", PlayerType.Human, null, "p1"),
-      new PlayerInfo("p2", PlayerType.Human, null, "p2"),
-    ]);
+    game = await setup(
+      "ocean_and_land",
+      { infiniteGold: true, instantBuild: true },
+      [
+        new PlayerInfo("p1", PlayerType.Human, null, "p1"),
+        new PlayerInfo("p2", PlayerType.Human, null, "p2"),
+      ],
+    );
     p1 = game.player("p1");
     p2 = game.player("p2");
     p1.addGold(10_000_000n);
@@ -54,14 +58,16 @@ describe("WaterTollStation", () => {
     return false;
   }
 
-  // A water tile that genuinely sits between two distinct landmasses.
+  // A placeable water tile: has at least one connection anchor (land or another
+  // station) in range. A single station only needs one connection — you chain
+  // stations to span a wide strait (see tollStationConnections).
   function findStraitTile(): TileRef | null {
     for (let y = 0; y < game.height(); y++) {
       for (let x = 0; x < game.width(); x++) {
         const t = game.ref(x, y);
         if (!game.isWater(t)) continue;
         if (!landNear(x, y, 2)) continue; // cheap gate before the BFS
-        if (tollStationConnections(game, t).length === 2) return t;
+        if (tollStationConnections(game, t).length >= 1) return t;
       }
     }
     return null;
@@ -80,10 +86,15 @@ describe("WaterTollStation", () => {
     return null;
   }
 
-  test("can be placed on water between two landmasses", () => {
+  test("can be placed on water with a connection anchor + reachable port", () => {
     const strait = findStraitTile();
     expect(strait).not.toBeNull();
-    p1.conquer(firstLandTile()); // player must own territory to build
+    const conns = tollStationConnections(game, strait!);
+    expect(conns.length).toBeGreaterThanOrEqual(1);
+    // A reachable port on the same water body is required (the builder ship
+    // launches from it). Build one on the strait's nearest land anchor.
+    p1.conquer(conns[0]);
+    p1.buildUnit(UnitType.Port, conns[0], {});
     expect(p1.canBuild(UnitType.WaterTollStation, strait!)).toBe(strait);
   });
 
@@ -98,7 +109,9 @@ describe("WaterTollStation", () => {
   test("survives placement through the real construction path", () => {
     const strait = findStraitTile();
     expect(strait).not.toBeNull();
-    p1.conquer(firstLandTile()); // player must own territory to build
+    const conns = tollStationConnections(game, strait!);
+    p1.conquer(conns[0]);
+    p1.buildUnit(UnitType.Port, conns[0], {}); // reachable port required
     game.addExecution(
       new ConstructionExecution(p1, UnitType.WaterTollStation, strait!),
     );
@@ -204,7 +217,7 @@ describe("WaterTollStation", () => {
     expect(strait).not.toBeNull();
     // Give the player a coastal port near the strait to launch the builder from.
     const conns = tollStationConnections(game, strait!);
-    expect(conns.length).toBe(2);
+    expect(conns.length).toBeGreaterThanOrEqual(1);
     p1.conquer(conns[0]);
     p1.buildUnit(UnitType.Port, conns[0], {});
 
@@ -223,7 +236,7 @@ describe("WaterTollStation", () => {
 
   test("sea-build is cancelled if the builder ship is sunk", async () => {
     // Non-instant so the build takes time and can be interrupted mid-way.
-    const g = await setup("world", { infiniteGold: true }, [
+    const g = await setup("ocean_and_land", { infiniteGold: true }, [
       new PlayerInfo("a", PlayerType.Human, null, "a"),
     ]);
     const a = g.player("a");
@@ -233,7 +246,7 @@ describe("WaterTollStation", () => {
     for (let y = 0; y < g.height() && strait2 === null; y++) {
       for (let x = 0; x < g.width(); x++) {
         const t = g.ref(x, y);
-        if (g.isWater(t) && tollStationConnections(g, t).length === 2) {
+        if (g.isWater(t) && tollStationConnections(g, t).length >= 1) {
           strait2 = t;
           break;
         }
