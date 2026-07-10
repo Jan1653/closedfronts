@@ -640,25 +640,25 @@ gesagt wird. Hier die vollständige Spezifikation, damit nichts verloren geht.
 
 **Reale Karten importieren (aus Geodaten eine Map generieren):**
 
-- [ ] Im Editor gibt es eine **echte Weltkarte**; man klickt/zieht einen **Bereich**
-      (z. B. die eigene Heimatstadt) und daraus wird eine **spielbare Map generiert**.
-- [ ] Daten aus **öffentlich/offen lizenzierten** Kartenquellen ziehen
-      (**OpenStreetMap**, Natural Earth, o. Ä.). **NICHT Google** — deren Daten sind
-      nicht offen lizenziert und passen nicht zur AGPL/CC-BY-SA-Linie des Projekts
-      (siehe [[closedfronts-project]]).
-- [ ] **Terrain aus der Realität ableiten**: Land/Wasser, und der Terrain-**Typ**
-      richtet sich nach dem, was dort wirklich ist (z. B. Wüste → Wüste, Gebirge →
-      Gebirge, Wald/Ebene entsprechend).
-- [ ] **Flüsse müssen funktionieren** und **durchgehend** sein: ein in der Realität
-      zusammenhängender Fluss darf beim Rastern **nicht mittendrin zerrissen** werden.
-      Lieber den Fluss **durchziehen** (Lücken schließen / verbinden), als einzelne
-      Pixel mitten in den Fluss zu setzen. **Fluss-Kontinuität hat Priorität.**
-- [ ] **Entrauschen** (viele einzelne Streu-Pixel vermeiden), ABER am Anfang lieber
-      **eine solide Fläche/„ein Schweiß"** erzeugen, statt zu aggressiv Pixel zu
-      vermeiden. Priorität: erst grob & zusammenhängend, dann verfeinern — Flüsse
-      aber von Anfang an durchgehend.
-- [ ] Ergebnis ist eine normale Custom-Map (benennen, privat/öffentlich, „+" in die
-      eigene Auswahl) wie oben.
+Kern: `src/core/game/OsmRaster.ts` (pur/getestet) + `src/client/components/map/OsmSource.ts`
+(Overpass/Nominatim) + OSM-Leiste in `MapEditorModal`. Phase A steht (Commits
+`d8798dd`, `9ba1865`, `39b44b4`). Netzwerk-Calls **nicht** auf dem Dev-Host
+verifizierbar → im Browser live testen.
+
+- [x] Ort eingeben → **spielbare Map generiert** (`geocodePlace` Nominatim →
+      Bbox → Grid → Overpass-Wasser → rastern → ins Editor-Grid). Slippy-Map
+      zum Rechteck-Ziehen ist noch offen (Phase D).
+- [x] Daten aus **offen lizenzierten** Quellen (OSM/ODbL, Attribution gezeigt).
+- [x] **Flüsse durchgehend**: `waterway`-Linien als kontinuierliche Striche
+      (`rasterizeLinesInto`, Sub-Zellen-Schritte, keine Lücken) — verifiziert.
+- [x] **Bbox-Deckelung** (`clampBBox`): riesige Orte (Region/Land) → Stadt-Zentrum.
+- [ ] **Küstenlinien** (`natural=coastline`) → Meer korrekt (aktuell: Küstenorte
+      zeigen Meer als Land). Phase B. **Risiko:** Flood-Fill kann bei offener
+      Küste die ganze Karte fluten — braucht Schutz + Live-Test.
+- [ ] **Terrain-Typen** aus `landuse`/Höhe (DEM) — mappt nicht sauber aufs
+      Höhen-Modell, braucht Konzept. Phase B/C.
+- [ ] **Entrauschen** (Streu-Pixel), erst grobe Flächen, dann verfeinern.
+- [x] Ergebnis ist eine normale Custom-Map (benennen, spielen, veröffentlichen).
 
 **Technik (bei Umsetzung klären):**
 
