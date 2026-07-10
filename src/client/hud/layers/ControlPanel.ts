@@ -60,6 +60,10 @@ export class ControlPanel extends LitElement implements Controller {
   @state()
   private _oil: number = 0;
 
+  // Oil capacity (base tank + oil storage). Drives the oil bar's fill.
+  @state()
+  private _maxOil: number = 0;
+
   // Net oil per second (pumps' production minus consumption); shown next to the
   // oil readout so you can see the pumps actually producing (green) or a deficit
   // (red).
@@ -141,6 +145,7 @@ export class ControlPanel extends LitElement implements Controller {
     this._maxTroops = config.maxTroops(player);
     this._gold = player.gold();
     this._oil = player.oil();
+    this._maxOil = config.maxOil(player);
     // Client-side oil rate: active pumps' production minus consumption, per
     // second (×10 like the troop rate). Positive = pumps are feeding your oil.
     let pumpLevels = 0;
@@ -345,19 +350,6 @@ export class ControlPanel extends LitElement implements Controller {
     this._lastTroopIncreaseRate = troopIncreaseRate;
   }
 
-  // Small green/red "+N"/"−N" next to the oil amount, showing net oil per
-  // second so you can see the pumps producing (or a deficit).
-  private renderOilRate() {
-    const r = Math.round(this._oilRate);
-    if (r === 0) return "";
-    return html`<span
-      class="text-[10px] leading-none tabular-nums shrink-0 ${r > 0
-        ? "text-green-400"
-        : "text-red-400"}"
-      >${r > 0 ? "+" : "−"}${renderNumber(Math.abs(r))}</span
-    >`;
-  }
-
   onAttackRatioChange(newRatio: number) {
     this.uiState.attackRatio = newRatio;
   }
@@ -499,6 +491,111 @@ export class ControlPanel extends LitElement implements Controller {
     `;
   }
 
+  private oilFillPercent(): number {
+    const base = Math.max(this._maxOil, 1);
+    return Math.max(0, Math.min(100, (this._oil / base) * 100));
+  }
+
+  // Small green/red "+N/s" chip showing net oil per second, overlaid in the bar.
+  private renderOilRateChip(size: "sm" | "lg") {
+    const r = Math.round(this._oilRate);
+    if (r === 0) return html``;
+    const cls = size === "lg" ? "text-xs" : "text-[9px]";
+    return html`<span
+      class="absolute top-1/2 -translate-y-1/2 right-1 ${cls} font-bold tabular-nums leading-none pointer-events-none drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)] ${r >
+      0
+        ? "text-green-300"
+        : "text-red-300"}"
+      >${r > 0 ? "+" : "−"}${renderNumber(Math.abs(r))}/s</span
+    >`;
+  }
+
+  // Oil bar — mirrors the troop bar (single sky-blue fill = oil/maxOil), and
+  // doubles as the oil-deposit map toggle (same click behaviour as before).
+  private renderDesktopOilBar() {
+    const fill = this.oilFillPercent();
+    return html`
+      <div
+        class="w-full h-6 border rounded-md overflow-hidden relative cursor-pointer bg-gray-900/60 ${this
+          ._oilMapOn
+          ? "border-sky-300 ring-1 ring-sky-300"
+          : "border-sky-500"}"
+        translate="no"
+        title=${translateText("control_panel.oil_map")}
+        @click=${() => this.toggleOilMap()}
+      >
+        <div
+          class="absolute inset-y-0 left-0 w-full origin-left bg-sky-500 transition-transform duration-200 ease-out"
+          style="transform: scaleX(${fill / 100});"
+        ></div>
+        <div
+          class="absolute inset-0 flex items-center text-lg font-bold leading-none pointer-events-none"
+        >
+          <span class="flex-1 flex justify-end h-full items-center pr-0.5">
+            <span class="text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]"
+              >${renderNumber(this._oil)}</span
+            >
+          </span>
+          <span
+            class="h-full flex items-center px-0.5 text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]"
+            >/</span
+          >
+          <span class="flex-1 flex justify-start h-full items-center pl-0.5">
+            <span
+              class="text-white tabular-nums drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]"
+              >${renderNumber(this._maxOil)}</span
+            >
+            <img
+              src=${oilIcon}
+              alt=""
+              aria-hidden="true"
+              width="18"
+              height="18"
+              class="shrink-0 drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)] ml-1"
+            />
+          </span>
+        </div>
+        ${this.renderOilRateChip("lg")}
+      </div>
+    `;
+  }
+
+  private renderMobileOilBar() {
+    const fill = this.oilFillPercent();
+    return html`
+      <div
+        class="w-full h-6 border rounded-md overflow-hidden relative cursor-pointer bg-gray-900/60 ${this
+          ._oilMapOn
+          ? "border-sky-300 ring-1 ring-sky-300"
+          : "border-sky-500"}"
+        translate="no"
+        title=${translateText("control_panel.oil_map")}
+        @click=${() => this.toggleOilMap()}
+      >
+        <div
+          class="absolute inset-y-0 left-0 w-full origin-left bg-sky-500 transition-transform duration-200 ease-out"
+          style="transform: scaleX(${fill / 100});"
+        ></div>
+        <div
+          class="absolute inset-0 flex items-center justify-center gap-0.5 text-xs font-bold leading-none pointer-events-none"
+        >
+          <img
+            src=${oilIcon}
+            alt=""
+            aria-hidden="true"
+            width="11"
+            height="11"
+            class="drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]"
+          />
+          <span class="text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]"
+            >${renderNumber(this._oil)}</span
+          >
+        </div>
+        ${this.renderOilRateChip("sm")}
+      </div>
+    `;
+  }
+
   private renderNotification() {
     if (!this._notification) return html``;
     const isWarning = this._notification.type === "warning";
@@ -547,6 +644,8 @@ export class ControlPanel extends LitElement implements Controller {
         </div>
         <!-- Troop bar -->
         <div class="flex-1">${this.renderDesktopTroopBar()}</div>
+        <!-- Oil bar (doubles as the oil-deposit map toggle) -->
+        <div class="flex-1">${this.renderDesktopOilBar()}</div>
         <!-- Gold -->
         <div
           class="flex items-center gap-1 shrink-0 border rounded-md border-yellow-400 font-bold text-yellow-400 text-sm py-0.5 px-1 w-[4.5rem] relative"
@@ -563,20 +662,6 @@ export class ControlPanel extends LitElement implements Controller {
             : ""}
           <img src=${goldCoinIcon} width="13" height="13" class="shrink-0" />
           <span class="tabular-nums">${renderNumber(this._gold)}</span>
-        </div>
-        <!-- Oil (doubles as the oil-deposit map toggle) -->
-        <div
-          class="flex items-center gap-1 shrink-0 border rounded-md font-bold text-sm py-0.5 px-1 min-w-[4.5rem] cursor-pointer ${this
-            ._oilMapOn
-            ? "border-sky-300 text-sky-200 bg-sky-400/20 ring-1 ring-sky-300"
-            : "border-sky-400 text-sky-400"}"
-          translate="no"
-          title=${translateText("control_panel.oil_map")}
-          @click=${() => this.toggleOilMap()}
-        >
-          <img src=${oilIcon} width="13" height="13" class="shrink-0" />
-          <span class="tabular-nums">${renderNumber(this._oil)}</span>
-          ${this.renderOilRate()}
         </div>
       </div>
       <!-- Row 2: attack ratio | slider -->
@@ -633,22 +718,12 @@ export class ControlPanel extends LitElement implements Controller {
           <img src=${goldCoinIcon} width="13" height="13" />
           <span class="px-0.5">${renderNumber(this._gold)}</span>
         </div>
-        <!-- Oil (doubles as the oil-deposit map toggle) -->
-        <div
-          class="flex items-center justify-center p-1 gap-0.5 border rounded-md font-bold text-xs w-1/5 shrink-0 cursor-pointer ${this
-            ._oilMapOn
-            ? "border-sky-300 text-sky-200 bg-sky-400/20 ring-1 ring-sky-300"
-            : "border-sky-400 text-sky-400"}"
-          translate="no"
-          title=${translateText("control_panel.oil_map")}
-          @click=${() => this.toggleOilMap()}
-        >
-          <img src=${oilIcon} width="13" height="13" />
-          <span class="px-0.5">${renderNumber(this._oil)}</span>
-          ${this.renderOilRate()}
+        <!-- Oil bar (doubles as the oil-deposit map toggle) -->
+        <div class="w-[24%] shrink-0 flex items-center">
+          ${this.renderMobileOilBar()}
         </div>
         <!-- Troop bar -->
-        <div class="w-[40%] shrink-0 flex items-center">
+        <div class="w-[32%] shrink-0 flex items-center">
           ${this.renderMobileTroopBar()}
         </div>
         <!-- Sword + % label -->

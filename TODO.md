@@ -40,10 +40,15 @@ Reihenfolge laut Nutzer: **erst die einfachen Sachen.** Alles hier gesammelt.
       Setting-aus blockt Menschen, Allianz nötig) + Modal-Render geprüft.
 - [ ] **KI lernt das alles**: Öllager bauen, Pumpen stapeln, Öl managen,
       ggf. Öl an Alliierte schenken.
-- [ ] **Öl-Bar wie Truppen-Bar** (PC **und** Handy): gleiches Aussehen; die
-      Truppen-Bar etwas kleiner, Größen angleichen.
-- [ ] **Öl pro Sekunde anzeigen** — auch das schwebende „+N" **über jeder
-      Ölpumpe** soll pro Sekunde sein (steht dort aktuell nicht pro Sekunde).
+- [x] **Öl-Bar wie Truppen-Bar** (PC **und** Handy): neue `renderDesktopOilBar`/
+      `renderMobileOilBar` (blaue Füllung = Öl/maxOil, Öl/Max + Icon, „+N/s"-Chip),
+      klickbar = Öl-Karten-Toggle. Desktop: Öl-Bar neben der Truppen-Bar (beide
+      flex-1 → Truppen-Bar etwas kleiner). Mobile: Öl-Box durch kompakte Öl-Bar
+      ersetzt. Füllstand + „/s" im Browser verifiziert. *(Mobile-Feinlayout kommt
+      im großen Mobile-Paket C.)*
+- [x] **Öl pro Sekunde anzeigen** — das schwebende „+N" über jeder Ölpumpe ist
+      jetzt **level-aware** (× Pumpen-Level) und überspringt deaktivierte Pumpen;
+      war bereits pro Sekunde (×10). Öl-Bar zeigt „+N/s".
 - [x] **Öl-Flecken: weniger & größer, nussigere Formen** — `OilDeposits.ts`
       neu: CELL 64, ~1/4 Anker, Basisradius 8–17, zweite versetzte Lobe →
       Erdnuss-/Nuss-Silhouette statt Kreis (integer-only, deterministisch).

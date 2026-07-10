@@ -212,16 +212,19 @@ export class WebGLFrameBuilder {
     if (gameView.ticks() % 10 !== 0) return;
     const me = gameView.myPlayer();
     if (me === null) return;
-    const perPumpPerSecond = gameView.config().oilProductionPerPump(me) * 10;
-    if (perPumpPerSecond <= 0) return;
+    // Per pump LEVEL, per second (a stacked/levelled pump produces more).
+    const perLevelPerSecond = gameView.config().oilProductionPerPump(me) * 10;
+    if (perLevelPerSecond <= 0) return;
     const popups: { x: number; y: number; amount: number }[] = [];
     for (const pump of me.units(UnitType.OilPump)) {
-      if (!pump.isActive() || pump.isUnderConstruction()) continue;
+      if (!pump.isActive() || pump.isUnderConstruction() || pump.isDisabled()) {
+        continue;
+      }
       const tile = pump.tile();
       popups.push({
         x: gameView.x(tile),
         y: gameView.y(tile),
-        amount: perPumpPerSecond,
+        amount: perLevelPerSecond * pump.level(),
       });
     }
     if (popups.length > 0) this.view.applyOilPopups(popups);
