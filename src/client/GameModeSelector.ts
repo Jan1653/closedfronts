@@ -240,9 +240,25 @@ export class GameModeSelector extends LitElement {
             this.hostedLobbyCount(),
           )}
         </div>
+        <!-- Map editor: full width, all sizes -->
+        <div class="h-14">
+          ${this.renderSmallActionCard(
+            translateText("main.create_map"),
+            this.openMapEditor,
+            "bg-surface hover:brightness-[1.08] active:brightness-[0.95] hover:scale-105 hover:shadow-[var(--shadow-action-card-hover)]",
+          )}
+        </div>
       </div>
     `;
   }
+
+  private openMapEditor = () => {
+    (
+      document.querySelector("map-editor-modal") as {
+        open: () => void;
+      } | null
+    )?.open();
+  };
 
   private renderSpecialLobbyCard(lobby: PublicGameInfo) {
     return this.renderLobbyCard(lobby, this.getLobbyTitle(lobby));

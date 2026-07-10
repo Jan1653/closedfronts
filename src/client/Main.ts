@@ -74,6 +74,7 @@ import "./components/PlayPage";
 import "./components/RankedModal";
 import "./components/baseComponents/Button";
 import "./components/baseComponents/Modal";
+import "./components/map/MapEditorModal";
 import "./styles.css";
 import "./styles/core/typography.css";
 import "./styles/core/variables.css";
