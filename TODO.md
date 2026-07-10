@@ -117,9 +117,15 @@ Reihenfolge laut Nutzer: **erst die einfachen Sachen.** Alles hier gesammelt.
 - [ ] **Bauen-Button beim Wasser-Klick fehlt** (Handy **und** PC): wenn man aufs
       Wasser klickt bzw. das Multi-Button-Menü hat, muss ein **Bauen-Button** da
       sein → damit man Wasserbauten (Zollstation, **Ölpumpe auf Wasser**) bauen kann.
-- [ ] **Schiff fährt durch → Geld-Popup** wie bei Häfen (schwebendes „+N", wenn
-      ein Boot durch die Zollstation fährt). **Kein Einsammel-Boot mehr nötig** —
-      Geld kommt direkt (ersetzt das aktuelle pendingGold/Einsammel-Design).
+- [x] **Schiff fährt durch → Geld-Popup** wie bei Häfen: die Maut wird jetzt
+      **direkt dem Stations-Besitzer** gutgeschrieben (`owner.addGold(paid, tile)`
+      → schwebendes „+N"-BonusEvent am Stations-Tile). Das **gesamte
+      Einsammel-Schiff-Design entfernt** (pendingGold/collector/Hafen-Abholung
+      raus) — `WaterTollStationExecution` deutlich schlanker. Im Sim verifiziert
+      (Gegner-Boot zahlt, Besitzer direkt gutgeschrieben, kein Einsammel-Schiff).
+      *Hinweis: `WaterTollStation.test.ts` ist vorbestehend kaputt (alte
+      `connections===2`-Annahme + Hafen-Pflicht + langsame „world"-Karte) —
+      separater Test-Cleanup nötig.*
 - [ ] **Verbindungsregel**: Station kann mit **2 verschiedenen Landmassen** ODER
       **1 Landmasse** verbunden sein — aber **nicht 2×** mit **derselben**
       Landmasse (außer die Verbindung ist sehr weit weg).

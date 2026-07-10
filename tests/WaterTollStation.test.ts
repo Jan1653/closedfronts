@@ -166,7 +166,7 @@ describe("WaterTollStation", () => {
     expect(station.owner()).toBe(p2);
   });
 
-  test("accrues a toll from an enemy boat (not credited until collected)", () => {
+  test("credits the toll straight to the station owner", () => {
     const strait = findStraitTile();
     expect(strait).not.toBeNull();
     const station = p1.buildUnit(UnitType.WaterTollStation, strait!, {});
@@ -180,11 +180,10 @@ describe("WaterTollStation", () => {
     const p1Before = p1.gold();
     executeTicks(game, 5);
 
-    // p2 paid the toll, but the gold accrues at the station — the owner (p1,
-    // who has no port here) does NOT receive it immediately; a collection ship
-    // must carry it back to a port first.
+    // p2 paid the toll and the owner (p1) receives it directly — no collection
+    // ship or port needed.
     expect(p2.gold()).toBeLessThan(p2Before);
-    expect(p1.gold()).toBe(p1Before);
+    expect(p1.gold()).toBeGreaterThan(p1Before);
   });
 
   test("does not toll the station owner's own boats", () => {
