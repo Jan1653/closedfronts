@@ -4,7 +4,7 @@ import { GameMap, manhattanDistFN, TileRef } from "./GameMap";
 // Radius (in tiles) around a water toll station in which two connection anchors
 // (a landmass or another toll station) must exist for the station to be
 // placeable. The station draws its two road-like connections to them.
-export const WATER_TOLL_STATION_RADIUS = 14;
+export const WATER_TOLL_STATION_RADIUS = 18;
 
 // The minimal map/unit surface tollStationConnections needs — satisfied by both
 // the server's Game and the client's GameView, so the client can compute a

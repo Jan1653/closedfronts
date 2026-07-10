@@ -5,6 +5,89 @@ Handy-/Mobile-UI funktionieren.**
 
 ---
 
+## 🆕 Sprachnachricht 5 (aktuellstes Feedback) — großes Paket
+
+Reihenfolge laut Nutzer: **erst die einfachen Sachen.** Alles hier gesammelt.
+
+### A. Öl-Ökonomie / Ölpumpen
+
+- [x] **Ölpumpen geben noch weniger & langsamer Öl** — `oilProductionPerPump`
+      auf `10 + tiles/600` gesenkt (war `25 + tiles/300`).
+- [x] **Öl wird mehr gebraucht** — Verbrauch hoch (`tiles/100` statt `/120`,
+      `cityOilConsumption` 2→3).
+- [x] **Ohne Öl wirklich sehr langsam** — `oilShortageSpeedFactor` 0.3 → 0.12.
+- [ ] **Ölpumpen stapeln → Level (2, 3, …)**: aufeinander bauen erhöht das
+      Level; höheres Level = größerer **Pump-Radius** und pumpt über den Radius.
+      (Aktuell: mehrere Pumpen am selben Ort erlaubt, aber kein Level/Radius-Boost.)
+- [ ] **Ölpumpe weggebombt → Atomexplosion** (statt der jetzigen kleinen
+      Öl-Explosion in Pump-Radius-Größe: echte Nuke-Detonation auslösen).
+- [ ] **Öllager-Gebäude** (neuer Bau): vergrößert die **Öl-Kapazität** (`maxOil`
+      wird dynamisch = Basis + Summe Öllager). Ohne Öllager kleiner Tank.
+- [ ] **Öl-Überschuss automatisch verkaufen**: wenn Tank voll und Pumpe pumpt
+      weiter → sehr wenig Gold pro Tick (Auto-Verkauf).
+- [ ] **Öl verschenken (Alliierte)**: „Öl schenken"-Button; nur wenn erlaubt.
+      **Game-Einstellung** dafür in den Lobby-/Game-Settings (an/aus).
+- [ ] **KI lernt das alles**: Öllager bauen, Pumpen stapeln, Öl managen,
+      ggf. Öl an Alliierte schenken.
+- [ ] **Öl-Bar wie Truppen-Bar** (PC **und** Handy): gleiches Aussehen; die
+      Truppen-Bar etwas kleiner, Größen angleichen.
+- [ ] **Öl pro Sekunde anzeigen** — auch das schwebende „+N" **über jeder
+      Ölpumpe** soll pro Sekunde sein (steht dort aktuell nicht pro Sekunde).
+- [x] **Öl-Flecken: weniger & größer, nussigere Formen** — `OilDeposits.ts`
+      neu: CELL 64, ~1/4 Anker, Basisradius 8–17, zweite versetzte Lobe →
+      Erdnuss-/Nuss-Silhouette statt Kreis (integer-only, deterministisch).
+
+### B. Bomben
+
+- [ ] **Nur EIN Bomben-Button** in der Bau-Leiste. Darüber öffnet sich ein
+      kleines **Auswahl-Menü** (mittig, über allem) mit: Atombombe,
+      Wasserstoffbombe, MIRV („Mira"), **Elektrobombe** (neu). PC + Handy.
+- [ ] **Elektrobombe (neu)**: detoniert → **deaktiviert alles im Radius**
+      (Außenposten feuern nicht mehr, Städte/Häfen/… werden **grau**/inaktiv).
+      Zum Einnehmen ohne Wegbomben, damit der Gegner es nicht nutzen kann.
+      Kosten: **leicht teurer als die Atombombe**.
+
+### C. Handy-Layout / Mobile-UX (großer Umbau)
+
+- [ ] **PWA-Installation** sauber: „Zum Home-Bildschirm" → läuft als App gut
+      (Manifest/Standalone prüfen, Safe-Areas, kein Doppel-Scroll).
+- [ ] **iOS-Banner zeigt Roh-Keys** (`ios_banner.text/how/later/never`): rendert
+      wohl vor dem Laden der Übersetzungen → in die LangSelector-Re-Render-Liste
+      (gleicher Fix wie damals beim Lobby-Namen).
+- [ ] **Truppen-Angriffs-Bar (wie viel Truppen beim Angriff)** funktioniert am
+      Handy schlecht → **nach links (links-mittig)** verlegen, wieder bedienbar.
+- [ ] **Öl-Bar** ans Truppen-Bar-Design angleichen (siehe A).
+- [ ] **Bau-Bar rechts** (Handy): alle baubaren Sachen in einer Leiste rechts.
+      Klick auf ein Bau-Item → Karte weiter verschiebbar, aber Tippen auf eine
+      Kachel zeigt die **Vorschau wie am PC**; unten Mitte **Bauen-Button** +
+      **Abbrechen-Button**. Gilt auch für **Bomben**.
+- [ ] **Mengen-Slider** unten Mitte, wenn man gerade baut (mehrere bauen).
+- [ ] **„Catching Up"** kommt am Handy (und allgemein) zu oft → Ursache finden,
+      reduzieren (Tick-/Netz-Performance).
+
+### D. Zollstation (Feinschliff)
+
+- [ ] **Bauen-Button beim Wasser-Klick fehlt** (Handy **und** PC): wenn man aufs
+      Wasser klickt bzw. das Multi-Button-Menü hat, muss ein **Bauen-Button** da
+      sein → damit man Wasserbauten (Zollstation, **Ölpumpe auf Wasser**) bauen kann.
+- [ ] **Schiff fährt durch → Geld-Popup** wie bei Häfen (schwebendes „+N", wenn
+      ein Boot durch die Zollstation fährt). **Kein Einsammel-Boot mehr nötig** —
+      Geld kommt direkt (ersetzt das aktuelle pendingGold/Einsammel-Design).
+- [ ] **Verbindungsregel**: Station kann mit **2 verschiedenen Landmassen** ODER
+      **1 Landmasse** verbunden sein — aber **nicht 2×** mit **derselben**
+      Landmasse (außer die Verbindung ist sehr weit weg).
+- [ ] **Bug: rotes Fadenkreuz bleibt** auf einer Zollstation hängen, wenn man ein
+      Kriegsschiff auswählt und ein Ziel anklickt (CrosshairPass säubern).
+- [x] **Radius etwas höher** — `WATER_TOLL_STATION_RADIUS` 14 → 18.
+
+### E. Handy: „Auswählen"-Button (Mehrfachauswahl)
+
+- [ ] Oben rechts am Handy neuer Button **„Auswählen"** = wie **Shift** am PC:
+      damit mehrere Boote/Einheiten markierbar. Solange aktiv: **Kamera nicht
+      bewegen/zoomen** (Karte gesperrt, nur Auswahl).
+
+---
+
 ## ⭐ Offene Punkte (Kurzübersicht)
 
 Was noch aussteht (Details in den jeweiligen Abschnitten unten):

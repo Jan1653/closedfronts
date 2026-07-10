@@ -929,10 +929,12 @@ export class Config {
   // ── Oil economy ──────────────────────────────────────────────────────────
   oilProductionPerPump(player: Player | PlayerView): number {
     // Scales with empire size, but deliberately modest so oil stays a real
-    // constraint: a pump earns slowly and you rely on several of them plus
-    // careful spending rather than one pump funding everything.
-    // e.g. 5k tiles → ~41/tick, 50k → ~191/tick, 100k → ~358/tick per pump.
-    return 25 + Math.floor(player.numTilesOwned() / 300);
+    // constraint: a pump earns SLOWLY and you rely on several of them (pumps
+    // stack) plus careful spending rather than one pump funding everything.
+    // Dialled down further so a single pump never floods the tank — you notice
+    // oil running low and have to keep building/gifting to keep moving.
+    // e.g. 5k tiles → ~18/tick, 50k → ~93/tick, 100k → ~176/tick per pump.
+    return 10 + Math.floor(player.numTilesOwned() / 600);
   }
 
   oilConsumptionRate(player: Player | PlayerView): number {
@@ -940,7 +942,7 @@ export class Config {
     // a little (they run on fuel — see the troop-rate boost below). Kept high
     // enough that passive upkeep noticeably eats into production.
     return (
-      Math.floor(player.numTilesOwned() / 120) +
+      Math.floor(player.numTilesOwned() / 100) +
       this.builtCityCount(player) * this.cityOilConsumption()
     );
   }
@@ -977,7 +979,7 @@ export class Config {
   // return a fuelled empire's cities generate troops slightly faster (see
   // troopIncreaseRate).
   cityOilConsumption(): number {
-    return 2;
+    return 3;
   }
 
   // Oil pumps can only sit on an oil deposit. The deposit map is a shared,
@@ -996,8 +998,10 @@ export class Config {
   }
 
   // Speed multiplier applied to movement when a player has run out of oil.
+  // Very low on purpose: with an empty tank everything (attacks, ships, trains)
+  // crawls, so keeping oil flowing really matters.
   oilShortageSpeedFactor(): number {
-    return 0.3;
+    return 0.12;
   }
 
   // The radius an oil pump "pumps" over — also the radius of its explosion when
