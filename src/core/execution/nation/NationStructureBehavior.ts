@@ -222,6 +222,12 @@ export class NationStructureBehavior {
       return true;
     }
 
+    // Oil storage banks the pumps' output (bigger tank), so the nation stops
+    // wasting overflow and keeps a buffer for expansion.
+    if (this.tryBuildOilStorage()) {
+      return true;
+    }
+
     // Defensive walls along an active front (harder difficulties).
     if (this.tryBuildWall()) {
       return true;
@@ -330,23 +336,83 @@ export class NationStructureBehavior {
     // let them lay down their economic base (city/port) before a pump.
     if (this.placementsCount === 0) return false;
 
+    // 1) Build a new pump on an owned deposit while under the size-based target.
     // No guaranteed first pump: a nation only builds one once it's sizeable,
     // and far fewer overall (they were flooding the map with pumps).
     const target = Math.floor(this.player.numTilesOwned() / OIL_TILES_PER_PUMP);
-    if (this.player.unitsOwned(UnitType.OilPump) >= target) return false;
-    if (this.player.gold() < this.cost(UnitType.OilPump)) return false;
+    if (
+      this.player.unitsOwned(UnitType.OilPump) < target &&
+      this.player.gold() >= this.cost(UnitType.OilPump)
+    ) {
+      const tiles = randTerritoryTileArray(
+        this.random,
+        this.game,
+        this.player,
+        OIL_DEPOSIT_SAMPLE,
+      );
+      for (const t of tiles) {
+        if (!config.isOilDeposit(this.game, t)) continue;
+        if (!this.player.canBuild(UnitType.OilPump, t)) continue;
+        this.game.addExecution(
+          new ConstructionExecution(this.player, UnitType.OilPump, t),
+        );
+        return true;
+      }
+    }
+
+    // 2) Oil-starved with pumps already down → stack (level up) one instead of
+    // hunting for a scarce new deposit. A higher-level pump pumps more.
+    if (
+      this.player.oil() <= 0 &&
+      this.player.unitsOwned(UnitType.OilPump) > 0
+    ) {
+      const pump = this.lowestLevelUpgradablePump();
+      if (pump !== null && this.player.gold() >= this.cost(UnitType.OilPump)) {
+        this.game.addExecution(
+          new UpgradeStructureExecution(this.player, pump.id()),
+        );
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** The nation's lowest-level oil pump that can currently be upgraded. */
+  private lowestLevelUpgradablePump(): Unit | null {
+    let best: Unit | null = null;
+    for (const p of this.player.units(UnitType.OilPump)) {
+      if (!this.player.canUpgradeUnit(p)) continue;
+      if (best === null || p.level() < best.level()) best = p;
+    }
+    return best;
+  }
+
+  /**
+   * Builds an oil storage once the nation actually pumps oil, to bank the
+   * output (bigger tank) instead of overflowing it. Roughly one storage per two
+   * pumps, capped low. Built outside the nuke save-up pacing like oil pumps.
+   */
+  private tryBuildOilStorage(): boolean {
+    const config = this.game.config();
+    if (config.isUnitDisabled(UnitType.OilStorage)) return false;
+    if (this.placementsCount === 0) return false;
+
+    const pumps = this.player.unitsOwned(UnitType.OilPump);
+    if (pumps === 0) return false; // useless without pumps
+    const target = Math.min(3, Math.floor(pumps / 2));
+    if (this.player.unitsOwned(UnitType.OilStorage) >= target) return false;
+    if (this.player.gold() < this.cost(UnitType.OilStorage)) return false;
 
     const tiles = randTerritoryTileArray(
       this.random,
       this.game,
       this.player,
-      OIL_DEPOSIT_SAMPLE,
+      25,
     );
     for (const t of tiles) {
-      if (!config.isOilDeposit(this.game, t)) continue;
-      if (!this.player.canBuild(UnitType.OilPump, t)) continue;
+      if (!this.player.canBuild(UnitType.OilStorage, t)) continue;
       this.game.addExecution(
-        new ConstructionExecution(this.player, UnitType.OilPump, t),
+        new ConstructionExecution(this.player, UnitType.OilStorage, t),
       );
       return true;
     }

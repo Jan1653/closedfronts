@@ -38,8 +38,16 @@ Reihenfolge laut Nutzer: **erst die einfachen Sachen.** Alles hier gesammelt.
       nur, was unter seinen Cap passt. **Game-Einstellung** „Öl spenden" im
       HostLobbyModal (Default an). DE/EN-Keys. Im Sim verifiziert (Transfer, Cap,
       Setting-aus blockt Menschen, Allianz nötig) + Modal-Render geprüft.
-- [ ] **KI lernt das alles**: Öllager bauen, Pumpen stapeln, Öl managen,
-      ggf. Öl an Alliierte schenken.
+- [x] **KI lernt das Öl-System**: `NationStructureBehavior` baut jetzt **Öllager**
+      (`tryBuildOilStorage`, ~1 pro 2 Pumpen, gedeckelt) und **stapelt Ölpumpen**
+      (in `tryBuildOilPump`: bei leerem Tank wird die niedrigste Pumpe gelevelt
+      statt ein rares neues Vorkommen zu suchen). Im Sim verifiziert (öl-knappe
+      Nation stapelt, 2-Pumpen-Nation baut Lager). Keine Regression (die 11 roten
+      NationStructureBehavior-Tests sind **vorbestehend** — veraltete
+      Verteidigungsposten-API, unabhängig).
+  - [ ] **KI Öl an Alliierte schenken** — bewusst ausgelassen: Nationen schenken
+        aktuell **gar nichts** (kein Gold/Truppen); wäre inkonsistenter Neubau.
+        Optionaler Folge-Punkt.
 - [x] **Öl-Bar wie Truppen-Bar** (PC **und** Handy): neue `renderDesktopOilBar`/
       `renderMobileOilBar` (blaue Füllung = Öl/maxOil, Öl/Max + Icon, „+N/s"-Chip),
       klickbar = Öl-Karten-Toggle. Desktop: Öl-Bar neben der Truppen-Bar (beide
