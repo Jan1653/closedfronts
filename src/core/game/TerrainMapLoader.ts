@@ -1,3 +1,9 @@
+import {
+  buildCustomTerrain,
+  decodeCustomMapPaint,
+  downscalePaint,
+  SerializedCustomMap,
+} from "./CustomMapBuilder";
 import { GameMapSize, GameMapType, TeamGameSpawnAreas } from "./Game";
 import { GameMap, GameMapImpl } from "./GameMap";
 import { GameMapLoader } from "./GameMapLoader";
@@ -110,6 +116,43 @@ export async function loadTerrainMap(
   };
   loadedMaps.set(cacheKey, result);
   return result;
+}
+
+/**
+ * Build a TerrainMapData straight from a hand-drawn map's paint grid — the
+ * in-memory equivalent of loadTerrainMap for maps that never touch the CDN.
+ * The paint compiles deterministically to the same bytes on both the render
+ * thread and the sim worker, so no map files need to be fetched. Custom maps
+ * carry no nations or team spawn areas.
+ */
+export function buildCustomTerrainMapData(
+  custom: SerializedCustomMap,
+): TerrainMapData {
+  const paint = decodeCustomMapPaint(custom.paint, custom.width, custom.height);
+  const full = buildCustomTerrain(paint, custom.width, custom.height);
+  const gameMap = new GameMapImpl(
+    full.width,
+    full.height,
+    full.data,
+    full.numLandTiles,
+  );
+
+  const mini = downscalePaint(paint, custom.width, custom.height);
+  const miniTerrain = buildCustomTerrain(mini.paint, mini.width, mini.height);
+  const miniGameMap = new GameMapImpl(
+    miniTerrain.width,
+    miniTerrain.height,
+    miniTerrain.data,
+    miniTerrain.numLandTiles,
+  );
+
+  return {
+    nations: [],
+    additionalNations: [],
+    gameMap,
+    miniGameMap,
+    teamGameSpawnAreas: undefined,
+  };
 }
 
 export async function genTerrainFromBin(

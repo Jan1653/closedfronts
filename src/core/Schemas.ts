@@ -308,6 +308,17 @@ export const DoomsdayClockConfigSchema = z.object({
 
 export const GameConfigSchema = z.object({
   gameMap: z.enum(GameMapType),
+  // Hand-drawn map payload (singleplayer only). When present, the terrain is
+  // compiled from this paint grid instead of loading `gameMap` from the CDN.
+  // base64 of a width*height PaintTile grid; see CustomMapBuilder.
+  customMap: z
+    .object({
+      name: z.string().max(64),
+      width: z.number().int().min(8).max(512),
+      height: z.number().int().min(8).max(512),
+      paint: z.string().max(400_000),
+    })
+    .optional(),
   difficulty: z.enum(Difficulty),
   donateGold: z.boolean(), // Configures donations to humans only
   donateTroops: z.boolean(), // Configures donations to humans only

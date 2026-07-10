@@ -34,6 +34,74 @@ export interface CustomTerrain {
 }
 
 /**
+ * Wire form of a hand-drawn map, small enough to ride inside a GameConfig so it
+ * reaches both the render thread and the sim worker with the game-start info.
+ * `paint` is base64 of a width*height PaintTile grid (row-major).
+ */
+export interface SerializedCustomMap {
+  name: string;
+  width: number;
+  height: number;
+  paint: string;
+}
+
+/** Decode a base64 PaintTile grid back into bytes (worker + browser + node). */
+export function decodeCustomMapPaint(
+  paint: string,
+  width: number,
+  height: number,
+): Uint8Array {
+  const bin = atob(paint);
+  const n = width * height;
+  if (bin.length !== n) {
+    throw new Error(
+      `custom map paint length ${bin.length} != ${width}x${height} (${n})`,
+    );
+  }
+  const out = new Uint8Array(n);
+  for (let i = 0; i < n; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+/**
+ * Downscale a paint grid to half resolution (ceil), the same ratio the offline
+ * map generator uses for its 4x mini map. A block becomes mountain if it holds
+ * any mountain, else land if it holds any land, else water — so thin isthmuses
+ * survive into the coarse pathfinding map.
+ */
+export function downscalePaint(
+  paint: Uint8Array | number[],
+  width: number,
+  height: number,
+): { paint: Uint8Array; width: number; height: number } {
+  const mw = Math.ceil(width / 2);
+  const mh = Math.ceil(height / 2);
+  const out = new Uint8Array(mw * mh);
+  for (let my = 0; my < mh; my++) {
+    for (let mx = 0; mx < mw; mx++) {
+      let hasLand = false;
+      let hasMountain = false;
+      for (let dy = 0; dy < 2; dy++) {
+        for (let dx = 0; dx < 2; dx++) {
+          const x = mx * 2 + dx;
+          const y = my * 2 + dy;
+          if (x >= width || y >= height) continue;
+          const p = paint[y * width + x];
+          if (p === PaintTile.Mountain) hasMountain = true;
+          else if (p === PaintTile.Land) hasLand = true;
+        }
+      }
+      out[my * mw + mx] = hasMountain
+        ? PaintTile.Mountain
+        : hasLand
+          ? PaintTile.Land
+          : PaintTile.Water;
+    }
+  }
+  return { paint: out, width: mw, height: mh };
+}
+
+/**
  * @param paint width*height array of PaintTile values (row-major).
  */
 export function buildCustomTerrain(

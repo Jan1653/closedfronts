@@ -27,7 +27,11 @@ import {
   HashUpdate,
   WinUpdate,
 } from "../core/game/GameUpdates";
-import { loadTerrainMap, TerrainMapData } from "../core/game/TerrainMapLoader";
+import {
+  buildCustomTerrainMapData,
+  loadTerrainMap,
+  TerrainMapData,
+} from "../core/game/TerrainMapLoader";
 import {
   GRAPHICS_KEY,
   USER_SETTINGS_CHANGED_EVENT,
@@ -517,7 +521,11 @@ async function createClientGame(
   );
   let gameMap: TerrainMapData;
 
-  if (terrainLoad) {
+  const customMap = lobbyConfig.gameStartInfo.config.customMap;
+  if (customMap) {
+    // Hand-drawn map: compile the same terrain the worker does, no CDN fetch.
+    gameMap = buildCustomTerrainMapData(customMap);
+  } else if (terrainLoad) {
     gameMap = await terrainLoad;
   } else {
     gameMap = await loadTerrainMap(

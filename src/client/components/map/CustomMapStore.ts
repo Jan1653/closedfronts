@@ -34,6 +34,11 @@ function base64ToU8(b64: string): Uint8Array {
   return u8;
 }
 
+/** Base64-encode a paint grid (same encoding used for stored maps). */
+export function encodePaintBase64(paint: Uint8Array): string {
+  return u8ToBase64(paint);
+}
+
 export function listCustomMaps(): CustomMap[] {
   try {
     const raw = localStorage.getItem(KEY);

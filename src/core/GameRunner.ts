@@ -27,7 +27,10 @@ import { TileRef } from "./game/GameMap";
 import { GameMapLoader } from "./game/GameMapLoader";
 import { ErrorUpdate, GameUpdateViewData } from "./game/GameUpdates";
 import { createNationsForGame } from "./game/NationCreation";
-import { loadTerrainMap as loadGameMap } from "./game/TerrainMapLoader";
+import {
+  buildCustomTerrainMapData,
+  loadTerrainMap as loadGameMap,
+} from "./game/TerrainMapLoader";
 import { PseudoRandom } from "./PseudoRandom";
 import { ClientID, GameStartInfo, Turn } from "./Schemas";
 import { simpleHash } from "./Util";
@@ -39,11 +42,13 @@ export async function createGameRunner(
   callBack: (gu: GameUpdateViewData | ErrorUpdate) => void,
 ): Promise<GameRunner> {
   const config = new Config(gameStart.config, null, false);
-  const gameMap = await loadGameMap(
-    gameStart.config.gameMap,
-    gameStart.config.gameMapSize,
-    mapLoader,
-  );
+  const gameMap = gameStart.config.customMap
+    ? buildCustomTerrainMapData(gameStart.config.customMap)
+    : await loadGameMap(
+        gameStart.config.gameMap,
+        gameStart.config.gameMapSize,
+        mapLoader,
+      );
   const random = new PseudoRandom(simpleHash(gameStart.gameID));
 
   const humans = gameStart.players.map((p) => {

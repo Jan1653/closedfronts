@@ -4,6 +4,17 @@ import {
   buildCustomTerrain,
   PaintTile,
 } from "../../../core/game/CustomMapBuilder";
+import {
+  Difficulty,
+  GameMapSize,
+  GameMapType,
+  GameMode,
+  GameType,
+} from "../../../core/game/Game";
+import { generateID } from "../../../core/Util";
+import { getPlayerCosmetics } from "../../Cosmetics";
+import { JoinLobbyEvent } from "../../Main";
+import { UsernameInput } from "../../UsernameInput";
 import { translateText } from "../../Utils";
 import { BaseModal } from "../BaseModal";
 import { modalHeader } from "../ui/ModalHeader";
@@ -12,6 +23,7 @@ import {
   CustomMap,
   decodePaint,
   deleteCustomMap,
+  encodePaintBase64,
   listCustomMaps,
   saveCustomMap,
 } from "./CustomMapStore";
@@ -249,6 +261,101 @@ export class MapEditorModal extends BaseModal {
     this.showNotice(translateText("map_editor.saved"), false);
   }
 
+  /**
+   * Launch a singleplayer game on a hand-drawn map. The paint grid rides inside
+   * the game config (config.customMap), so both the renderer and the sim worker
+   * compile the same terrain without any map files. Bots scale with land area;
+   * custom maps have no nations.
+   */
+  private async startCustomGame(
+    name: string,
+    width: number,
+    height: number,
+    paintB64: string,
+    paint: Uint8Array,
+  ) {
+    let land = 0;
+    for (let i = 0; i < paint.length; i++) {
+      if (paint[i] !== PaintTile.Water) land++;
+    }
+    if (land === 0) {
+      this.showNotice(translateText("map_editor.needs_land"), true);
+      return;
+    }
+    const bots = Math.max(3, Math.min(100, Math.floor(land / 400)));
+
+    const usernameInput = document.querySelector(
+      "username-input",
+    ) as UsernameInput | null;
+    const clientID = generateID();
+    const gameID = generateID();
+    const cosmetics = await getPlayerCosmetics();
+
+    this.dispatchEvent(
+      new CustomEvent("join-lobby", {
+        detail: {
+          gameID,
+          gameStartInfo: {
+            gameID,
+            players: [
+              {
+                clientID,
+                username: usernameInput?.getUsername() ?? "Player",
+                clanTag: usernameInput?.getClanTag() ?? null,
+                cosmetics,
+              },
+            ],
+            config: {
+              // gameMap is ignored while customMap is set, but must be a valid
+              // enum value to satisfy the schema.
+              gameMap: GameMapType.World,
+              gameMapSize: GameMapSize.Normal,
+              gameType: GameType.Singleplayer,
+              gameMode: GameMode.FFA,
+              difficulty: Difficulty.Medium,
+              bots,
+              infiniteGold: false,
+              infiniteTroops: false,
+              instantBuild: false,
+              randomSpawn: false,
+              donateGold: false,
+              donateTroops: false,
+              nations: "disabled",
+              disabledUnits: [],
+              customMap: { name, width, height, paint: paintB64 },
+            },
+            lobbyCreatedAt: Date.now(),
+          },
+          source: "singleplayer",
+        } satisfies JoinLobbyEvent,
+        bubbles: true,
+        composed: true,
+      }),
+    );
+    this.close();
+  }
+
+  private playCurrent() {
+    void this.startCustomGame(
+      this.name.trim() || "Custom",
+      this.gridW,
+      this.gridH,
+      // Re-encode the live grid so an unsaved drawing is playable too.
+      encodePaintBase64(this.paint),
+      this.paint,
+    );
+  }
+
+  private playSaved(m: CustomMap) {
+    void this.startCustomGame(
+      m.name,
+      m.width,
+      m.height,
+      m.paint,
+      decodePaint(m),
+    );
+  }
+
   private loadMap(m: CustomMap) {
     this.editingId = m.id;
     this.name = m.name;
@@ -440,6 +547,12 @@ export class MapEditorModal extends BaseModal {
             ${translateText("map_editor.save")}
           </button>
         </div>
+        <button
+          @click=${() => this.playCurrent()}
+          class="w-full rounded-lg px-3 py-2 text-sm font-semibold bg-green-600 hover:bg-green-500 transition-colors"
+        >
+          ${translateText("map_editor.play")}
+        </button>
         ${this.notice
           ? html`<p
               class="text-xs ${this.noticeError
@@ -478,6 +591,12 @@ export class MapEditorModal extends BaseModal {
                     <span class="text-xs text-white/40"
                       >${m.width}×${m.height}</span
                     >
+                    <button
+                      @click=${() => this.playSaved(m)}
+                      class="text-xs rounded px-2 py-1 bg-green-600 hover:bg-green-500 font-semibold"
+                    >
+                      ${translateText("map_editor.play")}
+                    </button>
                     <button
                       @click=${() => this.loadMap(m)}
                       class="text-xs rounded px-2 py-1 bg-white/10 hover:bg-white/20"
