@@ -85,6 +85,16 @@ Reihenfolge laut Nutzer: **erst die einfachen Sachen.** Alles hier gesammelt.
   - [ ] Auch **mobile Einheiten** (Kriegsschiffe) optional deaktivieren (v1: nur
         Strukturen).
 
+### B2. SAM-Rücksender (Abwehr fängt Bomben)
+
+- [x] **Früher & für mehr Bomben**: Der SAM-Rücksender fängt/kapert jetzt schon
+      **ab Level 2** (25 %) und ist **bei Level 5 garantiert** (100 %, +25 %/Level)
+      — vorher Atom erst ab L5, Wasserstoff ab L10, 100 % erst bei L15. Gilt für
+      **Atom-, Wasserstoff- UND Elektrobomben**; gekaperte Bombe landet kostenlos
+      im Stockpile (Neustart gratis). SAM fängt Elektrobomben jetzt auch ab
+      (beide Whitelists). Im Sim verifiziert (L5 kapert Elektrobombe, gratis
+      Neustart) + Config-Tabelle getestet. DE/EN-Key `electric_bomb_captured`.
+
 ### C. Handy-Layout / Mobile-UX (großer Umbau)
 
 - [ ] **Landscape am Handy → mehr PC-Optik**: kippt man das Handy quer, soll die

@@ -519,6 +519,7 @@
     "conquered_no_gold": "Conquered {name} (didn't play, no gold awarded)",
     "duration_second": "1 second",
     "duration_seconds_plural": "{seconds} seconds",
+    "electric_bomb_captured": "Electric bomb captured! Ready to launch for free.",
     "focus": "Focus",
     "hydrogen_bomb_captured": "Hydrogen bomb captured! Ready to launch for free.",
     "hydrogen_bomb_detonated": "{name} - hydrogen bomb detonated",

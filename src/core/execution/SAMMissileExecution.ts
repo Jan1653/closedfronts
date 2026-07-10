@@ -45,7 +45,11 @@ export class SAMMissileExecution implements Execution {
       return;
     }
     // Mirv warheads are too fast, and mirv shouldn't be stopped ever
-    const nukesWhitelist = [UnitType.AtomBomb, UnitType.HydrogenBomb];
+    const nukesWhitelist = [
+      UnitType.AtomBomb,
+      UnitType.HydrogenBomb,
+      UnitType.ElectricBomb,
+    ];
     if (
       !this.target.isActive() ||
       !this.ownerUnit.isActive() ||
@@ -97,7 +101,11 @@ export class SAMMissileExecution implements Execution {
    */
   private maybeCaptureNuke(): void {
     const nukeType = this.target.type();
-    if (nukeType !== UnitType.AtomBomb && nukeType !== UnitType.HydrogenBomb) {
+    if (
+      nukeType !== UnitType.AtomBomb &&
+      nukeType !== UnitType.HydrogenBomb &&
+      nukeType !== UnitType.ElectricBomb
+    ) {
       return;
     }
     const chance = this.mg
@@ -112,13 +120,13 @@ export class SAMMissileExecution implements Execution {
     }
     const owner = this.ownerUnit.owner();
     owner.addNukeToStockpile(nukeType);
-    this.mg.displayMessage(
+    const capturedKey =
       nukeType === UnitType.AtomBomb
         ? "events_display.atom_bomb_captured"
-        : "events_display.hydrogen_bomb_captured",
-      MessageType.SAM_HIT,
-      owner.id(),
-    );
+        : nukeType === UnitType.HydrogenBomb
+          ? "events_display.hydrogen_bomb_captured"
+          : "events_display.electric_bomb_captured";
+    this.mg.displayMessage(capturedKey, MessageType.SAM_HIT, owner.id());
   }
 
   isActive(): boolean {

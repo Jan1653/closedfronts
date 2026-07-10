@@ -1335,7 +1335,9 @@ export class PlayerImpl implements Player {
     // of gold. The cost function already returns 0 while a credit is held (see
     // Config.nukeCost); consume exactly one here as the bomb is built.
     if (
-      (type === UnitType.AtomBomb || type === UnitType.HydrogenBomb) &&
+      (type === UnitType.AtomBomb ||
+        type === UnitType.HydrogenBomb ||
+        type === UnitType.ElectricBomb) &&
       this.nukeStockpile(type) > 0
     ) {
       this._nukeStockpile.set(type, this.nukeStockpile(type) - 1);

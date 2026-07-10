@@ -37,19 +37,24 @@ describe("Rücksender (SAM nuke capture)", () => {
     attacker = game.player("attacker");
   });
 
-  test("samCaptureChancePercent scales per level and bomb type", () => {
+  test("samCaptureChancePercent scales per level for all capturable bombs", () => {
     const c = game.config();
-    // Atom bomb: 0 below level 5, +10%/level from level 5, guaranteed by 15.
-    expect(c.samCaptureChancePercent(UnitType.AtomBomb, 4)).toBe(0);
-    expect(c.samCaptureChancePercent(UnitType.AtomBomb, 5)).toBe(10);
-    expect(c.samCaptureChancePercent(UnitType.AtomBomb, 6)).toBe(20);
-    expect(c.samCaptureChancePercent(UnitType.AtomBomb, 14)).toBe(100);
-    expect(c.samCaptureChancePercent(UnitType.AtomBomb, 15)).toBe(100);
-    // Hydrogen bomb: 0 below level 10, +20%/level from level 10, guaranteed by 15.
-    expect(c.samCaptureChancePercent(UnitType.HydrogenBomb, 9)).toBe(0);
-    expect(c.samCaptureChancePercent(UnitType.HydrogenBomb, 10)).toBe(20);
-    expect(c.samCaptureChancePercent(UnitType.HydrogenBomb, 14)).toBe(100);
-    expect(c.samCaptureChancePercent(UnitType.HydrogenBomb, 15)).toBe(100);
+    // Atom, hydrogen and electric: 0 at level 1, then 25%/level from level 2,
+    // guaranteed 100% by level 5.
+    for (const type of [
+      UnitType.AtomBomb,
+      UnitType.HydrogenBomb,
+      UnitType.ElectricBomb,
+    ]) {
+      expect(c.samCaptureChancePercent(type, 1)).toBe(0);
+      expect(c.samCaptureChancePercent(type, 2)).toBe(25);
+      expect(c.samCaptureChancePercent(type, 3)).toBe(50);
+      expect(c.samCaptureChancePercent(type, 4)).toBe(75);
+      expect(c.samCaptureChancePercent(type, 5)).toBe(100);
+      expect(c.samCaptureChancePercent(type, 6)).toBe(100);
+    }
+    // MIRV is never capturable.
+    expect(c.samCaptureChancePercent(UnitType.MIRV, 5)).toBe(0);
   });
 
   test("a level-15 SAM captures the intercepted atom bomb for its owner", () => {
@@ -75,10 +80,9 @@ describe("Rücksender (SAM nuke capture)", () => {
     expect(defender.nukeStockpile(UnitType.AtomBomb)).toBe(1);
   });
 
-  test("a level-4 SAM destroys the atom bomb but captures nothing", () => {
+  test("a level-1 SAM destroys the atom bomb but captures nothing", () => {
     const sam = defender.buildUnit(UnitType.SAMLauncher, game.ref(1, 1), {});
-    for (let i = 0; i < 3; i++) sam.increaseLevel();
-    expect(sam.level()).toBe(4);
+    expect(sam.level()).toBe(1);
     game.addExecution(new SAMLauncherExecution(defender, null, sam));
 
     attacker.buildUnit(UnitType.AtomBomb, game.ref(1, 1), {

@@ -1181,22 +1181,22 @@ export class Config {
 
   /**
    * Rücksender: chance (0–100, integer percent) that a SAM launcher of the
-   * given level captures an intercepted nuke instead of merely destroying it,
-   * banking a free nuke of the same type for the SAM's owner. Atom bombs become
-   * capturable from level 5 (10%, +10%/level); hydrogen bombs only from
-   * level 10 (20%, +20%/level). Both reach a guaranteed 100% by level 15.
-   * Integer percent keeps the interception roll deterministic across platforms.
+   * given level captures an intercepted bomb instead of merely destroying it,
+   * banking a free bomb of the same type for the SAM's owner. Atom, hydrogen
+   * and electric bombs are all capturable: nothing at level 1, then 25 % at
+   * level 2 rising to a guaranteed 100 % at level 5 (+25 %/level). Integer
+   * percent keeps the interception roll deterministic across platforms.
    */
   samCaptureChancePercent(nukeType: UnitType, level: number): number {
-    if (nukeType === UnitType.AtomBomb) {
-      if (level < 5) return 0;
-      return Math.min(100, (level - 4) * 10);
+    if (
+      nukeType !== UnitType.AtomBomb &&
+      nukeType !== UnitType.HydrogenBomb &&
+      nukeType !== UnitType.ElectricBomb
+    ) {
+      return 0;
     }
-    if (nukeType === UnitType.HydrogenBomb) {
-      if (level < 10) return 0;
-      return Math.min(100, (level - 9) * 20);
-    }
-    return 0;
+    if (level < 2) return 0;
+    return Math.min(100, (level - 1) * 25);
   }
 
   defaultSamMissileSpeed(): number {

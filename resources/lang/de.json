@@ -1216,6 +1216,7 @@
     "atom_bomb_detonated": "{name} – Atombombe detoniert",
     "attack_cancelled_retreat": "Angriff abgebrochen, {troops} Soldaten beim Rückzug getötet",
     "conquered_no_gold": "{name} erobert (nicht mitgespielt, kein Gold vergeben)",
+    "electric_bomb_captured": "Elektrobombe gekapert! Bereit zum kostenlosen Start.",
     "hydrogen_bomb_captured": "Wasserstoffbombe gekapert! Bereit zum kostenlosen Start.",
     "hydrogen_bomb_detonated": "{name} – Wasserstoffbombe detoniert",
     "mirv_warheads_intercepted": "{count, plural, one {{count} MIRV-Sprengkopf abgefangen} other {{count} MIRV-Sprengköpfe abgefangen}}",
