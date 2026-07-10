@@ -121,8 +121,13 @@ Reihenfolge laut Nutzer: **erst die einfachen Sachen.** Alles hier gesammelt.
       in die `LangSelector.applyTranslation`-Re-Render-Liste aufgenommen (gleicher
       Fix wie beim Lobby-Namen). Verifiziert: `applyTranslation` ruft jetzt
       `requestUpdate()` auf dem Banner, Keys lösen sich auf.
-- [ ] **Truppen-Angriffs-Bar (wie viel Truppen beim Angriff)** funktioniert am
-      Handy schlecht → **nach links (links-mittig)** verlegen, wieder bedienbar.
+- [x] **Truppen-Angriffs-Bar nach links**: neue `mobile-attack-bar` (linker Rand,
+      links-mittig, gespiegelt zur Bau-Bar rechts) — großer **vertikaler Slider**
+      (viel besser bedienbar als der winzige Slider in der unteren Leiste) mit
+      %-Anzeige + Truppenzahl. Schreibt/liest `uiState.attackRatio` (die geteilte
+      Wahrheit); der ControlPanel synct sich jeden Tick. Angriffs-Slider aus der
+      mobilen unteren Leiste entfernt (Öl-/Truppen-Bar dadurch breiter). Logik im
+      Browser verifiziert (Slider ändert Ratio). **Touch/Position am Gerät prüfen.**
 - [ ] **Öl-Bar** ans Truppen-Bar-Design angleichen (siehe A).
 - [x] **Bau-Bar rechts** (Handy) + zweistufiges Tap-Placement: neue Komponenten
       `mobile-build-bar` (rechte vertikale Leiste, alle baubaren Sachen inkl.

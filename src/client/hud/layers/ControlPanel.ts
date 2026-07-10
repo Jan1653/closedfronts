@@ -141,6 +141,12 @@ export class ControlPanel extends LitElement implements Controller {
 
     this.updateTroopIncrease();
 
+    // Keep our displayed ratio in sync if another control (the left-edge
+    // mobile-attack-bar, or a keybind) changed uiState.attackRatio.
+    if (Math.abs(this.attackRatio - this.uiState.attackRatio) > 0.0001) {
+      this.attackRatio = this.uiState.attackRatio;
+    }
+
     const config = this.game.config();
     this._maxTroops = config.maxTroops(player);
     this._gold = player.gold();
@@ -723,41 +729,11 @@ export class ControlPanel extends LitElement implements Controller {
           <span class="px-0.5">${renderNumber(this._gold)}</span>
         </div>
         <!-- Oil bar (doubles as the oil-deposit map toggle) -->
-        <div class="w-[24%] shrink-0 flex items-center">
-          ${this.renderMobileOilBar()}
-        </div>
-        <!-- Troop bar -->
-        <div class="w-[32%] shrink-0 flex items-center">
+        <div class="flex-1 flex items-center">${this.renderMobileOilBar()}</div>
+        <!-- Troop bar (the attack-ratio control now lives in the left-edge
+             <mobile-attack-bar>, so the bars get the full width here) -->
+        <div class="flex-1 flex items-center">
           ${this.renderMobileTroopBar()}
-        </div>
-        <!-- Sword + % label -->
-        <div
-          class="flex flex-col items-center shrink-0 gap-0.5 w-8"
-          translate="no"
-        >
-          <img
-            src=${swordIcon}
-            alt=""
-            aria-hidden="true"
-            width="10"
-            height="10"
-            style="filter: brightness(0) invert(1);"
-          />
-          <span class="text-white text-xs font-bold tabular-nums"
-            >${(this.attackRatio * 100).toFixed(0)}%</span
-          >
-        </div>
-        <!-- Attack ratio slider -->
-        <div class="flex-1" translate="no">
-          <input
-            type="range"
-            min="1"
-            max="100"
-            .value=${String(Math.round(this.attackRatio * 100))}
-            @input=${(e: Event) => this.handleRatioSliderInput(e)}
-            @pointerup=${(e: Event) => this.handleRatioSliderPointerUp(e)}
-            class="w-full h-1.5 accent-aquarius cursor-pointer"
-          />
         </div>
       </div>
     `;

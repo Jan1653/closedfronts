@@ -32,6 +32,7 @@ import { ImmunityTimer } from "./layers/ImmunityTimer";
 import { InGamePromo } from "./layers/InGamePromo";
 import { Leaderboard } from "./layers/Leaderboard";
 import { MainRadialMenu } from "./layers/MainRadialMenu";
+import { MobileAttackBar } from "./layers/MobileAttackBar";
 import { MobileBuildBar } from "./layers/MobileBuildBar";
 import { MobileBuildControls } from "./layers/MobileBuildControls";
 import { MultiTabModal } from "./layers/MultiTabModal";
@@ -215,6 +216,15 @@ export function createRenderer(
   unitDisplay.eventBus = eventBus;
   unitDisplay.uiState = uiState;
 
+  const mobileAttackBar = document.querySelector(
+    "mobile-attack-bar",
+  ) as MobileAttackBar;
+  if (!(mobileAttackBar instanceof MobileAttackBar)) {
+    console.error("mobile attack bar not found");
+  }
+  mobileAttackBar.game = game;
+  mobileAttackBar.uiState = uiState;
+
   const mobileBuildBar = document.querySelector(
     "mobile-build-bar",
   ) as MobileBuildBar;
@@ -342,6 +352,7 @@ export function createRenderer(
     leaderboard,
     gameLeftSidebar,
     unitDisplay,
+    mobileAttackBar,
     mobileBuildBar,
     mobileBuildControls,
     gameRightSidebar,

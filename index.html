@@ -322,6 +322,15 @@
     <emoji-table></emoji-table>
     <build-menu></build-menu>
 
+    <!-- Mobile attack-ratio bar (left edge) — mirrors the build bar. Renders
+         nothing on desktop / out of game. -->
+    <div
+      class="fixed left-0 top-1/2 -translate-y-1/2 z-[210] pointer-events-none"
+      style="padding-left: env(safe-area-inset-left)"
+    >
+      <mobile-attack-bar></mobile-attack-bar>
+    </div>
+
     <!-- Mobile build: item bar (right edge) + placement controls (bottom center).
          Both render nothing on desktop / out of game. -->
     <div
