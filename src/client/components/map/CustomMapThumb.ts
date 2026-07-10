@@ -1,14 +1,7 @@
 import { html, LitElement, TemplateResult } from "lit";
 import { customElement, property, query } from "lit/decorators.js";
 import { PaintTile } from "../../../core/game/CustomMapBuilder";
-import { CustomMap, decodePaint } from "./CustomMapStore";
-
-// Same palette the editor paints with, so a thumbnail matches the canvas.
-const TILE_RGB: Record<PaintTile, [number, number, number]> = {
-  [PaintTile.Water]: [40, 92, 160],
-  [PaintTile.Land]: [74, 124, 60],
-  [PaintTile.Mountain]: [116, 116, 122],
-};
+import { CustomMap, decodePaint, PAINT_TILE_RGB } from "./CustomMapStore";
 
 /**
  * Renders a hand-drawn map's paint grid to a 1px-per-tile canvas (pixelated
@@ -46,7 +39,9 @@ export class CustomMapThumb extends LitElement {
     const img = ctx.createImageData(map.width, map.height);
     const data = img.data;
     for (let i = 0; i < paint.length; i++) {
-      const [r, g, b] = TILE_RGB[(paint[i] as PaintTile) ?? PaintTile.Water];
+      const [r, g, b] =
+        PAINT_TILE_RGB[paint[i] as PaintTile] ??
+        PAINT_TILE_RGB[PaintTile.Water];
       const o = i * 4;
       data[o] = r;
       data[o + 1] = g;

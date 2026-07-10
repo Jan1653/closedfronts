@@ -12,19 +12,53 @@
  * Pure integer math, no external deps — safe to run anywhere (deterministic).
  */
 
-// Palette values the editor paints with.
+/**
+ * Palette values the editor paints with. Each maps to a land/water flag and an
+ * elevation magnitude (0-31) that the renderer colours as a distinct band
+ * (plains → highland → mountain → impassable peak; water darkens with depth).
+ *
+ * The numeric values are wire-stable: 0 (water) and 2 (impassable peak) match
+ * the original 3-tile palette, so maps drawn before the richer palette still
+ * load correctly. New tiles use higher numbers.
+ */
 export enum PaintTile {
-  Water = 0,
-  Land = 1,
-  Mountain = 2,
+  Water = 0, // ocean/lake, shallow
+  Plains = 1, // low green land
+  Peak = 2, // impassable wall (legacy "Mountain")
+  Highland = 3, // tan hills
+  Mountain = 4, // grey passable mountain
+  DeepWater = 5, // darker deep water
 }
 
 const IS_LAND_BIT = 7;
 const SHORELINE_BIT = 6;
 const OCEAN_BIT = 5;
 const IMPASSABLE_MAGNITUDE = 31;
-// Plain, passable land elevation. Mountains use IMPASSABLE_MAGNITUDE.
-const LAND_MAGNITUDE = 15;
+
+// Per-tile land flag + elevation magnitude. Magnitudes sit in the middle of the
+// renderer's colour bands (plains <10, highland 10-19, mountain 20-30, peak 31)
+// so each type reads as its intended terrain.
+interface PaintInfo {
+  land: boolean;
+  magnitude: number;
+}
+const PAINT_INFO: Record<PaintTile, PaintInfo> = {
+  [PaintTile.Water]: { land: false, magnitude: 0 },
+  [PaintTile.DeepWater]: { land: false, magnitude: 10 },
+  [PaintTile.Plains]: { land: true, magnitude: 5 },
+  [PaintTile.Highland]: { land: true, magnitude: 15 },
+  [PaintTile.Mountain]: { land: true, magnitude: 25 },
+  [PaintTile.Peak]: { land: true, magnitude: IMPASSABLE_MAGNITUDE },
+};
+
+function infoFor(p: number): PaintInfo {
+  return PAINT_INFO[p as PaintTile] ?? PAINT_INFO[PaintTile.Water];
+}
+
+/** True for any land tile (plains/highland/mountain/peak). */
+export function isLandPaint(p: number): boolean {
+  return infoFor(p).land;
+}
 
 export interface CustomTerrain {
   width: number;
@@ -65,9 +99,9 @@ export function decodeCustomMapPaint(
 
 /**
  * Downscale a paint grid to half resolution (ceil), the same ratio the offline
- * map generator uses for its 4x mini map. A block becomes mountain if it holds
- * any mountain, else land if it holds any land, else water — so thin isthmuses
- * survive into the coarse pathfinding map.
+ * map generator uses for its 4x mini map. A block keeps its highest-elevation
+ * land tile if any land is present (so thin isthmuses and peaks survive into the
+ * coarse pathfinding map), otherwise deep water if any, else shallow water.
  */
 export function downscalePaint(
   paint: Uint8Array | number[],
@@ -79,23 +113,32 @@ export function downscalePaint(
   const out = new Uint8Array(mw * mh);
   for (let my = 0; my < mh; my++) {
     for (let mx = 0; mx < mw; mx++) {
-      let hasLand = false;
-      let hasMountain = false;
+      let bestLand = -1;
+      let bestLandMag = -1;
+      let anyDeep = false;
       for (let dy = 0; dy < 2; dy++) {
         for (let dx = 0; dx < 2; dx++) {
           const x = mx * 2 + dx;
           const y = my * 2 + dy;
           if (x >= width || y >= height) continue;
           const p = paint[y * width + x];
-          if (p === PaintTile.Mountain) hasMountain = true;
-          else if (p === PaintTile.Land) hasLand = true;
+          const info = infoFor(p);
+          if (info.land) {
+            if (info.magnitude > bestLandMag) {
+              bestLandMag = info.magnitude;
+              bestLand = p;
+            }
+          } else if (p === PaintTile.DeepWater) {
+            anyDeep = true;
+          }
         }
       }
-      out[my * mw + mx] = hasMountain
-        ? PaintTile.Mountain
-        : hasLand
-          ? PaintTile.Land
-          : PaintTile.Water;
+      out[my * mw + mx] =
+        bestLand >= 0
+          ? bestLand
+          : anyDeep
+            ? PaintTile.DeepWater
+            : PaintTile.Water;
     }
   }
   return { paint: out, width: mw, height: mh };
@@ -117,18 +160,16 @@ export function buildCustomTerrain(
   }
   const data = new Uint8Array(n);
 
-  // 1) Land / mountain bytes; water starts as 0 (lake) and may become ocean.
+  // 1) Land + elevation bytes; water carries its depth magnitude and may later
+  //    gain the ocean bit via the border flood fill.
   let numLandTiles = 0;
   for (let i = 0; i < n; i++) {
-    const p = paint[i];
-    if (p === PaintTile.Land) {
-      data[i] = (1 << IS_LAND_BIT) | LAND_MAGNITUDE;
-      numLandTiles++;
-    } else if (p === PaintTile.Mountain) {
-      data[i] = (1 << IS_LAND_BIT) | IMPASSABLE_MAGNITUDE;
+    const info = infoFor(paint[i]);
+    if (info.land) {
+      data[i] = (1 << IS_LAND_BIT) | info.magnitude;
       numLandTiles++;
     } else {
-      data[i] = 0; // water (lake until proven ocean)
+      data[i] = info.magnitude; // water depth (lake until proven ocean)
     }
   }
 

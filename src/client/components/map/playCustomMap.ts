@@ -1,3 +1,4 @@
+import { isLandPaint } from "../../../core/game/CustomMapBuilder";
 import {
   Difficulty,
   GameMapSize,
@@ -29,7 +30,7 @@ export async function playCustomMapSolo(map: PlayableCustomMap): Promise<void> {
   let land = 0;
   try {
     const bytes = decodePaintBase64(map.paint);
-    for (let i = 0; i < bytes.length; i++) if (bytes[i] !== 0) land++;
+    for (let i = 0; i < bytes.length; i++) if (isLandPaint(bytes[i])) land++;
   } catch {
     /* unreadable paint — buildCustomTerrain will reject it downstream */
   }

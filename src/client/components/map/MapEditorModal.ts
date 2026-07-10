@@ -2,6 +2,7 @@ import { html, TemplateResult } from "lit";
 import { customElement, query, state } from "lit/decorators.js";
 import {
   buildCustomTerrain,
+  isLandPaint,
   PaintTile,
 } from "../../../core/game/CustomMapBuilder";
 import { publishCommunityMap } from "../../Api";
@@ -18,6 +19,8 @@ import {
   deleteCustomMap,
   encodePaintBase64,
   listCustomMaps,
+  PAINT_TILE_RGB,
+  paintTileCss,
   parseCustomMapFile,
   saveCustomMap,
   serializeCustomMap,
@@ -30,18 +33,6 @@ const MAX_SIZE = 240;
 const DEFAULT_W = 120;
 const DEFAULT_H = 80;
 
-// Palette RGB used for the 1px-per-tile canvas preview.
-const TILE_RGB: Record<PaintTile, [number, number, number]> = {
-  [PaintTile.Water]: [40, 92, 160],
-  [PaintTile.Land]: [74, 124, 60],
-  [PaintTile.Mountain]: [116, 116, 122],
-};
-const TILE_CSS: Record<PaintTile, string> = {
-  [PaintTile.Water]: "rgb(40,92,160)",
-  [PaintTile.Land]: "rgb(74,124,60)",
-  [PaintTile.Mountain]: "rgb(116,116,122)",
-};
-
 const clamp = (v: number, lo: number, hi: number) =>
   Math.max(lo, Math.min(hi, v));
 
@@ -49,7 +40,7 @@ const clamp = (v: number, lo: number, hi: number) =>
 export class MapEditorModal extends BaseModal {
   @state() private gridW = DEFAULT_W;
   @state() private gridH = DEFAULT_H;
-  @state() private tool: PaintTile = PaintTile.Land;
+  @state() private tool: PaintTile = PaintTile.Plains;
   @state() private brush = 3;
   @state() private bucket = false;
   @state() private name = "";
@@ -110,7 +101,9 @@ export class MapEditorModal extends BaseModal {
     if (!canvas || !img) return;
     const data = img.data;
     for (let i = 0; i < this.paint.length; i++) {
-      const [r, g, b] = TILE_RGB[this.paint[i] as PaintTile];
+      const [r, g, b] =
+        PAINT_TILE_RGB[this.paint[i] as PaintTile] ??
+        PAINT_TILE_RGB[PaintTile.Water];
       const o = i * 4;
       data[o] = r;
       data[o + 1] = g;
@@ -262,7 +255,7 @@ export class MapEditorModal extends BaseModal {
   private playCurrent() {
     let land = 0;
     for (let i = 0; i < this.paint.length; i++) {
-      if (this.paint[i] !== PaintTile.Water) land++;
+      if (isLandPaint(this.paint[i])) land++;
     }
     if (land === 0) {
       this.showNotice(translateText("map_editor.needs_land"), true);
@@ -410,13 +403,23 @@ export class MapEditorModal extends BaseModal {
   }
 
   private renderPalette(): TemplateResult {
+    // Ordered low → high elevation so the palette reads like a terrain legend.
     const tools: Array<{ t: PaintTile; label: string }> = [
-      { t: PaintTile.Land, label: translateText("map_editor.tool_land") },
       { t: PaintTile.Water, label: translateText("map_editor.tool_water") },
+      {
+        t: PaintTile.DeepWater,
+        label: translateText("map_editor.tool_deep_water"),
+      },
+      { t: PaintTile.Plains, label: translateText("map_editor.tool_plains") },
+      {
+        t: PaintTile.Highland,
+        label: translateText("map_editor.tool_highland"),
+      },
       {
         t: PaintTile.Mountain,
         label: translateText("map_editor.tool_mountain"),
       },
+      { t: PaintTile.Peak, label: translateText("map_editor.tool_peak") },
     ];
     return html`
       <div class="grid grid-cols-3 gap-2">
@@ -430,8 +433,8 @@ export class MapEditorModal extends BaseModal {
                 : "border-white/10 bg-white/5 hover:bg-white/10"}"
             >
               <span
-                class="w-6 h-6 rounded"
-                style="background:${TILE_CSS[t]}"
+                class="w-6 h-6 rounded border border-black/20"
+                style="background:${paintTileCss(t)}"
               ></span>
               <span class="text-xs">${label}</span>
             </button>

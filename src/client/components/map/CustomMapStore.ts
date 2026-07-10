@@ -1,6 +1,25 @@
 import { PaintTile } from "../../../core/game/CustomMapBuilder";
 
 /**
+ * Editor/thumbnail colours per paint tile, matching the mid-band colour the
+ * WebGL renderer draws for each type's elevation (see render/gl/utils/
+ * ColorUtils) so a drawing previews close to how it plays.
+ */
+export const PAINT_TILE_RGB: Record<PaintTile, [number, number, number]> = {
+  [PaintTile.Water]: [71, 133, 181],
+  [PaintTile.DeepWater]: [61, 123, 171],
+  [PaintTile.Plains]: [190, 210, 138],
+  [PaintTile.Highland]: [230, 213, 168],
+  [PaintTile.Mountain]: [242, 242, 242],
+  [PaintTile.Peak]: [60, 60, 60],
+};
+
+export function paintTileCss(p: PaintTile): string {
+  const [r, g, b] = PAINT_TILE_RGB[p] ?? PAINT_TILE_RGB[PaintTile.Water];
+  return `rgb(${r},${g},${b})`;
+}
+
+/**
  * Local (per-device) storage for hand-drawn custom maps. Stores the raw PAINT
  * grid (re-editable) rather than the compiled terrain, so a map can be reopened
  * in the editor. Publishing to the account/community backend is a later step.
