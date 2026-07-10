@@ -571,23 +571,29 @@ Alles aus der letzten Sprachnachricht, damit nichts vergessen wird.
 Nur umsetzen, wenn die restliche TODO leer ist **und** explizit „mach die TODO"
 gesagt wird. Hier die vollständige Spezifikation, damit nichts verloren geht.
 
-**Hauptmenü / Community:**
+**Turn 1 (ERLEDIGT — Commit `c5aad34`):** Editor-Grundgerüst + lokales Speichern.
 
-- [ ] Neuer Button **„Map erstellen"** und ein neuer **„Maps"-Reiter** im Hauptmenü.
+- [x] Neuer Button **„Karte erstellen"** im Hauptmenü (`GameModeSelector`) öffnet
+      `<map-editor-modal>` (`components/map/MapEditorModal.ts`).
+- [x] **Kern-Konvertierung** `CustomMapBuilder.buildCustomTerrain` (gemalte Kacheln
+      → Spiel-Byte-Format: Ozean-Flood-Fill, Küsten-Erkennung, `numLandTiles`).
+- [x] **Terrain-Tools** Land / Wasser / Gebirge, Pinsel + Größe, **Füllen** (Eimer),
+      **Löschen**, Größe einstellbar mit Min/Max (40–240), **benennen**.
+- [x] **Speichern lokal** (`CustomMapStore`, localStorage) + Liste mit Laden/Löschen.
+
+**Turn 2 (offen) — Spiel-Integration:** gespeicherte Map spielbar machen
+(BinaryLoader aus `paint`, Custom-Maps im Solo-/Lobby-Map-Picker).
+
+**Community / Account (offen):**
+
+- [ ] Neuer **„Maps"-Reiter** im Hauptmenü.
 - [ ] Startseite zeigt die **meistgelikten** Community-Maps.
 - [ ] **Filter** im Maps-Reiter: „Neueste", „Beliebteste" (meistgelikt), evtl. „Meine".
 - [ ] Mit Account: Maps **liken**.
 - [ ] Auf einer Community-Map ein **„+"** drücken → landet in der eigenen Auswahl
       unter **„Custom Maps"** (im Solo-/Lobby-Map-Picker auswählbar).
-
-**Editor-Funktionen:**
-
-- [ ] **Terrain-Tools**: Land / Wasser / Gebirge / … setzen (Pinsel, Radierer,
-      Füllen, evtl. Höhen/Terrain-Typen wie im bestehenden Map-Format).
-- [ ] **Größe einstellbar** mit **fester Min-/Max-Grenze** (Grenzen definieren).
-- [ ] Map **benennen**.
-- [ ] Speichern **privat** ODER **veröffentlichen** — beides an den **Account**
-      gebunden/verlinkt (private Maps erscheinen nur beim Ersteller).
+- [ ] Speichern **veröffentlichen** — an den **Account** gebunden/verlinkt
+      (private Maps erscheinen nur beim Ersteller; localapi-Backend nötig).
 
 **Reale Karten importieren (aus Geodaten eine Map generieren):**
 
