@@ -613,14 +613,21 @@ gesagt wird. Hier die vollständige Spezifikation, damit nichts verloren geht.
       401/400-Fehlerpfade). ⚠️ Dev-localapi (8090) muss neu gestartet werden,
       damit die Routen lokal greifen (kein Auto-Restart).
 
-**Community-Frontend (offen — nutzt jetzt die fertige API):**
+**Turn 6 (ERLEDIGT — Commit `d6e8fa6`):** Community-Frontend.
 
-- [ ] Neuer **„Maps"-Reiter** im Hauptmenü mit Filtern („Beliebteste"/„Neueste"/
-      „Meine") — nutzt `browseCommunityMaps`.
-- [ ] Startseite zeigt die **meistgelikten** Community-Maps.
-- [ ] **Liken**-Button (`likeCommunityMap`), **„+"** → in eigene Custom-Maps
-      übernehmen (`getCommunityMap` → localStorage), im Solo-Picker spielbar.
-- [ ] Editor: **„Veröffentlichen"**-Button (`publishCommunityMap`, auth-gated).
+- [x] **„Community-Karten"**-Button im Hauptmenü öffnet `<community-maps-modal>`
+      mit Filtern **Beliebteste/Neueste/Meine** (`browseCommunityMaps`/`getMyCommunityMaps`).
+- [x] **Liken** (`likeCommunityMap`), **„Übernehmen"** → Community-Map in eigene
+      Custom-Maps (localStorage), **„Spielen"** → direkt Solo (`playCustomMapSolo`).
+- [x] Editor: **„Veröffentlichen"**-Button pro Karte (`publishCommunityMap`, auth-gated).
+- [x] Play-Config in `playCustomMapSolo()` zentralisiert (Editor + Browser teilen sich eine Quelle).
+
+**Community-Frontend (Rest, offen):**
+
+- [ ] Startseite zeigt die **meistgelikten** Community-Maps (bisher nur im Modal).
+- [ ] Pixel-**Thumbnails** in der Community-Liste (Summary trägt kein Paint;
+      bräuchte ein Thumb-Feld oder Lazy-Detail-Fetch).
+- [ ] Community-Map im **Solo-Picker** direkt wählbar (aktuell: erst „Übernehmen").
 
 **Reale Karten importieren (aus Geodaten eine Map generieren):**
 
