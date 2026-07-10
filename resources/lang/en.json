@@ -984,6 +984,11 @@
     "empty": "No saved maps yet",
     "load": "Load",
     "delete": "Delete",
+    "export": "Export",
+    "import": "Import",
+    "exported": "Map file downloaded",
+    "imported": "Map imported",
+    "import_failed": "Could not read that map file",
     "canvas_hint": "Draw with the selected tile. Enable Fill for a bucket fill."
   },
   "map": {

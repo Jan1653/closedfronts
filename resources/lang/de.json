@@ -326,6 +326,11 @@
     "empty": "Noch keine Karten gespeichert",
     "load": "Laden",
     "delete": "Löschen",
+    "export": "Export",
+    "import": "Import",
+    "exported": "Kartendatei heruntergeladen",
+    "imported": "Karte importiert",
+    "import_failed": "Diese Kartendatei konnte nicht gelesen werden",
     "canvas_hint": "Male mit der gewählten Kachel. Für den Farbeimer „Füllen“ aktivieren."
   },
   "news": {

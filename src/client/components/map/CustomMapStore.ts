@@ -39,6 +39,77 @@ export function encodePaintBase64(paint: Uint8Array): string {
   return u8ToBase64(paint);
 }
 
+/** Decode a stored/shared base64 paint grid back into bytes. */
+export function decodePaintBase64(b64: string): Uint8Array {
+  return base64ToU8(b64);
+}
+
+// ---- Share as a file (.cfmap) ----
+
+const FILE_VERSION = 1;
+export const CUSTOM_MAP_FILE_EXT = "cfmap";
+
+export interface ParsedCustomMap {
+  name: string;
+  width: number;
+  height: number;
+  paint: string;
+}
+
+/** Serialize a map to a portable JSON string for download. */
+export function serializeCustomMap(m: CustomMap): string {
+  return JSON.stringify({
+    v: FILE_VERSION,
+    name: m.name,
+    width: m.width,
+    height: m.height,
+    paint: m.paint,
+  });
+}
+
+/**
+ * Parse and validate a shared map file. Throws on anything malformed so the
+ * importer can show a clean error rather than storing garbage.
+ */
+export function parseCustomMapFile(text: string): ParsedCustomMap {
+  let obj: unknown;
+  try {
+    obj = JSON.parse(text);
+  } catch {
+    throw new Error("not a valid map file");
+  }
+  const o = obj as Record<string, unknown>;
+  const { name, width, height, paint } = o ?? {};
+  if (
+    typeof name !== "string" ||
+    typeof width !== "number" ||
+    typeof height !== "number" ||
+    typeof paint !== "string"
+  ) {
+    throw new Error("missing map fields");
+  }
+  if (
+    !Number.isInteger(width) ||
+    !Number.isInteger(height) ||
+    width < 8 ||
+    height < 8 ||
+    width > 512 ||
+    height > 512
+  ) {
+    throw new Error("invalid map dimensions");
+  }
+  let bytes: Uint8Array;
+  try {
+    bytes = base64ToU8(paint);
+  } catch {
+    throw new Error("corrupt paint data");
+  }
+  if (bytes.length !== width * height) {
+    throw new Error("paint size does not match dimensions");
+  }
+  return { name: name.slice(0, 64) || "Imported", width, height, paint };
+}
+
 export function listCustomMaps(): CustomMap[] {
   try {
     const raw = localStorage.getItem(KEY);

@@ -20,13 +20,18 @@ import { BaseModal } from "../BaseModal";
 import { modalHeader } from "../ui/ModalHeader";
 import {
   blankPaint,
+  CUSTOM_MAP_FILE_EXT,
   CustomMap,
   decodePaint,
+  decodePaintBase64,
   deleteCustomMap,
   encodePaintBase64,
   listCustomMaps,
+  parseCustomMapFile,
   saveCustomMap,
+  serializeCustomMap,
 } from "./CustomMapStore";
+import "./CustomMapThumb";
 
 const MIN_SIZE = 40;
 const MAX_SIZE = 240;
@@ -69,6 +74,7 @@ export class MapEditorModal extends BaseModal {
   private noticeTimer: number | null = null;
 
   @query("#map-editor-canvas") private canvasEl?: HTMLCanvasElement;
+  @query("#map-import-input") private importInput?: HTMLInputElement;
 
   constructor() {
     super();
@@ -371,6 +377,47 @@ export class MapEditorModal extends BaseModal {
     this.savedMaps = listCustomMaps();
   }
 
+  // ---- Share as a file (.cfmap) ----
+
+  private exportMap(m: CustomMap) {
+    const blob = new Blob([serializeCustomMap(m)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const safe = m.name.replace(/[^\w.-]+/g, "_") || "map";
+    a.download = `${safe}.${CUSTOM_MAP_FILE_EXT}`;
+    a.click();
+    URL.revokeObjectURL(url);
+    this.showNotice(translateText("map_editor.exported"), false);
+  }
+
+  private triggerImport() {
+    this.importInput?.click();
+  }
+
+  private async onImportFile(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = ""; // let the same file be re-imported later
+    if (!file) return;
+    try {
+      const parsed = parseCustomMapFile(await file.text());
+      const rec = saveCustomMap({
+        name: parsed.name,
+        width: parsed.width,
+        height: parsed.height,
+        paint: decodePaintBase64(parsed.paint),
+      });
+      this.savedMaps = listCustomMaps();
+      this.loadMap(rec);
+      this.showNotice(translateText("map_editor.imported"), false);
+    } catch {
+      this.showNotice(translateText("map_editor.import_failed"), true);
+    }
+  }
+
   private newMap() {
     this.editingId = null;
     this.name = "";
@@ -569,9 +616,24 @@ export class MapEditorModal extends BaseModal {
   private renderSavedMaps(): TemplateResult {
     return html`
       <div class="flex flex-col gap-2">
-        <h3 class="text-sm font-bold uppercase tracking-wider text-white/70">
-          ${translateText("map_editor.your_maps")}
-        </h3>
+        <div class="flex items-center justify-between gap-2">
+          <h3 class="text-sm font-bold uppercase tracking-wider text-white/70">
+            ${translateText("map_editor.your_maps")}
+          </h3>
+          <button
+            @click=${() => this.triggerImport()}
+            class="text-xs rounded px-2 py-1 bg-white/10 hover:bg-white/20"
+          >
+            ${translateText("map_editor.import")}
+          </button>
+          <input
+            id="map-import-input"
+            type="file"
+            accept=".${CUSTOM_MAP_FILE_EXT},application/json"
+            class="hidden"
+            @change=${(e: Event) => this.onImportFile(e)}
+          />
+        </div>
         ${this.savedMaps.length === 0
           ? html`<p class="text-xs text-white/40">
               ${translateText("map_editor.empty")}
@@ -585,10 +647,15 @@ export class MapEditorModal extends BaseModal {
                       ? "ring-1 ring-malibu-blue"
                       : ""}"
                   >
+                    <div
+                      class="w-12 h-8 shrink-0 overflow-hidden rounded bg-black/30"
+                    >
+                      <custom-map-thumb .map=${m}></custom-map-thumb>
+                    </div>
                     <span class="flex-1 min-w-0 truncate text-sm">
                       ${m.name}
                     </span>
-                    <span class="text-xs text-white/40"
+                    <span class="text-xs text-white/40 hidden sm:inline"
                       >${m.width}×${m.height}</span
                     >
                     <button
@@ -602,6 +669,12 @@ export class MapEditorModal extends BaseModal {
                       class="text-xs rounded px-2 py-1 bg-white/10 hover:bg-white/20"
                     >
                       ${translateText("map_editor.load")}
+                    </button>
+                    <button
+                      @click=${() => this.exportMap(m)}
+                      class="text-xs rounded px-2 py-1 bg-white/10 hover:bg-white/20"
+                    >
+                      ${translateText("map_editor.export")}
                     </button>
                     <button
                       @click=${() => this.removeMap(m)}
