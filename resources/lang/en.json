@@ -940,6 +940,7 @@
     "copyright": "© OpenFront™ and Contributors",
     "create": "Create Lobby",
     "create_map": "Create Map",
+    "community_maps": "Community Maps",
     "discord_avatar_alt": "Discord profile avatar",
     "game_info": "Game info",
     "github": "GitHub",
@@ -989,7 +990,24 @@
     "exported": "Map file downloaded",
     "imported": "Map imported",
     "import_failed": "Could not read that map file",
+    "publish": "Publish",
+    "published": "Published to community",
+    "publish_failed": "Publishing failed",
+    "publish_login": "Sign in to publish maps",
     "canvas_hint": "Draw with the selected tile. Enable Fill for a bucket fill."
+  },
+  "community_maps": {
+    "title": "Community Maps",
+    "tab_popular": "Popular",
+    "tab_new": "Newest",
+    "tab_mine": "Mine",
+    "like": "Like",
+    "add": "Add",
+    "added": "Added to your maps",
+    "empty": "No community maps yet",
+    "empty_mine": "You haven't published any maps yet",
+    "login_required": "Sign in to like maps",
+    "error": "Could not load that map"
   },
   "map": {
     "achiran": "Achiran",

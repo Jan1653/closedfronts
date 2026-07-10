@@ -4,17 +4,8 @@ import {
   buildCustomTerrain,
   PaintTile,
 } from "../../../core/game/CustomMapBuilder";
-import {
-  Difficulty,
-  GameMapSize,
-  GameMapType,
-  GameMode,
-  GameType,
-} from "../../../core/game/Game";
-import { generateID } from "../../../core/Util";
-import { getPlayerCosmetics } from "../../Cosmetics";
-import { JoinLobbyEvent } from "../../Main";
-import { UsernameInput } from "../../UsernameInput";
+import { publishCommunityMap } from "../../Api";
+import { getAuthHeader } from "../../Auth";
 import { translateText } from "../../Utils";
 import { BaseModal } from "../BaseModal";
 import { modalHeader } from "../ui/ModalHeader";
@@ -32,6 +23,7 @@ import {
   serializeCustomMap,
 } from "./CustomMapStore";
 import "./CustomMapThumb";
+import { playCustomMapSolo } from "./playCustomMap";
 
 const MIN_SIZE = 40;
 const MAX_SIZE = 240;
@@ -267,99 +259,33 @@ export class MapEditorModal extends BaseModal {
     this.showNotice(translateText("map_editor.saved"), false);
   }
 
-  /**
-   * Launch a singleplayer game on a hand-drawn map. The paint grid rides inside
-   * the game config (config.customMap), so both the renderer and the sim worker
-   * compile the same terrain without any map files. Bots scale with land area;
-   * custom maps have no nations.
-   */
-  private async startCustomGame(
-    name: string,
-    width: number,
-    height: number,
-    paintB64: string,
-    paint: Uint8Array,
-  ) {
+  private playCurrent() {
     let land = 0;
-    for (let i = 0; i < paint.length; i++) {
-      if (paint[i] !== PaintTile.Water) land++;
+    for (let i = 0; i < this.paint.length; i++) {
+      if (this.paint[i] !== PaintTile.Water) land++;
     }
     if (land === 0) {
       this.showNotice(translateText("map_editor.needs_land"), true);
       return;
     }
-    const bots = Math.max(3, Math.min(100, Math.floor(land / 400)));
-
-    const usernameInput = document.querySelector(
-      "username-input",
-    ) as UsernameInput | null;
-    const clientID = generateID();
-    const gameID = generateID();
-    const cosmetics = await getPlayerCosmetics();
-
-    this.dispatchEvent(
-      new CustomEvent("join-lobby", {
-        detail: {
-          gameID,
-          gameStartInfo: {
-            gameID,
-            players: [
-              {
-                clientID,
-                username: usernameInput?.getUsername() ?? "Player",
-                clanTag: usernameInput?.getClanTag() ?? null,
-                cosmetics,
-              },
-            ],
-            config: {
-              // gameMap is ignored while customMap is set, but must be a valid
-              // enum value to satisfy the schema.
-              gameMap: GameMapType.World,
-              gameMapSize: GameMapSize.Normal,
-              gameType: GameType.Singleplayer,
-              gameMode: GameMode.FFA,
-              difficulty: Difficulty.Medium,
-              bots,
-              infiniteGold: false,
-              infiniteTroops: false,
-              instantBuild: false,
-              randomSpawn: false,
-              donateGold: false,
-              donateTroops: false,
-              nations: "disabled",
-              disabledUnits: [],
-              customMap: { name, width, height, paint: paintB64 },
-            },
-            lobbyCreatedAt: Date.now(),
-          },
-          source: "singleplayer",
-        } satisfies JoinLobbyEvent,
-        bubbles: true,
-        composed: true,
-      }),
-    );
+    void playCustomMapSolo({
+      name: this.name.trim() || "Custom",
+      width: this.gridW,
+      height: this.gridH,
+      // Re-encode the live grid so an unsaved drawing is playable too.
+      paint: encodePaintBase64(this.paint),
+    });
     this.close();
   }
 
-  private playCurrent() {
-    void this.startCustomGame(
-      this.name.trim() || "Custom",
-      this.gridW,
-      this.gridH,
-      // Re-encode the live grid so an unsaved drawing is playable too.
-      encodePaintBase64(this.paint),
-      this.paint,
-    );
-  }
-
   private playSaved(m: CustomMap) {
-    void this.startCustomGame(
-      m.name,
-      m.width,
-      m.height,
-      m.paint,
-      decodePaint(m),
-    );
+    void playCustomMapSolo({
+      name: m.name,
+      width: m.width,
+      height: m.height,
+      paint: m.paint,
+    });
+    this.close();
   }
 
   private loadMap(m: CustomMap) {
@@ -416,6 +342,25 @@ export class MapEditorModal extends BaseModal {
     } catch {
       this.showNotice(translateText("map_editor.import_failed"), true);
     }
+  }
+
+  // ---- Publish to the community (localapi) ----
+
+  private async publishMap(m: CustomMap) {
+    if ((await getAuthHeader()) === "") {
+      this.showNotice(translateText("map_editor.publish_login"), true);
+      return;
+    }
+    const rec = await publishCommunityMap({
+      name: m.name,
+      width: m.width,
+      height: m.height,
+      paint: m.paint,
+    });
+    this.showNotice(
+      translateText(rec ? "map_editor.published" : "map_editor.publish_failed"),
+      !rec,
+    );
   }
 
   private newMap() {
@@ -642,7 +587,7 @@ export class MapEditorModal extends BaseModal {
               ${this.savedMaps.map(
                 (m) => html`
                   <div
-                    class="flex items-center gap-2 rounded-md bg-white/5 px-3 py-2 ${this
+                    class="flex flex-wrap items-center gap-2 rounded-md bg-white/5 px-3 py-2 ${this
                       .editingId === m.id
                       ? "ring-1 ring-malibu-blue"
                       : ""}"
@@ -675,6 +620,12 @@ export class MapEditorModal extends BaseModal {
                       class="text-xs rounded px-2 py-1 bg-white/10 hover:bg-white/20"
                     >
                       ${translateText("map_editor.export")}
+                    </button>
+                    <button
+                      @click=${() => this.publishMap(m)}
+                      class="text-xs rounded px-2 py-1 bg-malibu-blue/80 hover:bg-malibu-blue font-semibold"
+                    >
+                      ${translateText("map_editor.publish")}
                     </button>
                     <button
                       @click=${() => this.removeMap(m)}

@@ -287,6 +287,7 @@
     "copyright": "© OpenFront™ und Mitwirkende",
     "create": "Lobby erstellen",
     "create_map": "Karte erstellen",
+    "community_maps": "Community-Karten",
     "discord_avatar_alt": "Discord-Profilbild",
     "game_info": "Spielinfo",
     "github": "GitHub",
@@ -331,7 +332,24 @@
     "exported": "Kartendatei heruntergeladen",
     "imported": "Karte importiert",
     "import_failed": "Diese Kartendatei konnte nicht gelesen werden",
+    "publish": "Veröffentlichen",
+    "published": "In der Community veröffentlicht",
+    "publish_failed": "Veröffentlichen fehlgeschlagen",
+    "publish_login": "Zum Veröffentlichen anmelden",
     "canvas_hint": "Male mit der gewählten Kachel. Für den Farbeimer „Füllen“ aktivieren."
+  },
+  "community_maps": {
+    "title": "Community-Karten",
+    "tab_popular": "Beliebteste",
+    "tab_new": "Neueste",
+    "tab_mine": "Meine",
+    "like": "Liken",
+    "add": "Übernehmen",
+    "added": "Zu deinen Karten hinzugefügt",
+    "empty": "Noch keine Community-Karten",
+    "empty_mine": "Du hast noch keine Karten veröffentlicht",
+    "login_required": "Zum Liken anmelden",
+    "error": "Karte konnte nicht geladen werden"
   },
   "news": {
     "see_all_releases": "Alle Versionen ansehen",
