@@ -10,7 +10,7 @@
  * The query builder and parser are pure/testable; the fetch is network I/O.
  */
 
-import type { GeoBBox, Polygon } from "../../../core/game/OsmRaster";
+import type { GeoBBox, Polygon, Ring } from "../../../core/game/OsmRaster";
 
 // Public Overpass endpoint. Rate-limited — keep bboxes small and cache results.
 const DEFAULT_OVERPASS = "https://overpass-api.de/api/interpreter";
@@ -107,4 +107,46 @@ export async function fetchOsmWaterPolygons(
     throw new Error(`Overpass ${res.status}: ${res.statusText}`);
   }
   return parseOverpassWater(await res.json());
+}
+
+/**
+ * Overpass QL for waterway centre-lines (rivers/streams/canals) — the linear
+ * water the area query misses. Drawn as thick strokes so they stay continuous.
+ */
+export function buildWaterwayQuery(bbox: GeoBBox): string {
+  const b = `${bbox.minLat},${bbox.minLon},${bbox.maxLat},${bbox.maxLon}`;
+  return [
+    "[out:json][timeout:25];",
+    `way["waterway"~"^(river|stream|canal)$"](${b});`,
+    "out geom;",
+  ].join("\n");
+}
+
+/** Parse Overpass `out geom` ways into polylines (open, not closed). */
+export function parseOverpassWaterways(json: unknown): Ring[] {
+  const elements = (json as { elements?: OverpassElement[] })?.elements;
+  if (!Array.isArray(elements)) return [];
+  const lines: Ring[] = [];
+  for (const el of elements) {
+    if (el.type === "way" && el.geometry && el.geometry.length >= 2) {
+      lines.push(el.geometry.map((p) => [p.lon, p.lat] as const));
+    }
+  }
+  return lines;
+}
+
+/** Fetch waterway centre-lines for a bbox from Overpass. */
+export async function fetchOsmWaterways(
+  bbox: GeoBBox,
+  endpoint: string = DEFAULT_OVERPASS,
+): Promise<Ring[]> {
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain" },
+    body: buildWaterwayQuery(bbox),
+  });
+  if (!res.ok) {
+    throw new Error(`Overpass ${res.status}: ${res.statusText}`);
+  }
+  return parseOverpassWaterways(await res.json());
 }

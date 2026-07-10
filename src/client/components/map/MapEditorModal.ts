@@ -7,6 +7,7 @@ import {
 } from "../../../core/game/CustomMapBuilder";
 import {
   gridSizeForBBox,
+  rasterizeLinesInto,
   rasterizePolygons,
 } from "../../../core/game/OsmRaster";
 import { publishCommunityMap } from "../../Api";
@@ -30,7 +31,11 @@ import {
   serializeCustomMap,
 } from "./CustomMapStore";
 import "./CustomMapThumb";
-import { fetchOsmWaterPolygons, geocodePlace } from "./OsmSource";
+import {
+  fetchOsmWaterPolygons,
+  fetchOsmWaterways,
+  geocodePlace,
+} from "./OsmSource";
 import { playCustomMapSolo } from "./playCustomMap";
 
 const MIN_SIZE = 40;
@@ -379,10 +384,10 @@ export class MapEditorModal extends BaseModal {
         return;
       }
       const { width, height } = gridSizeForBBox(bbox, MAX_SIZE);
+      // Land background with OSM water areas (lakes, wide rivers) cut out; the
+      // editor still flood-fills ocean/shoreline at compile time. Coastlines and
+      // terrain types come in a later phase.
       const water = await fetchOsmWaterPolygons(bbox);
-      // Land background with OSM water areas (lakes/rivers) cut out; the editor
-      // still flood-fills ocean/shoreline at compile time. Coastlines/terrain
-      // types come in a later phase.
       const paint = rasterizePolygons(
         bbox,
         width,
@@ -390,6 +395,18 @@ export class MapEditorModal extends BaseModal {
         water,
         PaintTile.Water,
         PaintTile.Plains,
+      );
+      // Waterway centre-lines (rivers/streams) drawn as continuous strokes so
+      // narrow rivers appear and never break into dots.
+      const rivers = await fetchOsmWaterways(bbox);
+      rasterizeLinesInto(
+        paint,
+        bbox,
+        width,
+        height,
+        rivers,
+        PaintTile.Water,
+        width >= 120 ? 1 : 0,
       );
       this.editingId = null;
       this.name = query.slice(0, 40);

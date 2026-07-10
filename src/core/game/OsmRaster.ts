@@ -65,6 +65,57 @@ export function gridSizeForBBox(
   return { width: clamp(width), height: clamp(height) };
 }
 
+/**
+ * Draw polylines (e.g. OSM `waterway=river` centre-lines) into an existing grid
+ * as continuous strokes of `fill`, `radius` cells thick on each side. Segments
+ * are walked at sub-cell steps so a river never breaks into disconnected dots —
+ * the "rivers must stay continuous" requirement. Mutates `grid` in place.
+ */
+export function rasterizeLinesInto(
+  grid: Uint8Array,
+  bbox: GeoBBox,
+  width: number,
+  height: number,
+  lines: ReadonlyArray<Ring>,
+  fill: PaintTile,
+  radius = 0,
+): void {
+  const stamp = (px: number, py: number) => {
+    const cx = Math.round(px);
+    const cy = Math.round(py);
+    for (let dy = -radius; dy <= radius; dy++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        const x = cx + dx;
+        const y = cy + dy;
+        if (x >= 0 && y >= 0 && x < width && y < height) {
+          grid[y * width + x] = fill;
+        }
+      }
+    }
+  };
+  for (const line of lines) {
+    let prev: { x: number; y: number } | null = null;
+    for (const [lon, lat] of line) {
+      const cur = lonLatToCell(bbox, width, height, lon, lat);
+      if (prev) {
+        const steps = Math.max(
+          1,
+          Math.ceil(
+            Math.max(Math.abs(cur.x - prev.x), Math.abs(cur.y - prev.y)),
+          ),
+        );
+        for (let s = 0; s <= steps; s++) {
+          const t = s / steps;
+          stamp(prev.x + (cur.x - prev.x) * t, prev.y + (cur.y - prev.y) * t);
+        }
+      } else {
+        stamp(cur.x, cur.y);
+      }
+      prev = cur;
+    }
+  }
+}
+
 /** Longitude/latitude → fractional grid cell (x right, y down = south). */
 export function lonLatToCell(
   bbox: GeoBBox,
