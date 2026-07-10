@@ -590,7 +590,10 @@ gesagt wird. Hier die vollständige Spezifikation, damit nichts verloren geht.
       deterministisch (kein CDN-Fetch). `buildCustomTerrainMapData` (Voll- +
       Halb-Auflösungs-Mini-Map für Pathfinding). Bots skalieren mit Landfläche,
       keine Nationen. Verifiziert: echter Sim (40 Ticks + Land-Angriff) grün.
-- [ ] Custom-Maps auch im Solo-/Lobby-**Map-Picker** wählbar (statt nur Editor).
+- [x] Custom-Maps im **Solo-Menü** wählbar (Commit `37a9197`): „Meine Karten"-
+      Leiste über dem Map-Picker mit Canvas-Thumbnail (`<custom-map-thumb>`);
+      Auswahl überschreibt die offizielle Karte, volle Solo-Optionen gelten.
+- [ ] Custom-Maps auch im **Lobby**-Map-Picker (MP, erst mit Server-Verteilung).
 - [ ] **Multiplayer**-Custom-Maps (Server muss Payload an alle Clients verteilen).
 
 **Community / Account (offen):**
