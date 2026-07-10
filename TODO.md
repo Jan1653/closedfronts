@@ -596,7 +596,14 @@ gesagt wird. Hier die vollständige Spezifikation, damit nichts verloren geht.
 - [ ] Custom-Maps auch im **Lobby**-Map-Picker (MP, erst mit Server-Verteilung).
 - [ ] **Multiplayer**-Custom-Maps (Server muss Payload an alle Clients verteilen).
 
-**Community / Account (offen):**
+**Turn 4 (ERLEDIGT — Commit `0f8afa0`):** Karten teilen ohne Backend.
+
+- [x] **Export/Import** als `.cfmap`-Datei (JSON) mit strikter Validierung
+      (Dimensionen, Paint-Größe); Round-Trip + Fehlerfälle unit-getestet.
+- [x] Editor-Liste zeigt **Canvas-Thumbnails** pro Karte.
+      → Überbrückt das Teilen, bis der Community-Browser/das Backend steht.
+
+**Community / Account (offen — braucht localapi-Backend):**
 
 - [ ] Neuer **„Maps"-Reiter** im Hauptmenü.
 - [ ] Startseite zeigt die **meistgelikten** Community-Maps.
