@@ -953,12 +953,14 @@ export class InputHandler {
         }
       }
 
-      // If shift is held OR touch long-press is active OR selection box already
-      // started, continue emitting selection box updates
+      // If shift is held OR touch long-press is active OR the mobile "select"
+      // mode is on OR a selection box already started, emit selection box
+      // updates (a drag selects warships instead of panning).
       if (
         this.selectionBoxActive ||
         this.activeKeys.has(this.keybinds.shiftKey) ||
-        this.longPressActive
+        this.longPressActive ||
+        this.uiState.mobileSelectMode
       ) {
         this.selectionBoxActive = true;
         this.eventBus.emit(
@@ -975,7 +977,9 @@ export class InputHandler {
 
       this.lastPointerX = event.clientX;
       this.lastPointerY = event.clientY;
-    } else if (this.pointers.size === 2) {
+    } else if (this.pointers.size === 2 && !this.uiState.mobileSelectMode) {
+      // In mobile select mode the camera is locked, so two-finger pinch-zoom
+      // is disabled too (only warship selection happens).
       const currentPinchDistance = this.getPinchDistance();
       const pinchDelta = currentPinchDistance - this.lastPinchDistance;
 

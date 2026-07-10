@@ -35,6 +35,7 @@ import { MainRadialMenu } from "./layers/MainRadialMenu";
 import { MobileAttackBar } from "./layers/MobileAttackBar";
 import { MobileBuildBar } from "./layers/MobileBuildBar";
 import { MobileBuildControls } from "./layers/MobileBuildControls";
+import { MobileSelectButton } from "./layers/MobileSelectButton";
 import { MultiTabModal } from "./layers/MultiTabModal";
 import { PerformanceOverlay } from "./layers/PerformanceOverlay";
 import { PlayerInfoOverlay } from "./layers/PlayerInfoOverlay";
@@ -63,6 +64,7 @@ export function createRenderer(
     rocketDirectionUp: true,
     buildQuantity: 1,
     mobilePlacementTile: null,
+    mobileSelectMode: false,
   };
 
   //hide when the game renders
@@ -245,6 +247,15 @@ export function createRenderer(
   mobileBuildControls.eventBus = eventBus;
   mobileBuildControls.uiState = uiState;
 
+  const mobileSelectButton = document.querySelector(
+    "mobile-select-button",
+  ) as MobileSelectButton;
+  if (!(mobileSelectButton instanceof MobileSelectButton)) {
+    console.error("mobile select button not found");
+  }
+  mobileSelectButton.game = game;
+  mobileSelectButton.uiState = uiState;
+
   const playerPanel = document.querySelector("player-panel") as PlayerPanel;
   if (!(playerPanel instanceof PlayerPanel)) {
     console.error("player panel not found");
@@ -355,6 +366,7 @@ export function createRenderer(
     mobileAttackBar,
     mobileBuildBar,
     mobileBuildControls,
+    mobileSelectButton,
     gameRightSidebar,
     controlPanel,
     playerInfo,

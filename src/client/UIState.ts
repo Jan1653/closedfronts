@@ -12,4 +12,8 @@ export interface UIState {
   // ghost (there is no hover on touch). null until they tap the map. The
   // bottom-centre "Build" button confirms placement here.
   mobilePlacementTile: TileRef | null;
+  // Mobile "select" mode (the touch equivalent of holding Shift): a drag draws a
+  // warship selection box instead of panning, and pinch-zoom is disabled, so the
+  // camera stays put while multi-selecting. Toggled by the on-screen button.
+  mobileSelectMode: boolean;
 }

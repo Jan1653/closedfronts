@@ -1128,6 +1128,9 @@
   "mobile_build": {
     "build": "Build"
   },
+  "mobile_select": {
+    "select": "Select"
+  },
   "multi_tab": {
     "detected": "Multiple tabs detected. ClosedFronts can only run in one tab at a time.",
     "explanation": "Running the game in several tabs can cause problems. Close the other tabs to continue.",

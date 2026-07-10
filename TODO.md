@@ -171,6 +171,10 @@ Reihenfolge laut Nutzer: **erst die einfachen Sachen.** Alles hier gesammelt.
 
 ### E. Handy: „Auswählen"-Button (Mehrfachauswahl)
 
+- [x] **ERLEDIGT** (Details unten): `mobile-select-button` togglet
+      `uiState.mobileSelectMode`; InputHandler zieht dann bei Ein-Finger-Drag eine
+      Auswahlbox statt zu pannen und deaktiviert Pinch-Zoom → Kamera gesperrt.
+      Logik im Browser verifiziert (Toggle + Highlight). Touch am Gerät prüfen.
 - [ ] Oben rechts am Handy neuer Button **„Auswählen"** = wie **Shift** am PC:
       damit mehrere Boote/Einheiten markierbar. Solange aktiv: **Kamera nicht
       bewegen/zoomen** (Karte gesperrt, nur Auswahl).
