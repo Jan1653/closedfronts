@@ -60,6 +60,7 @@ function unitStateFromUpdate(u: UnitUpdate): UnitState {
     markedForDeletion: u.markedForDeletion,
     health: u.health ?? null,
     underConstruction: u.underConstruction ?? false,
+    disabled: u.disabled ?? false,
     targetUnitId: u.targetUnitId ?? null,
     targetTile: u.targetTile ?? null,
     troops: u.troops,
@@ -89,6 +90,7 @@ function applyUpdateInPlace(target: UnitState, u: UnitUpdate): void {
   target.markedForDeletion = u.markedForDeletion;
   target.health = u.health ?? null;
   target.underConstruction = u.underConstruction ?? false;
+  target.disabled = u.disabled ?? false;
   target.targetUnitId = u.targetUnitId ?? null;
   target.targetTile = u.targetTile ?? null;
   target.troops = u.troops;
@@ -243,6 +245,16 @@ export class UnitView {
   }
   isUnderConstruction(): boolean {
     return this.state.underConstruction;
+  }
+  isDisabled(): boolean {
+    return this.state.disabled ?? false;
+  }
+  disabledUntilTick(): number {
+    // Client mirror doesn't track the exact tick; disabled is a plain flag here.
+    return this.state.disabled ? Number.MAX_SAFE_INTEGER : 0;
+  }
+  disableUntil(_untilTick: number): void {
+    throw new Error("disableUntil is not supported on UnitView");
   }
   isInCooldown(): boolean {
     return this.state.missileTimerQueue.length === this.state.level;

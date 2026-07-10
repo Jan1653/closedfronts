@@ -34,6 +34,7 @@ const mirvIcon = assetUrl("images/MIRVIcon.svg");
 const missileSiloIcon = assetUrl("images/MissileSiloIconWhite.svg");
 const hydrogenBombIcon = assetUrl("images/MushroomCloudIconWhite.svg");
 const atomBombIcon = assetUrl("images/NukeIconWhite.svg");
+const electricBombIcon = assetUrl("images/ElectricBombIconWhite.svg");
 const portIcon = assetUrl("images/PortIcon.svg");
 const samlauncherIcon = assetUrl("images/SamLauncherIconWhite.svg");
 const shieldIcon = assetUrl("images/ShieldIconWhite.svg");
@@ -72,6 +73,13 @@ export const buildTable: BuildItemDisplay[][] = [
       icon: hydrogenBombIcon,
       description: "build_menu.desc.hydrogen_bomb",
       key: "unit_type.hydrogen_bomb",
+      countable: false,
+    },
+    {
+      unitType: UnitType.ElectricBomb,
+      icon: electricBombIcon,
+      description: "build_menu.desc.electric_bomb",
+      key: "unit_type.electric_bomb",
       countable: false,
     },
     {
@@ -157,6 +165,7 @@ export const flattenedBuildTable = buildTable.flat();
 const BOMB_UNIT_TYPES: ReadonlySet<UnitType> = new Set<UnitType>([
   UnitType.AtomBomb,
   UnitType.HydrogenBomb,
+  UnitType.ElectricBomb,
   UnitType.MIRV,
 ]);
 
@@ -646,9 +655,7 @@ export class BuildMenu extends LitElement implements Controller {
   private renderBombLauncherButton() {
     const anyEnabled = this.bombItems().some((item) => {
       const bu = this.playerBuildables?.find((b) => b.type === item.unitType);
-      return bu
-        ? bu.canBuild !== false || bu.canUpgrade !== false
-        : false;
+      return bu ? bu.canBuild !== false || bu.canUpgrade !== false : false;
     });
     return html`
       <button

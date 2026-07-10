@@ -334,7 +334,11 @@ export class StructurePass {
       this.instanceBuf.float32[off + 0] = x;
       this.instanceBuf.float32[off + 1] = y;
       this.instanceBuf.float32[off + 2] = unit.ownerID;
-      this.instanceBuf.float32[off + 3] = unit.underConstruction ? 1 : 0;
+      // Reuse the under-construction dim for electric-bomb-disabled structures so
+      // they read as inert (BarPass only draws a build bar for real
+      // underConstruction, so a merely-disabled unit shows no progress bar).
+      this.instanceBuf.float32[off + 3] =
+        unit.underConstruction || unit.disabled ? 1 : 0;
       this.instanceBuf.float32[off + 4] = atlasIdx;
       this.instanceBuf.float32[off + 5] =
         unit.markedForDeletion !== false ? 1 : 0;

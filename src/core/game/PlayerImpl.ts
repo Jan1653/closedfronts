@@ -1197,7 +1197,7 @@ export class PlayerImpl implements Player {
   updateOil(): void {
     const config = this.mg.config();
     const pumps = this.units(UnitType.OilPump).filter(
-      (u) => u.isActive() && !u.isUnderConstruction(),
+      (u) => u.isActive() && !u.isUnderConstruction() && !u.isDisabled(),
     ).length;
     const production = pumps * config.oilProductionPerPump(this);
     const consumption = config.oilConsumptionRate(this);
@@ -1458,6 +1458,7 @@ export class PlayerImpl implements Player {
         return this.nukeSpawn(targetTile, unitType);
       case UnitType.AtomBomb:
       case UnitType.HydrogenBomb:
+      case UnitType.ElectricBomb:
         return this.nukeSpawn(targetTile, unitType);
       case UnitType.MIRVWarhead:
         return targetTile;

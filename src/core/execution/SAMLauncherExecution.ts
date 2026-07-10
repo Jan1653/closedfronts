@@ -252,6 +252,11 @@ export class SAMLauncherExecution implements Execution {
       return;
     }
 
+    // Deactivated by an electric bomb: no interceptions while offline.
+    if (this.sam.isDisabled()) {
+      return;
+    }
+
     if (this.player !== this.sam.owner()) {
       this.player = this.sam.owner();
     }

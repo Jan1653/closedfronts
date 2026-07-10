@@ -94,6 +94,7 @@ export interface UnitState {
   markedForDeletion: number | false; // -1 -> false, else tick
   health: number | null;
   underConstruction: boolean;
+  disabled?: boolean; // Electric-bomb deactivation: render greyed / inert
   targetUnitId: number | null;
   targetTile: number | null;
   troops: number;

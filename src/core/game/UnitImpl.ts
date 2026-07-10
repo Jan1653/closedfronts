@@ -45,6 +45,8 @@ export class UnitImpl implements Unit {
   private _trajectoryIndex: number = 0;
   private _trajectory: TrajectoryTile[];
   private _deletionAt: number | null = null;
+  // Electric-bomb deactivation: disabled while ticks() < this tick (0 = never).
+  private _disabledUntilTick: number = 0;
 
   constructor(
     private _type: UnitType,
@@ -154,6 +156,7 @@ export class UnitImpl implements Unit {
       hasTrainStation: this._hasTrainStation,
       trainType: this._trainType,
       loaded: this._loaded,
+      disabled: this.isDisabled(),
     };
   }
 
@@ -430,6 +433,22 @@ export class UnitImpl implements Unit {
       changed = true;
     }
     if (changed) {
+      this.mg.addUpdate(this.toUpdate());
+    }
+  }
+
+  isDisabled(): boolean {
+    return this.mg.ticks() < this._disabledUntilTick;
+  }
+
+  disabledUntilTick(): number {
+    return this._disabledUntilTick;
+  }
+
+  disableUntil(untilTick: number): void {
+    // Only ever extend the window (a second EMP can prolong it, never shorten).
+    if (untilTick > this._disabledUntilTick) {
+      this._disabledUntilTick = untilTick;
       this.mg.addUpdate(this.toUpdate());
     }
   }

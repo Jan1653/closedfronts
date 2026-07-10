@@ -39,6 +39,7 @@ import {
   SMOOTHED_NUKE_TYPES,
   TrainType,
   UT_ATOM_BOMB,
+  UT_ELECTRIC_BOMB,
   UT_HYDROGEN_BOMB,
   UT_MIRV,
   UT_MIRV_WARHEAD,
@@ -118,6 +119,7 @@ const TRAIN_CARRIAGE_LOADED_COL = UNIT_ORDER.indexOf("TrainCarriageLoaded");
 /** Nuke + warhead types — rendered with flickering hot colors */
 const FLICKER_TYPES: ReadonlySet<string> = new Set([
   UT_ATOM_BOMB,
+  UT_ELECTRIC_BOMB,
   UT_HYDROGEN_BOMB,
   UT_MIRV,
   UT_MIRV_WARHEAD,
@@ -129,6 +131,7 @@ const FLICKER_TYPES: ReadonlySet<string> = new Set([
  *  Ground/sea units (boats, trains) render below structures. */
 const MISSILE_TYPES: ReadonlySet<string> = new Set([
   UT_ATOM_BOMB,
+  UT_ELECTRIC_BOMB,
   UT_HYDROGEN_BOMB,
   UT_MIRV,
   UT_SAM_MISSILE,
@@ -261,6 +264,12 @@ export class UnitPass {
       if (col >= 0) {
         this.typeToAtlasCol.set(header.unitTypes[i], col);
       }
+    }
+    // The electric bomb has no dedicated atlas column — it flies with the atom
+    // bomb's sprite (it detonates differently, but looks the same in flight).
+    const atomCol = UNIT_ORDER.indexOf(UT_ATOM_BOMB);
+    if (atomCol >= 0) {
+      this.typeToAtlasCol.set(UT_ELECTRIC_BOMB, atomCol);
     }
 
     // Compile shaders

@@ -44,11 +44,22 @@ Reihenfolge laut Nutzer: **erst die einfachen Sachen.** Alles hier gesammelt.
       den Bomben. PC + Handy (`BuildMenu.ts`). Neue Bombe = 1 Zeile in
       `BOMB_UNIT_TYPES` + Build-Table-Eintrag. DE/EN-Keys ergänzt (`unit_type.bomb`,
       `build_menu.desc.bombs`, `build_menu.select_bomb`).
-- [ ] **Elektrobombe (neu)**: detoniert → **deaktiviert alles im Radius**
-      (Außenposten feuern nicht mehr, Städte/Häfen/… werden **grau**/inaktiv).
-      Zum Einnehmen ohne Wegbomben, damit der Gegner es nicht nutzen kann.
-      Kosten: **leicht teurer als die Atombombe**. *(Nächster fokussierter Slice:
-      neuer Nuke-Typ + „disabled"-Zustand auf Units + Grau-Rendering; live prüfen.)*
+- [x] **Elektrobombe (neu)**: neuer Nuke-Typ `UnitType.ElectricBomb`, fliegt/
+      startet wie eine Atombombe (nutzt `NukeExecution`, Atombomben-Grafik per
+      Alias), **detoniert → deaktiviert alle Strukturen im Radius** statt zu
+      zerstören. Deaktiviert = Einheit `isDisabled()` (zeitbasiert, `disableUntil`
+      + `ElectricDisableExecution` re-synct Client bei Ablauf, 30 s). Gates:
+      Verteidigungsposten feuert nicht, Ölpumpe produziert nicht, Hafen keine
+      Handelsschiffe, SAM fängt nicht ab, Stadt zählt nicht (Öl/Truppen); Struktur
+      rendert gedimmt/inaktiv. Kosten **leicht > Atombombe** (900k vs 750k). Im
+      Sim verifiziert (Wegwerf-Test: deaktiviert Stadt/Posten/SAM ohne Zerstörung,
+      reaktiviert nach 300 Ticks). DE/EN-Keys + Icon ergänzt.
+  - [ ] **Politur**: echtes **Grau** (Desaturierung) statt nur Dimmen — braucht
+        eine Shader-Änderung im StructurePass (eigener „disabled"-Kanal).
+  - [ ] **KI** soll die Elektrobombe nutzen (Struktur-Cluster deaktivieren vor
+        Einnahme).
+  - [ ] Auch **mobile Einheiten** (Kriegsschiffe) optional deaktivieren (v1: nur
+        Strukturen).
 
 ### C. Handy-Layout / Mobile-UX (großer Umbau)
 

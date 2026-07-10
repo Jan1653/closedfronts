@@ -192,6 +192,7 @@ export interface UnitUpdate {
   hasTrainStation: boolean;
   trainType?: TrainType; // Only for trains
   loaded?: boolean; // Only for trains
+  disabled?: boolean; // Electric-bomb deactivation (structure greyed + inert)
 }
 
 export interface AttackUpdate {

@@ -30,6 +30,10 @@ export class DefensePostExecution implements Execution {
     if (this.post.isUnderConstruction()) {
       return;
     }
+    // Deactivated by an electric bomb: hold fire until it re-enables.
+    if (this.post.isDisabled()) {
+      return;
+    }
     if (this.cooldown > 0) {
       this.cooldown--;
       return;

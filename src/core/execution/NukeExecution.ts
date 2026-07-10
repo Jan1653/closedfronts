@@ -15,6 +15,7 @@ import { ParabolaUniversalPathFinder } from "../pathfinding/PathFinder.Parabola"
 import { PathStatus } from "../pathfinding/types";
 import { PseudoRandom } from "../PseudoRandom";
 import { NukeType } from "../StatsSchemas";
+import { ElectricDisableExecution } from "./ElectricDisableExecution";
 import { OilExplosionExecution } from "./OilExplosionExecution";
 import { listNukeBreakAlliance } from "./Util";
 
@@ -28,7 +29,9 @@ export class NukeExecution implements Execution {
   private pathFinder: ParabolaUniversalPathFinder;
 
   constructor(
-    private nukeType: NukeType,
+    // UnitType (not just NukeType) so the electric bomb can reuse the whole
+    // launch/flight path; detonate() branches on it.
+    private nukeType: UnitType,
     private player: Player,
     private dst: TileRef,
     private src?: TileRef | null,
@@ -232,8 +235,12 @@ export class NukeExecution implements Execution {
           );
         }
 
-        // Record stats
-        this.mg.stats().bombLaunch(this.player, target, this.nukeType);
+        // Record stats (the electric bomb isn't a tracked bomb stat type).
+        if (this.nukeType !== UnitType.ElectricBomb) {
+          this.mg
+            .stats()
+            .bombLaunch(this.player, target, this.nukeType as NukeType);
+        }
       }
 
       // after sending a nuke set the missilesilo on cooldown
@@ -354,6 +361,12 @@ export class NukeExecution implements Execution {
     const mg = this.mg;
     const config = mg.config();
 
+    // The electric bomb deactivates instead of destroying — entirely separate.
+    if (this.nukeType === UnitType.ElectricBomb) {
+      this.detonateElectric();
+      return;
+    }
+
     const magnitude = config.nukeMagnitudes(this.nuke.type());
     const toDestroy = this.tilesToDestroy();
 
@@ -388,7 +401,7 @@ export class NukeExecution implements Execution {
         const numTilesLeft = tilesBeforeNuke - i;
         player.removeTroops(
           config.nukeDeathFactor(
-            this.nukeType,
+            this.nukeType as NukeType,
             player.troops(),
             numTilesLeft,
             maxTroops,
@@ -397,7 +410,7 @@ export class NukeExecution implements Execution {
         for (const attack of outgoingAttacks) {
           const attackTroops = attack.troops();
           const deaths = config.nukeDeathFactor(
-            this.nukeType,
+            this.nukeType as NukeType,
             attackTroops,
             numTilesLeft,
             maxTroops,
@@ -407,7 +420,7 @@ export class NukeExecution implements Execution {
         for (const unit of transportShips) {
           const unitTroops = transportShipTroops.get(unit) ?? unit.troops();
           const deaths = config.nukeDeathFactor(
-            this.nukeType,
+            this.nukeType as NukeType,
             unitTroops,
             numTilesLeft,
             maxTroops,
@@ -476,6 +489,35 @@ export class NukeExecution implements Execution {
     this.mg
       .stats()
       .bombLand(this.player, this.target(), this.nuke.type() as NukeType);
+  }
+
+  /**
+   * Electric-bomb detonation: no tiles or troops destroyed. Every structure in
+   * the blast is deactivated for a while (defense posts stop firing, cities/
+   * ports/pumps stop working, all render greyed). Each disabled structure gets
+   * an ElectricDisableExecution that re-syncs it to clients when it re-enables.
+   */
+  private detonateElectric(): void {
+    if (this.nuke === null) {
+      throw new Error("Not initialized");
+    }
+    const mg = this.mg;
+    const magnitude = mg.config().nukeMagnitudes(this.nuke.type());
+    const outer2 = magnitude.outer * magnitude.outer;
+    const until = mg.ticks() + mg.config().electricBombDisableTicks();
+
+    for (const unit of mg.units()) {
+      if (!Structures.has(unit.type())) continue;
+      if (mg.euclideanDistSquared(this.dst, unit.tile()) < outer2) {
+        unit.disableUntil(until);
+        mg.addExecution(new ElectricDisableExecution(unit));
+      }
+    }
+
+    this.redrawBuildings(magnitude.outer + SPRITE_RADIUS);
+    this.active = false;
+    this.nuke.setReachedTarget();
+    this.nuke.delete(false);
   }
 
   private redrawBuildings(range: number) {

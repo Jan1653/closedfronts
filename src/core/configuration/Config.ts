@@ -400,6 +400,13 @@ export class Config {
           cost: this.nukeCost(5_000_000, UnitType.HydrogenBomb),
         };
         break;
+      case UnitType.ElectricBomb:
+        // Slightly pricier than an atom bomb (it denies the whole area instead
+        // of levelling it).
+        info = {
+          cost: this.nukeCost(900_000, UnitType.ElectricBomb),
+        };
+        break;
       case UnitType.MIRV:
         info = {
           cost: (game: Game, player: Player) => {
@@ -952,7 +959,7 @@ export class Config {
   private builtCityCount(player: Player | PlayerView): number {
     let n = 0;
     for (const u of player.units(UnitType.City)) {
-      if (u.isActive() && !u.isUnderConstruction()) n++;
+      if (u.isActive() && !u.isUnderConstruction() && !u.isDisabled()) n++;
     }
     return n;
   }
@@ -1088,6 +1095,9 @@ export class Config {
         return { inner: 12, outer: 18 };
       case UnitType.AtomBomb:
         return { inner: 12, outer: 30 };
+      case UnitType.ElectricBomb:
+        // Atom-bomb-sized footprint; it disables rather than destroys.
+        return { inner: 12, outer: 30 };
       case UnitType.HydrogenBomb:
         return { inner: 80, outer: 100 };
     }
@@ -1096,6 +1106,12 @@ export class Config {
 
   nukeAllianceBreakThreshold(): number {
     return 100;
+  }
+
+  // How long (ticks) a structure stays deactivated after an electric bomb hits
+  // it — long enough to move in and take the ground. 30 s.
+  electricBombDisableTicks(): number {
+    return 30 * 10;
   }
 
   defaultNukeSpeed(): number {

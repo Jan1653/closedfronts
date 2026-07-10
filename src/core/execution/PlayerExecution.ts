@@ -438,6 +438,7 @@ export class PlayerExecution implements Execution {
       if (
         u.type() !== UnitType.AtomBomb &&
         u.type() !== UnitType.HydrogenBomb &&
+        u.type() !== UnitType.ElectricBomb &&
         u.type() !== UnitType.MIRVWarhead &&
         u.type() !== UnitType.MIRV
       ) {

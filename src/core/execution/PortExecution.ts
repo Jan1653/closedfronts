@@ -35,6 +35,11 @@ export class PortExecution implements Execution {
       return;
     }
 
+    // Deactivated by an electric bomb: no trade ships while offline.
+    if (this.port.isDisabled()) {
+      return;
+    }
+
     if (!this.port.hasTrainStation()) {
       this.createStation();
     }

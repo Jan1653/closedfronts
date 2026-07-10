@@ -865,6 +865,7 @@
     "sam_launcher": "Flugabwehr-Raketenstellung",
     "atom_bomb": "Atombombe",
     "bomb": "Bombe",
+    "electric_bomb": "Elektrobombe",
     "hydrogen_bomb": "Wasserstoffbombe",
     "mirv": "MIRV-Rakete",
     "factory": "Fabrik",
@@ -1103,6 +1104,7 @@
     "desc": {
       "atom_bomb": "Kleine Explosion",
       "bombs": "Bombe zum Abschuss wählen",
+      "electric_bomb": "Deaktiviert alle Strukturen im Radius — zerstört nichts",
       "hydrogen_bomb": "Große Explosion",
       "mirv": "Riesige Explosion, trifft nur ausgewählten Spieler",
       "missile_silo": "Ermöglicht den Einsatz von Atomraketen",

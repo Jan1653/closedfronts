@@ -175,6 +175,10 @@ export enum UnitType {
   Port = "Port",
   AtomBomb = "Atom Bomb",
   HydrogenBomb = "Hydrogen Bomb",
+  // Electric bomb (EMP): flies + detonates like a nuke, but instead of
+  // destroying it DEACTIVATES every structure in the blast for a while — they
+  // stop working and grey out. Lets you take ground without wrecking the infra.
+  ElectricBomb = "Electric Bomb",
   TradeShip = "Trade Ship",
   MissileSilo = "Missile Silo",
   DefensePost = "Defense Post",
@@ -205,6 +209,7 @@ export const Nukes = unitTypeGroup([
 export const BuildableAttacks = unitTypeGroup([
   UnitType.AtomBomb,
   UnitType.HydrogenBomb,
+  UnitType.ElectricBomb,
   UnitType.MIRV,
   UnitType.Warship,
 ] as const);
@@ -263,6 +268,11 @@ export interface UnitParamsMap {
   };
 
   [UnitType.HydrogenBomb]: {
+    targetTile?: number;
+    trajectory: TrajectoryTile[];
+  };
+
+  [UnitType.ElectricBomb]: {
     targetTile?: number;
     trajectory: TrajectoryTile[];
   };
@@ -528,6 +538,13 @@ export interface Unit {
   // Construction phase on structures
   isUnderConstruction(): boolean;
   setUnderConstruction(underConstruction: boolean): void;
+
+  // Electric-bomb deactivation: while disabled a structure does nothing (its
+  // execution skips work) and renders greyed. disableUntil extends the window;
+  // isDisabled() is time-based so it auto-clears.
+  isDisabled(): boolean;
+  disableUntil(untilTick: number): void;
+  disabledUntilTick(): number;
 
   // Upgradable Structures
   level(): number;

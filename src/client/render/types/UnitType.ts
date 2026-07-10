@@ -16,6 +16,7 @@ export const UT_TRADE_SHIP = "Trade Ship" as const;
 export const UT_WARSHIP = "Warship" as const;
 export const UT_ATOM_BOMB = "Atom Bomb" as const;
 export const UT_HYDROGEN_BOMB = "Hydrogen Bomb" as const;
+export const UT_ELECTRIC_BOMB = "Electric Bomb" as const;
 export const UT_MIRV = "MIRV" as const;
 export const UT_SAM_MISSILE = "SAMMissile" as const;
 export const UT_SHELL = "Shell" as const;
@@ -52,6 +53,7 @@ export const STRUCTURE_TYPES: ReadonlySet<string> = new Set([
 export const NUKE_TYPES: ReadonlySet<string> = new Set([
   UT_ATOM_BOMB,
   UT_HYDROGEN_BOMB,
+  UT_ELECTRIC_BOMB,
   UT_MIRV,
 ]);
 
@@ -61,6 +63,7 @@ export const NUKE_TYPES: ReadonlySet<string> = new Set([
 export const SMOOTHED_NUKE_TYPES: ReadonlySet<string> = new Set([
   UT_ATOM_BOMB,
   UT_HYDROGEN_BOMB,
+  UT_ELECTRIC_BOMB,
   UT_MIRV,
   UT_MIRV_WARHEAD,
 ]);
