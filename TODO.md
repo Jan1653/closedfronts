@@ -108,9 +108,11 @@ Reihenfolge laut Nutzer: **erst die einfachen Sachen.** Alles hier gesammelt.
       machen (Android) + iOS-Fallback (PWA-Hinweis).
 - [ ] **PWA-Installation** sauber: „Zum Home-Bildschirm" → läuft als App gut
       (Manifest/Standalone prüfen, Safe-Areas, kein Doppel-Scroll).
-- [ ] **iOS-Banner zeigt Roh-Keys** (`ios_banner.text/how/later/never`): rendert
-      wohl vor dem Laden der Übersetzungen → in die LangSelector-Re-Render-Liste
-      (gleicher Fix wie damals beim Lobby-Namen).
+- [x] **iOS-Banner zeigt Roh-Keys** (`ios_banner.text/how/later/never`): rendert
+      am Boot vor dem Laden der Übersetzungen → `ios-add-to-home-screen-banner`
+      in die `LangSelector.applyTranslation`-Re-Render-Liste aufgenommen (gleicher
+      Fix wie beim Lobby-Namen). Verifiziert: `applyTranslation` ruft jetzt
+      `requestUpdate()` auf dem Banner, Keys lösen sich auf.
 - [ ] **Truppen-Angriffs-Bar (wie viel Truppen beim Angriff)** funktioniert am
       Handy schlecht → **nach links (links-mittig)** verlegen, wieder bedienbar.
 - [ ] **Öl-Bar** ans Truppen-Bar-Design angleichen (siehe A).

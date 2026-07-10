@@ -245,6 +245,9 @@ export class LangSelector extends LitElement {
       "effects-grid",
       "matchmaking-button",
       "token-login",
+      // Renders at boot (iOS only), often before the language JSON has loaded,
+      // so without a re-render it shows raw keys (ios_banner.text, …).
+      "ios-add-to-home-screen-banner",
     ];
 
     document.title = this.translateText("main.title") ?? document.title;
