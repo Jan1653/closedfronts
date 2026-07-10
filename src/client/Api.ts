@@ -573,3 +573,154 @@ export async function getNews(): Promise<NewsItem[]> {
     return newsItemsFallback as NewsItem[];
   }
 }
+
+// ---- Community maps (hand-drawn, published via the localapi maps store) ------
+
+export interface CommunityMapSummary {
+  id: string;
+  name: string;
+  width: number;
+  height: number;
+  authorPublicId: string;
+  createdAt: string;
+  updatedAt: string;
+  likeCount: number;
+  likedByMe: boolean;
+}
+export interface CommunityMapDetail extends CommunityMapSummary {
+  paint: string;
+}
+export interface CommunityMapPage {
+  results: CommunityMapSummary[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+// Browse published maps. Public; sends the auth header when available so the
+// server can fill in likedByMe.
+export async function browseCommunityMaps(opts: {
+  sort?: "likes" | "new";
+  search?: string;
+  page?: number;
+  limit?: number;
+}): Promise<CommunityMapPage | null> {
+  try {
+    const url = new URL(`${getApiBase()}/maps`);
+    url.searchParams.set("sort", opts.sort ?? "likes");
+    if (opts.search) url.searchParams.set("search", opts.search);
+    url.searchParams.set("page", String(opts.page ?? 1));
+    url.searchParams.set("limit", String(opts.limit ?? 24));
+    const auth = await getAuthHeader();
+    const res = await fetch(url.toString(), {
+      headers: {
+        Accept: "application/json",
+        ...(auth ? { Authorization: auth } : {}),
+      },
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as CommunityMapPage;
+  } catch (err) {
+    console.warn("browseCommunityMaps: request failed", err);
+    return null;
+  }
+}
+
+export async function getCommunityMap(
+  id: string,
+): Promise<CommunityMapDetail | null> {
+  try {
+    const auth = await getAuthHeader();
+    const res = await fetch(`${getApiBase()}/maps/${encodeURIComponent(id)}`, {
+      headers: {
+        Accept: "application/json",
+        ...(auth ? { Authorization: auth } : {}),
+      },
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as CommunityMapDetail;
+  } catch (err) {
+    console.warn("getCommunityMap: request failed", err);
+    return null;
+  }
+}
+
+// Publish a map (auth required). Returns the stored detail, or null on failure.
+export async function publishCommunityMap(map: {
+  name: string;
+  width: number;
+  height: number;
+  paint: string;
+}): Promise<CommunityMapDetail | null> {
+  try {
+    const auth = await getAuthHeader();
+    if (!auth) return null;
+    const res = await fetch(`${getApiBase()}/maps`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: auth,
+      },
+      body: JSON.stringify(map),
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as CommunityMapDetail;
+  } catch (err) {
+    console.warn("publishCommunityMap: request failed", err);
+    return null;
+  }
+}
+
+export async function deleteCommunityMap(id: string): Promise<boolean> {
+  try {
+    const auth = await getAuthHeader();
+    if (!auth) return false;
+    const res = await fetch(`${getApiBase()}/maps/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: { Authorization: auth },
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn("deleteCommunityMap: request failed", err);
+    return false;
+  }
+}
+
+export async function likeCommunityMap(
+  id: string,
+  liked: boolean,
+): Promise<{ likeCount: number; likedByMe: boolean } | null> {
+  try {
+    const auth = await getAuthHeader();
+    if (!auth) return null;
+    const res = await fetch(
+      `${getApiBase()}/maps/${encodeURIComponent(id)}/like`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: auth },
+        body: JSON.stringify({ liked }),
+      },
+    );
+    if (!res.ok) return null;
+    return (await res.json()) as { likeCount: number; likedByMe: boolean };
+  } catch (err) {
+    console.warn("likeCommunityMap: request failed", err);
+    return null;
+  }
+}
+
+export async function getMyCommunityMaps(): Promise<CommunityMapSummary[]> {
+  try {
+    const auth = await getAuthHeader();
+    if (!auth) return [];
+    const res = await fetch(`${getApiBase()}/maps/mine`, {
+      headers: { Accept: "application/json", Authorization: auth },
+    });
+    if (!res.ok) return [];
+    const json = (await res.json()) as { results?: CommunityMapSummary[] };
+    return json.results ?? [];
+  } catch (err) {
+    console.warn("getMyCommunityMaps: request failed", err);
+    return [];
+  }
+}

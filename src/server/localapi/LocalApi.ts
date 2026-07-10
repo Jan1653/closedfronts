@@ -11,6 +11,7 @@ import {
 import { ClansStore, isValidClanTag } from "./clans";
 import { GamesStore } from "./games";
 import { createSigner } from "./keys";
+import { MapsStore } from "./maps";
 import { AccountStore, type Account } from "./store";
 
 // The cosmetics catalog is bundled from the repo (single source of truth for
@@ -94,6 +95,7 @@ const GAMES_PATH = process.env.LOCALAPI_GAMES_PATH ?? `${DATA_DIR}/games.json`;
 const KEY_PATH =
   process.env.LOCALAPI_KEY_PATH ?? `${DATA_DIR}/jwt-ed25519.json`;
 const CLANS_PATH = process.env.LOCALAPI_CLANS_PATH ?? `${DATA_DIR}/clans.json`;
+const MAPS_PATH = process.env.LOCALAPI_MAPS_PATH ?? `${DATA_DIR}/maps.json`;
 // Profile pictures: one small file per account under this dir. Bounded storage
 // (one image per account, each capped below), safe to keep on the same volume.
 const AVATARS_DIR = process.env.LOCALAPI_AVATARS_DIR ?? `${DATA_DIR}/avatars`;
@@ -167,6 +169,7 @@ async function main() {
   const store = new AccountStore(DB_PATH);
   const games = new GamesStore(GAMES_PATH, store);
   const clanStore = new ClansStore(CLANS_PATH);
+  const mapsStore = new MapsStore(MAPS_PATH);
   const signer = await createSigner(KEY_PATH);
   const verifyKey = await importJWK(signer.publicJwk, "EdDSA");
 
@@ -216,6 +219,9 @@ async function main() {
   // (base64 overhead) so an oversized upload is rejected by the parser first.
   const jsonMedium = express.json({ limit: "256kb" });
   const jsonLarge = express.json({ limit: "64mb" });
+  // A published map carries its paint grid (base64). Worst case 512×512 ≈ 350 KB;
+  // 1 MB leaves headroom for the JSON envelope.
+  const jsonMaps = express.json({ limit: "1mb" });
 
   const r = express.Router();
 
@@ -654,6 +660,77 @@ async function main() {
       res.json({ ok: true }),
     );
   }
+
+  // ---- Community maps -------------------------------------------------------
+
+  const parseSort = (v: unknown): "likes" | "new" =>
+    v === "new" ? "new" : "likes";
+
+  // Browse published maps. Public; a Bearer token (optional) fills in likedByMe.
+  r.get("/maps", async (req, res) => {
+    const viewer = await authedAccount(req);
+    res.json(
+      mapsStore.browse({
+        sort: parseSort(req.query.sort),
+        search:
+          typeof req.query.search === "string" ? req.query.search : undefined,
+        page: parsePage(req.query.page),
+        limit: parseLimit(req.query.limit),
+        viewerPublicId: viewer?.publicId,
+      }),
+    );
+  });
+
+  // The caller's own published maps. Must precede /maps/:id.
+  r.get("/maps/mine", async (req, res) => {
+    const account = await authedAccount(req);
+    if (!account) return res.status(401).json({ error: "unauthorized" });
+    res.json({
+      results: mapsStore.mapsForAuthor(account.publicId, account.publicId),
+    });
+  });
+
+  // Publish a map (auth). Body { name, width, height, paint }.
+  r.post("/maps", jsonMaps, async (req, res) => {
+    const account = await authedAccount(req);
+    if (!account) return res.status(401).json({ error: "unauthorized" });
+    try {
+      const rec = mapsStore.publish(account.publicId, req.body ?? {});
+      res.json(mapsStore.detail(rec, account.publicId));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "invalid";
+      if (msg === "too_many")
+        return res.status(409).json({ error: "too_many" });
+      return res.status(400).json({ error: "invalid_map" });
+    }
+  });
+
+  // Map detail incl. paint (for playing / adding to your custom maps).
+  r.get("/maps/:id", async (req, res) => {
+    const viewer = await authedAccount(req);
+    const m = mapsStore.get(req.params.id);
+    if (!m) return res.status(404).json({ error: "not_found" });
+    res.json(mapsStore.detail(m, viewer?.publicId));
+  });
+
+  // Delete one of your own maps.
+  r.delete("/maps/:id", async (req, res) => {
+    const account = await authedAccount(req);
+    if (!account) return res.status(401).json({ error: "unauthorized" });
+    if (!mapsStore.remove(req.params.id, account.publicId))
+      return res.status(404).json({ error: "not_found" });
+    res.json({ ok: true });
+  });
+
+  // Like / unlike a map. Body { liked: boolean }.
+  r.post("/maps/:id/like", jsonSmall, async (req, res) => {
+    const account = await authedAccount(req);
+    if (!account) return res.status(401).json({ error: "unauthorized" });
+    const liked = (req.body ?? {}).liked !== false; // default: like
+    const m = mapsStore.setLike(req.params.id, account.publicId, liked);
+    if (!m) return res.status(404).json({ error: "not_found" });
+    res.json({ likeCount: m.likes.length, likedByMe: liked });
+  });
 
   app.use("/localapi", r);
 
