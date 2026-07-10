@@ -622,6 +622,15 @@ gesagt wird. Hier die vollständige Spezifikation, damit nichts verloren geht.
 - [x] Editor: **„Veröffentlichen"**-Button pro Karte (`publishCommunityMap`, auth-gated).
 - [x] Play-Config in `playCustomMapSolo()` zentralisiert (Editor + Browser teilen sich eine Quelle).
 
+**Turn 7 (ERLEDIGT — Commit `14cd68c`):** Painter mit mehr Terrain-Stufen.
+
+- [x] Palette von 3 → **6 Stufen**: Wasser, Tiefwasser, Ebene, Hochland, Berg,
+      Gipfel (Wand). Jede mappt auf die Höhen-Magnitude, die der Renderer als
+      eigenes Farbband zeichnet (Ebene grün, Hochland braun, Berg grau, Gipfel
+      Wand; Wasser dunkelt mit Tiefe). Farben zentral (`PAINT_TILE_RGB`),
+      Mini-Map-Downscale behält höchste Landstufe. Alte Werte 0/1/2 kompatibel.
+      Verifiziert im echten `GameMapImpl` (TerrainType/Magnitude je Stufe).
+
 **Community-Frontend (Rest, offen):**
 
 - [ ] Startseite zeigt die **meistgelikten** Community-Maps (bisher nur im Modal).
