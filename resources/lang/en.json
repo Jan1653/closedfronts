@@ -77,6 +77,7 @@
   "build_menu": {
     "desc": {
       "atom_bomb": "Small explosion",
+      "bombs": "Choose a bomb to launch",
       "city": "Increases max population",
       "defense_post": "Increases defenses of nearby borders",
       "factory": "Creates railroads and spawns trains",
@@ -91,6 +92,7 @@
       "water_toll_station": "Charges enemy boats a gold toll to pass; capturable by warships"
     },
     "not_enough_money": "Not enough money",
+    "select_bomb": "Select bomb",
     "warship_shift_hint": "Hold Shift and drag to select multiple warships at once"
   },
   "chat": {
@@ -1467,6 +1469,7 @@
   "unit_type": {
     "atom_bomb": "Atom Bomb",
     "boat": "Boat",
+    "bomb": "Bomb",
     "city": "City",
     "defense_post": "Defense Post",
     "factory": "Factory",

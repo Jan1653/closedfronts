@@ -864,6 +864,7 @@
     "missile_silo": "Raketensilo",
     "sam_launcher": "Flugabwehr-Raketenstellung",
     "atom_bomb": "Atombombe",
+    "bomb": "Bombe",
     "hydrogen_bomb": "Wasserstoffbombe",
     "mirv": "MIRV-Rakete",
     "factory": "Fabrik",
@@ -1101,6 +1102,7 @@
   "build_menu": {
     "desc": {
       "atom_bomb": "Kleine Explosion",
+      "bombs": "Bombe zum Abschuss wählen",
       "hydrogen_bomb": "Große Explosion",
       "mirv": "Riesige Explosion, trifft nur ausgewählten Spieler",
       "missile_silo": "Ermöglicht den Einsatz von Atomraketen",
@@ -1115,6 +1117,7 @@
       "water_toll_station": "Verlangt feindlichen Booten einen Gold-Zoll für die Durchfahrt; von Kriegsschiffen kaperbar"
     },
     "not_enough_money": "Nicht genug Geld",
+    "select_bomb": "Bombe wählen",
     "warship_shift_hint": "Halte Umschalt und ziehe, um mehrere Kriegsschiffe auf einmal auszuwählen"
   },
   "win_modal": {

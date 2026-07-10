@@ -149,6 +149,17 @@ export const buildTable: BuildItemDisplay[][] = [
 
 export const flattenedBuildTable = buildTable.flat();
 
+// The ordnance types share a single "Bomb" button in the bar; clicking it opens
+// a small centred picker to choose which one to launch at the clicked tile.
+// Keeps the bar short, groups all bombs together, and gives the (upcoming)
+// electric bomb a home. To add a new bomb: add its build-table entry and list
+// it here.
+const BOMB_UNIT_TYPES: ReadonlySet<UnitType> = new Set<UnitType>([
+  UnitType.AtomBomb,
+  UnitType.HydrogenBomb,
+  UnitType.MIRV,
+]);
+
 @customElement("build-menu")
 export class BuildMenu extends LitElement implements Controller {
   public game: GameView;
@@ -337,6 +348,39 @@ export class BuildMenu extends LitElement implements Controller {
       font-size: 14px;
     }
 
+    /* Centred bomb picker (opened by the single "Bomb" button). Sits above the
+       build menu so it reads as a little pop-over over everything. */
+    .bomb-picker-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.4);
+    }
+    .bomb-picker {
+      background-color: #1e1e1e;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 0 24px rgba(0, 0, 0, 0.6);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      max-width: 95vw;
+      max-height: 90vh;
+      overflow: auto;
+    }
+    .bomb-picker .build-row {
+      flex-wrap: wrap;
+    }
+    .bomb-picker-title {
+      color: white;
+      font-weight: bold;
+      font-size: 16px;
+    }
+
     @media (max-width: 768px) {
       .build-menu {
         padding: 10px;
@@ -411,6 +455,11 @@ export class BuildMenu extends LitElement implements Controller {
 
   @state()
   private _hidden = true;
+
+  // When set, the centred bomb picker is showing over the build menu. It keeps
+  // the same clickedTile, so choosing a bomb launches it at that tile.
+  @state()
+  private _bombPickerOpen = false;
 
   public canBuildOrUpgrade(item: BuildItemDisplay): boolean {
     if (this.game?.myPlayer() === null || this.playerBuildables === null) {
@@ -502,6 +551,7 @@ export class BuildMenu extends LitElement implements Controller {
       return html`<div class="build-menu hidden"></div>`;
     }
     return html`
+      ${this.renderBombPicker()}
       <div
         class="build-menu ${this._hidden ? "hidden" : ""}"
         @contextmenu=${(e: MouseEvent) => e.preventDefault()}
@@ -515,83 +565,152 @@ export class BuildMenu extends LitElement implements Controller {
             +
           </button>
         </div>
-        ${this.filteredBuildTable.map(
-          (row) => html`
+        ${this.filteredBuildTable.map((row) => {
+          const others = row.filter(
+            (item) => !BOMB_UNIT_TYPES.has(item.unitType),
+          );
+          const hasBombs = row.some((item) =>
+            BOMB_UNIT_TYPES.has(item.unitType),
+          );
+          return html`
             <div class="build-row">
-              ${row.map((item) => {
-                const buildableUnit = this.playerBuildables?.find(
-                  (bu) => bu.type === item.unitType,
-                );
-                if (buildableUnit === undefined) {
-                  return html``;
-                }
-                const enabled =
-                  buildableUnit.canBuild !== false ||
-                  buildableUnit.canUpgrade !== false;
-                return html`
-                  <button
-                    class="build-button"
-                    @click=${() =>
-                      this.sendBuildOrUpgrade(buildableUnit, this.clickedTile)}
-                    ?disabled=${!enabled}
-                    title=${!enabled
-                      ? translateText("build_menu.not_enough_money")
-                      : ""}
-                  >
-                    <img
-                      src=${item.icon}
-                      alt="${item.unitType}"
-                      width="40"
-                      height="40"
-                    />
-                    <span class="build-name"
-                      >${item.key && translateText(item.key)}</span
-                    >
-                    <span class="build-description"
-                      >${item.description &&
-                      translateText(item.description)}</span
-                    >
-                    <span class="build-cost" translate="no">
-                      ${renderNumber(
-                        this.game && this.game.myPlayer() ? this.cost(item) : 0,
-                      )}
-                      <img
-                        src=${goldCoinIcon}
-                        alt="gold"
-                        width="12"
-                        height="12"
-                        class="align-middle"
-                      />
-                    </span>
-                    ${item.countable
-                      ? html`<div class="build-count-chip">
-                          <span class="build-count">${this.count(item)}</span>
-                        </div>`
-                      : buildableUnit.stockpile > 0
-                        ? html`<div class="build-count-chip">
-                            <span class="build-count"
-                              >${buildableUnit.stockpile}</span
-                            >
-                          </div>`
-                        : ""}
-                  </button>
-                `;
-              })}
+              ${hasBombs ? this.renderBombLauncherButton() : ""}
+              ${others.map((item) => this.renderItemButton(item))}
             </div>
-          `,
-        )}
+          `;
+        })}
       </div>
     `;
   }
 
+  // One build button for a real buildable unit (shared by the main bar and the
+  // bomb picker). Returns nothing if the player can't build this type at all.
+  private renderItemButton(item: BuildItemDisplay) {
+    const buildableUnit = this.playerBuildables?.find(
+      (bu) => bu.type === item.unitType,
+    );
+    if (buildableUnit === undefined) {
+      return html``;
+    }
+    const enabled =
+      buildableUnit.canBuild !== false || buildableUnit.canUpgrade !== false;
+    return html`
+      <button
+        class="build-button"
+        @click=${() => this.sendBuildOrUpgrade(buildableUnit, this.clickedTile)}
+        ?disabled=${!enabled}
+        title=${!enabled ? translateText("build_menu.not_enough_money") : ""}
+      >
+        <img src=${item.icon} alt="${item.unitType}" width="40" height="40" />
+        <span class="build-name">${item.key && translateText(item.key)}</span>
+        <span class="build-description"
+          >${item.description && translateText(item.description)}</span
+        >
+        <span class="build-cost" translate="no">
+          ${renderNumber(
+            this.game && this.game.myPlayer() ? this.cost(item) : 0,
+          )}
+          <img
+            src=${goldCoinIcon}
+            alt="gold"
+            width="12"
+            height="12"
+            class="align-middle"
+          />
+        </span>
+        ${item.countable
+          ? html`<div class="build-count-chip">
+              <span class="build-count">${this.count(item)}</span>
+            </div>`
+          : buildableUnit.stockpile > 0
+            ? html`<div class="build-count-chip">
+                <span class="build-count">${buildableUnit.stockpile}</span>
+              </div>`
+            : ""}
+      </button>
+    `;
+  }
+
+  // The bomb entries that are actually enabled in this game (config may disable
+  // some). Drives both whether the launcher button appears and the picker list.
+  private bombItems(): BuildItemDisplay[] {
+    return flattenedBuildTable.filter(
+      (item) =>
+        BOMB_UNIT_TYPES.has(item.unitType) &&
+        !this.game?.config()?.isUnitDisabled(item.unitType),
+    );
+  }
+
+  // The single "Bomb" button that stands in for all the ordnance types; opens
+  // the picker. Disabled only when no bomb is currently buildable at all.
+  private renderBombLauncherButton() {
+    const anyEnabled = this.bombItems().some((item) => {
+      const bu = this.playerBuildables?.find((b) => b.type === item.unitType);
+      return bu
+        ? bu.canBuild !== false || bu.canUpgrade !== false
+        : false;
+    });
+    return html`
+      <button
+        class="build-button"
+        @click=${() => this.openBombPicker()}
+        ?disabled=${!anyEnabled}
+        title=${!anyEnabled ? translateText("build_menu.not_enough_money") : ""}
+      >
+        <img src=${atomBombIcon} alt="bomb" width="40" height="40" />
+        <span class="build-name">${translateText("unit_type.bomb")}</span>
+        <span class="build-description"
+          >${translateText("build_menu.desc.bombs")}</span
+        >
+      </button>
+    `;
+  }
+
+  // The centred pop-over that lets you pick which bomb to launch at clickedTile.
+  private renderBombPicker() {
+    if (this._hidden || !this._bombPickerOpen) {
+      return html``;
+    }
+    return html`
+      <div
+        class="bomb-picker-overlay"
+        @click=${(e: MouseEvent) => {
+          if (e.target === e.currentTarget) this.closeBombPicker();
+        }}
+        @contextmenu=${(e: MouseEvent) => e.preventDefault()}
+      >
+        <div class="bomb-picker">
+          <div class="bomb-picker-title">
+            ${translateText("build_menu.select_bomb")}
+          </div>
+          <div class="build-row">
+            ${this.bombItems().map((item) => this.renderItemButton(item))}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  private openBombPicker() {
+    this._bombPickerOpen = true;
+    this.requestUpdate();
+  }
+
+  private closeBombPicker() {
+    this._bombPickerOpen = false;
+    this.requestUpdate();
+  }
+
   hideMenu() {
     this._hidden = true;
+    this._bombPickerOpen = false;
     this.requestUpdate();
   }
 
   showMenu(clickedTile: TileRef) {
     this.clickedTile = clickedTile;
     this._hidden = false;
+    this._bombPickerOpen = false;
     this.uiState.buildQuantity = 1; // start each open at a single build
     this.refresh();
   }

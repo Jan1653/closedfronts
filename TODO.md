@@ -39,16 +39,28 @@ Reihenfolge laut Nutzer: **erst die einfachen Sachen.** Alles hier gesammelt.
 
 ### B. Bomben
 
-- [ ] **Nur EIN Bomben-Button** in der Bau-Leiste. Darüber öffnet sich ein
-      kleines **Auswahl-Menü** (mittig, über allem) mit: Atombombe,
-      Wasserstoffbombe, MIRV („Mira"), **Elektrobombe** (neu). PC + Handy.
+- [x] **Nur EIN Bomben-Button** in der Bau-Leiste. Darüber öffnet sich ein
+      kleines **Auswahl-Menü** (mittig, über allem, `bomb-picker-overlay`) mit
+      den Bomben. PC + Handy (`BuildMenu.ts`). Neue Bombe = 1 Zeile in
+      `BOMB_UNIT_TYPES` + Build-Table-Eintrag. DE/EN-Keys ergänzt (`unit_type.bomb`,
+      `build_menu.desc.bombs`, `build_menu.select_bomb`).
 - [ ] **Elektrobombe (neu)**: detoniert → **deaktiviert alles im Radius**
       (Außenposten feuern nicht mehr, Städte/Häfen/… werden **grau**/inaktiv).
       Zum Einnehmen ohne Wegbomben, damit der Gegner es nicht nutzen kann.
-      Kosten: **leicht teurer als die Atombombe**.
+      Kosten: **leicht teurer als die Atombombe**. *(Nächster fokussierter Slice:
+      neuer Nuke-Typ + „disabled"-Zustand auf Units + Grau-Rendering; live prüfen.)*
 
 ### C. Handy-Layout / Mobile-UX (großer Umbau)
 
+- [ ] **Landscape am Handy → mehr PC-Optik**: kippt man das Handy quer, soll die
+      GUI eher wie am PC aussehen (Desktop-Layout der Bars/Panels), die
+      **Steuerung** bleibt aber fürs Handy angepasst (Touch, große Ziele).
+- [~] **Vollbild-Button** in der oberen Button-Leiste — **existiert bereits**
+      (`GameRightSidebar`, neben Ölkarte/Einstellungen), aber nur wenn
+      `document.fullscreenEnabled`. Auf **iOS/iPhone ist die Fullscreen-API nicht
+      verfügbar** → Button fehlt dort; echte „Vollbild"-Lösung auf iOS ist die
+      **PWA/Zum-Home-Bildschirm**. Offen: Button auch am Handy sichtbar/erreichbar
+      machen (Android) + iOS-Fallback (PWA-Hinweis).
 - [ ] **PWA-Installation** sauber: „Zum Home-Bildschirm" → läuft als App gut
       (Manifest/Standalone prüfen, Safe-Areas, kein Doppel-Scroll).
 - [ ] **iOS-Banner zeigt Roh-Keys** (`ios_banner.text/how/later/never`): rendert
