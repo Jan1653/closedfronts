@@ -41,6 +41,28 @@ function readRenderer(gl: WebGL2RenderingContext): string {
   return dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : "unknown";
 }
 
+let cachedMaxTextureSize: number | null = null;
+
+/**
+ * The device's WebGL2 `MAX_TEXTURE_SIZE`, probed once via a throwaway context.
+ * Returns 0 when WebGL2 is unavailable (caller should treat 0 as "unknown" and
+ * not degrade). Mobile GPUs commonly cap this at 4096, so a map wider/taller
+ * than the limit can't be uploaded as a single texture and renders black — the
+ * game-start path uses this to fall back to a smaller map size (#giant-world).
+ */
+export function probeMaxTextureSize(): number {
+  if (cachedMaxTextureSize !== null) return cachedMaxTextureSize;
+  try {
+    const gl = document.createElement("canvas").getContext("webgl2");
+    cachedMaxTextureSize = gl
+      ? Number(gl.getParameter(gl.MAX_TEXTURE_SIZE))
+      : 0;
+  } catch {
+    cachedMaxTextureSize = 0;
+  }
+  return cachedMaxTextureSize;
+}
+
 /**
  * Acquire a GPU-accelerated WebGL2 context on `canvas`.
  *

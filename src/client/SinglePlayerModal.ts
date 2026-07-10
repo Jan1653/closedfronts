@@ -28,6 +28,7 @@ import { modalHeader } from "./components/ui/ModalHeader";
 import { getPlayerCosmetics } from "./Cosmetics";
 import { crazyGamesSDK } from "./CrazyGamesSDK";
 import { JoinLobbyEvent } from "./Main";
+import { probeMaxTextureSize } from "./render/gl/initGL";
 import { UsernameInput } from "./UsernameInput";
 import {
   getBotsForCompactMap,
@@ -836,6 +837,31 @@ export class SinglePlayerModal extends BaseModal {
     this.teamCount = value;
   }
 
+  /**
+   * True when the selected official map's normal size exceeds the device's
+   * WebGL texture limit (so it would render black). Custom maps are small and
+   * always skipped; an unknown limit (no WebGL2) never forces a downgrade.
+   */
+  private async mapExceedsGpuLimit(): Promise<boolean> {
+    if (this.selectedCustomMap) return false;
+    const maxTex = probeMaxTextureSize();
+    if (maxTex <= 0) return false;
+    try {
+      const manifest = await this.mapLoader
+        .getMapData(this.selectedMap)
+        .manifest();
+      const big = Math.max(manifest.map.width, manifest.map.height) > maxTex;
+      if (big) {
+        console.warn(
+          `Map ${this.selectedMap} (${manifest.map.width}×${manifest.map.height}) exceeds device MAX_TEXTURE_SIZE ${maxTex}; using Compact size to avoid a black map.`,
+        );
+      }
+      return big;
+    } catch {
+      return false;
+    }
+  }
+
   private async startGame() {
     // Validate and clamp maxTimer setting before starting
     let finalMaxTimerValue: number | undefined = undefined;
@@ -862,6 +888,12 @@ export class SinglePlayerModal extends BaseModal {
     // the terrain compiles from config.customMap on both threads. Custom maps
     // have no nations.
     const custom = this.selectedCustomMap;
+
+    // Maps wider/taller than the device's GPU texture limit (mobile GPUs are
+    // commonly capped at 4096; the Giant World map is 4108 wide) fail their
+    // texture upload and render as a black screen. Fall back to the half-size
+    // Compact terrain, which fits — better a coarser map than a black one.
+    const useCompact = this.compactMap || (await this.mapExceedsGpuLimit());
 
     console.log(
       custom
@@ -893,7 +925,7 @@ export class SinglePlayerModal extends BaseModal {
             ],
             config: {
               gameMap: this.selectedMap,
-              gameMapSize: this.compactMap
+              gameMapSize: useCompact
                 ? GameMapSize.Compact
                 : GameMapSize.Normal,
               gameType: GameType.Singleplayer,
