@@ -663,22 +663,34 @@ export const rootMenuElement: MenuElement = {
     const isOwnTerritory =
       tileOwner.isPlayer() &&
       (tileOwner as PlayerView).id() === params.myPlayer.id();
+    // Open water is never "owned", so it used to fall through to the enemy/boat
+    // menu with no build button — even though water structures (toll station,
+    // sea oil pump) are built out at sea. Give water its own menu: build + boat.
+    const isWater = params.game.isWater(params.tile);
 
     const inExtensionWindow =
       params.playerActions.interaction?.allianceInfo?.inExtensionWindow;
 
-    const menuItems: (MenuElement | null)[] = [
-      infoMenuElement,
-      ...(isOwnTerritory
-        ? [deleteUnitElement, allyRequestElement, buildMenuElement]
-        : [
-            isAllied && !isDisconnected ? allyBreakElement : boatMenuElement,
-            inExtensionWindow ? allyExtendElement : allyRequestElement,
-            isFriendlyTarget(params) && !isDisconnected
-              ? donateGoldRadialElement
-              : attackMenuElement,
-          ]),
-    ];
+    let menuItems: (MenuElement | null)[];
+    if (isOwnTerritory) {
+      menuItems = [
+        infoMenuElement,
+        deleteUnitElement,
+        allyRequestElement,
+        buildMenuElement,
+      ];
+    } else if (isWater) {
+      menuItems = [infoMenuElement, buildMenuElement, boatMenuElement];
+    } else {
+      menuItems = [
+        infoMenuElement,
+        isAllied && !isDisconnected ? allyBreakElement : boatMenuElement,
+        inExtensionWindow ? allyExtendElement : allyRequestElement,
+        isFriendlyTarget(params) && !isDisconnected
+          ? donateGoldRadialElement
+          : attackMenuElement,
+      ];
+    }
 
     return menuItems.filter((item): item is MenuElement => item !== null);
   },

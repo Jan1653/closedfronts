@@ -114,9 +114,11 @@ Reihenfolge laut Nutzer: **erst die einfachen Sachen.** Alles hier gesammelt.
 
 ### D. Zollstation (Feinschliff)
 
-- [ ] **Bauen-Button beim Wasser-Klick fehlt** (Handy **und** PC): wenn man aufs
-      Wasser klickt bzw. das Multi-Button-Menü hat, muss ein **Bauen-Button** da
-      sein → damit man Wasserbauten (Zollstation, **Ölpumpe auf Wasser**) bauen kann.
+- [x] **Bauen-Button beim Wasser-Klick** (Handy **und** PC): das Radialmenü zeigte
+      den Bauen-Button nur bei **eigenem Territorium** (`isOwnTerritory`) — Wasser
+      gehört nie jemandem, also fehlte er. Neuer expliziter **Wasser-Zweig**
+      (Info + **Bauen** + Boot) in `rootMenuElement.subMenu`, sodass man Zollstation
+      / See-Ölpumpe direkt bauen kann. Verifiziert (Radialmenü-Test + Wasser-Fall).
 - [x] **Schiff fährt durch → Geld-Popup** wie bei Häfen: die Maut wird jetzt
       **direkt dem Stations-Besitzer** gutgeschrieben (`owner.addGold(paid, tile)`
       → schwebendes „+N"-BonusEvent am Stations-Tile). Das **gesamte

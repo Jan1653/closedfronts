@@ -100,6 +100,7 @@ describe("RadialMenuElements", () => {
       inSpawnPhase: vi.fn(() => false),
       owner: vi.fn(() => mockPlayer),
       isLand: vi.fn(() => true),
+      isWater: vi.fn(() => false),
       config: vi.fn(() => ({
         theme: () => ({
           territoryColor: () => ({
