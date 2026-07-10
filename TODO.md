@@ -581,8 +581,17 @@ gesagt wird. Hier die vollständige Spezifikation, damit nichts verloren geht.
       **Löschen**, Größe einstellbar mit Min/Max (40–240), **benennen**.
 - [x] **Speichern lokal** (`CustomMapStore`, localStorage) + Liste mit Laden/Löschen.
 
-**Turn 2 (offen) — Spiel-Integration:** gespeicherte Map spielbar machen
-(BinaryLoader aus `paint`, Custom-Maps im Solo-/Lobby-Map-Picker).
+**Turn 2 (ERLEDIGT — Commit `e72f4e0`):** Custom-Map im Singleplayer spielbar.
+
+- [x] „Spielen"-Buttons im Editor (aktuelles Bild + pro gespeicherter Karte)
+      starten ein Solo-Spiel; `join-lobby` mit `config.customMap`.
+- [x] Payload reist serialisiert (base64) in `GameConfig.customMap` → erreicht
+      Renderer **und** Sim-Worker; beide kompilieren dasselbe Terrain
+      deterministisch (kein CDN-Fetch). `buildCustomTerrainMapData` (Voll- +
+      Halb-Auflösungs-Mini-Map für Pathfinding). Bots skalieren mit Landfläche,
+      keine Nationen. Verifiziert: echter Sim (40 Ticks + Land-Angriff) grün.
+- [ ] Custom-Maps auch im Solo-/Lobby-**Map-Picker** wählbar (statt nur Editor).
+- [ ] **Multiplayer**-Custom-Maps (Server muss Payload an alle Clients verteilen).
 
 **Community / Account (offen):**
 
