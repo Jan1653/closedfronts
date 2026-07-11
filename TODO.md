@@ -45,9 +45,10 @@ Reihenfolge laut Nutzer: **erst die einfachen/kritischen Sachen.** Alles gesamme
 
 ### Bomben / Raketensilo / Kriegsschiff-Gating
 
-- [ ] **Elektrobombe zeigt keinen Radius** → Radius-Vorschau ergänzen.
-- [ ] Bomben erst **entgraut, wenn das Raketensilo FERTIG gebaut** ist (nicht
-      schon während des Baus). **Gleiches beim Kriegsschiff** (Hafen fertig).
+- [x] Bomben/Kriegsschiff erst **entgraut, wenn Silo/Hafen FERTIG** (Commit
+      `9d10301`): `!isUnderConstruction`-Filter in Desktop- + Mobile-Bar.
+- [x] **Elektrobomben-Radius** (Commit `eee3d4f`): + Flugbahn/Allianz-Warnung/
+      Ghost-bleibt, wie Atom/Wasserstoff.
 - [ ] **Neuer „Bomben"-Button** ersetzt die einzelnen Bomben in der Bar.
   - PC: über dem Haupt-Reiter ein kleiner Reiter mit 4 Buttons in Reihenfolge
     **Elektrobombe, Atombombe, Wasserstoffbombe, MIRV**. Auswahl wird
@@ -61,7 +62,9 @@ Reihenfolge laut Nutzer: **erst die einfachen/kritischen Sachen.** Alles gesamme
 
 - [x] **Preise auf dem Handy** (Commit `c56109e`): Goldkosten unter jedem
       Bau-Button. Live verifiziert (750K, 25M, 200K …).
-- [ ] **Multi-Bau-Auswahl auf dem Handy** (mehrere bauen) — fehlt noch.
+- [x] **Multi-Bau-Auswahl auf dem Handy** — war bereits in `MobileBuildControls`
+      (×N mit −/+, Bauen/Abbrechen), nur durch den Grau-Bug blockiert. Live
+      bestätigt: „− ×3 + Abbrechen Bauen" erscheint beim Armieren.
 
 ### Mauern (Walls) — Bausystem-Umbau
 
