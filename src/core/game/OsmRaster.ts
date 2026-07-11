@@ -12,7 +12,7 @@
  * look). Row 0 is the north edge of the bbox.
  */
 
-import { PaintTile } from "./CustomMapBuilder";
+import { isLandPaint, PaintTile } from "./CustomMapBuilder";
 
 export interface GeoBBox {
   minLon: number;
@@ -319,6 +319,51 @@ export function denoisePaint(
     }
   }
   return out;
+}
+
+// Above this real elevation (metres) a cell becomes an impassable Peak — kept
+// absolute so gentle lowland hills never turn into walls, only genuine high
+// mountains do.
+const PEAK_METRES = 1800;
+
+/**
+ * Turn a per-cell real-world elevation grid (metres, NaN = no data) into terrain
+ * height on the land cells of `paint`: Plains → Highland → Mountain by locally
+ * normalised height (so even a gently rolling area gets visible variation — the
+ * "escalated" look), plus impassable Peak where the absolute height is alpine.
+ * Water cells are left untouched. Mutates `paint` in place.
+ */
+export function applyElevation(
+  paint: Uint8Array,
+  elevation: Float32Array,
+  escalate = 0.8,
+): void {
+  let min = Infinity;
+  let max = -Infinity;
+  for (let i = 0; i < paint.length; i++) {
+    if (!isLandPaint(paint[i] as PaintTile)) continue;
+    const e = elevation[i];
+    if (Number.isNaN(e)) continue;
+    if (e < min) min = e;
+    if (e > max) max = e;
+  }
+  if (!Number.isFinite(min) || max - min < 1e-3) return; // flat / no data
+  const range = max - min;
+  for (let i = 0; i < paint.length; i++) {
+    if (!isLandPaint(paint[i] as PaintTile)) continue;
+    const e = elevation[i];
+    if (Number.isNaN(e)) continue;
+    // Escalate: pow<1 pushes more of the range up a tier for a dramatic look.
+    const t = Math.pow((e - min) / range, escalate);
+    let tile: PaintTile =
+      t < 0.35
+        ? PaintTile.Plains
+        : t < 0.65
+          ? PaintTile.Highland
+          : PaintTile.Mountain;
+    if (e > PEAK_METRES) tile = PaintTile.Peak;
+    paint[i] = tile;
+  }
 }
 
 /** Longitude/latitude → fractional grid cell (x right, y down = south). */

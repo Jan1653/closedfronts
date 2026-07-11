@@ -8,6 +8,7 @@ import {
 import type { GeoBBox } from "../../../core/game/OsmRaster";
 import {
   applyCoastlineSea,
+  applyElevation,
   denoisePaint,
   gridSizeForBBox,
   rasterizeLinesInto,
@@ -34,6 +35,7 @@ import {
   serializeCustomMap,
 } from "./CustomMapStore";
 import "./CustomMapThumb";
+import { fetchElevationGrid } from "./DemSource";
 import "./OsmMapPicker";
 import type { OsmMapPicker } from "./OsmMapPicker";
 import { fetchOsmAll, geocodePlace } from "./OsmSource";
@@ -430,28 +432,46 @@ export class MapEditorModal extends BaseModal {
   // Fetch + rasterise the OSM layers for the framed bbox into the editor grid.
   private async runOsmImport(bbox: GeoBBox) {
     const { width, height } = gridSizeForBBox(bbox, MAX_SIZE);
-    // All layers come from ONE Overpass request — the public endpoint rate-limits
-    // (HTTP 429), so we must not fire a query per layer.
-    const layers = await fetchOsmAll(bbox);
-    // Land-cover terrain first (forest → tan Highland, bare rock/glacier →
-    // Mountain) on a Plains base; water is layered on top so lakes/coast/rivers
-    // always win over terrain.
+    // Real elevation (open DEM tiles) + the OSM layers (one Overpass request —
+    // the public endpoint rate-limits, so we must not fire a query per layer).
+    const [dem, layers] = await Promise.all([
+      fetchElevationGrid(bbox, width, height),
+      fetchOsmAll(bbox),
+    ]);
     const paint = new Uint8Array(width * height).fill(PaintTile.Plains);
+    if (dem) {
+      // Genuine height variation from the terrain: Plains→Highland→Mountain by
+      // locally-normalised elevation (+ Peak on real alpine ground).
+      applyElevation(paint, dem);
+    } else {
+      // No DEM available → fall back to land-cover as a rough height proxy
+      // (forest → Highland, bare rock/glacier → Mountain).
+      rasterizePolygonsInto(
+        paint,
+        bbox,
+        width,
+        height,
+        layers.terrain.forest,
+        PaintTile.Highland,
+      );
+      rasterizePolygonsInto(
+        paint,
+        bbox,
+        width,
+        height,
+        layers.terrain.rock,
+        PaintTile.Mountain,
+      );
+    }
+    // Beaches / dunes → tan sand (before water, so the shore reads as a sandy
+    // strip between land and sea).
     rasterizePolygonsInto(
       paint,
       bbox,
       width,
       height,
-      layers.terrain.forest,
+      layers.sand,
       PaintTile.Highland,
-    );
-    rasterizePolygonsInto(
-      paint,
-      bbox,
-      width,
-      height,
-      layers.terrain.rock,
-      PaintTile.Mountain,
     );
     // OSM water areas (lakes, wide rivers) cut out; the editor still flood-fills
     // ocean/shoreline at compile time.

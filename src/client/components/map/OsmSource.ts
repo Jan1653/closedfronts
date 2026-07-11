@@ -266,7 +266,8 @@ export interface OsmLayers {
   water: Polygon[]; // lakes / wide-water areas
   coastlines: Ring[]; // land/sea boundary
   waterways: Ring[]; // river/stream/canal centre-lines
-  terrain: OsmTerrain; // forest + rock land-cover
+  terrain: OsmTerrain; // forest + rock land-cover (DEM fallback)
+  sand: Polygon[]; // beaches / sand → tan shore
 }
 
 const WATERWAY_LINE = new Set(["river", "stream", "canal"]);
@@ -294,12 +295,16 @@ export function buildCombinedQuery(bbox: GeoBBox): string {
     `  relation["landuse"="forest"](${b});`,
     `  way["natural"~"^(${rock})$"](${b});`,
     `  relation["natural"~"^(${rock})$"](${b});`,
+    `  way["natural"~"^(beach|sand|dune)$"](${b});`,
+    `  relation["natural"~"^(beach|sand|dune)$"](${b});`,
     ");",
     "out tags geom;",
   ].join("\n");
 }
 
-/** Sort one combined Overpass response into the four import layers by tags. */
+const SAND_NATURAL = new Set(["beach", "sand", "dune"]);
+
+/** Sort one combined Overpass response into the import layers by tags. */
 export function parseOverpassLayers(json: unknown): OsmLayers {
   const elements = (json as { elements?: OverpassElement[] })?.elements;
   const out: OsmLayers = {
@@ -307,6 +312,7 @@ export function parseOverpassLayers(json: unknown): OsmLayers {
     coastlines: [],
     waterways: [],
     terrain: { forest: [], rock: [] },
+    sand: [],
   };
   if (!Array.isArray(elements)) return out;
   const ring = (geom: OverpassGeomPoint[]) =>
@@ -337,6 +343,13 @@ export function parseOverpassLayers(json: unknown): OsmLayers {
     ) {
       if (el.type === "way" && geom && geom.length >= 2)
         out.waterways.push(ring(geom));
+    } else if (tags.natural !== undefined && SAND_NATURAL.has(tags.natural)) {
+      if (el.type === "way" && geom && geom.length >= 3)
+        out.sand.push([ring(geom)]);
+      else if (el.type === "relation") {
+        const rings = relationOuterRings(el);
+        if (rings.length > 0) out.sand.push(rings);
+      }
     } else if (tags.natural !== undefined && ROCK_NATURAL.has(tags.natural)) {
       if (el.type === "way" && geom && geom.length >= 3)
         out.terrain.rock.push([ring(geom)]);
