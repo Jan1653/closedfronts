@@ -785,8 +785,14 @@ Kern: `src/core/game/OsmRaster.ts` (pur/getestet) + `src/client/components/map/O
 verifizierbar → im Browser live testen.
 
 - [x] Ort eingeben → **spielbare Map generiert** (`geocodePlace` Nominatim →
-      Bbox → Grid → Overpass-Wasser → rastern → ins Editor-Grid). Slippy-Map
-      zum Rechteck-Ziehen ist noch offen (Phase D).
+      Bbox → Grid → Overpass-Wasser → rastern → ins Editor-Grid).
+- [x] **Ausschnitt-Zoom** (Commit `8dbf680`): +/−-Regler crop't die importierte
+      Region enger/weiter um den gefundenen Ort (`scaleBBox`, rein rechnerisch,
+      re-importiert ohne neu zu geocoden) — sichere Alternative zum Tile-Slippy-Map
+      (externe Kartenkacheln scheitern an der CSP; siehe unten). `scaleBBox`
+      wegwerf-getestet. Live-Optik im Browser prüfen.
+  - [ ] *Echtes* Tile-Slippy-Map mit Rechteck-Ziehen bleibt offen: braucht einen
+        externen Tile-Host in der CSP (Server-Config) + Browser-Verifikation.
 - [x] Daten aus **offen lizenzierten** Quellen (OSM/ODbL, Attribution gezeigt).
 - [x] **Flüsse durchgehend**: `waterway`-Linien als kontinuierliche Striche
       (`rasterizeLinesInto`, Sub-Zellen-Schritte, keine Lücken) — verifiziert.
