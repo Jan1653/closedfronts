@@ -72,8 +72,13 @@ Reihenfolge laut Nutzer: **erst die einfachen/kritischen Sachen.** Alles gesamme
       setzt Start, dann zieht die Mauer mit dem Cursor mit, 2. Klick baut die
       Linie. **Handy:** Start antippen, Ziel antippen, **kein** Auto-Bau — extra
       **Bauen**-Button + **Abbrechen**-Button.
-- [ ] **Outline-Fix**: keine Outline dort, wo eine Mauer eine verbundene Nachbar-
-      Mauer berührt (auch über den vertikalen Pixel) → verbundenes Aussehen.
+- [x] **Outline-Fix**: die 4-Bit-Nachbarmaske kannte nur orthogonale Nachbarn,
+      also zeigten **diagonal** verbundene Mauern (die Auto-Connect-Bresenham-
+      Linie schrittet diagonal) eine schwarze Naht an der Ecke. Maske um 4
+      Diagonal-Bits erweitert; der Fragment-Shader unterdrückt die Outline im
+      Eckquadrat, wo eine Diagonal-Mauer anschließt. Außenkanten behalten die
+      Outline. (`WallPass` + `wall.frag.glsl`; strikt additiv, gerade Mauern
+      unverändert.)
 - [ ] **Angriffs-Bar an der Mauer**: beim Angriff eine Bar, wie weit bis zur
       Zerstörung an der Stelle (die dem Angreifer am nächsten liegt). Bar wird
       langsamer bei weniger Truppen und **revertet** bei Gegenangriff/Rückeroberung.

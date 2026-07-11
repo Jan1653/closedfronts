@@ -45,16 +45,32 @@ void main() {
   // Black outline only on sides that have no neighbouring wall, so a run of
   // walls is bordered on the outside (and inside of concave bends) but stays
   // seamless where walls connect. vUv 0..1: x-=left, x+=right, y-=up, y+=down.
-  float m     = floor(vMask + 0.5); // round once to the exact integer
-  float up    = mod(m, 2.0);
-  float right = mod(floor(m / 2.0), 2.0);
-  float down  = mod(floor(m / 4.0), 2.0);
-  float left  = mod(floor(m / 8.0), 2.0);
+  float m         = floor(vMask + 0.5); // round once to the exact integer
+  float up        = mod(m, 2.0);
+  float right      = mod(floor(m / 2.0), 2.0);
+  float down       = mod(floor(m / 4.0), 2.0);
+  float left       = mod(floor(m / 8.0), 2.0);
+  float upLeft    = mod(floor(m / 16.0), 2.0);
+  float upRight   = mod(floor(m / 32.0), 2.0);
+  float downRight = mod(floor(m / 64.0), 2.0);
+  float downLeft  = mod(floor(m / 128.0), 2.0);
   bool onOutline =
     (vUv.y < OUTLINE && up < 0.5) ||
     (vUv.y > 1.0 - OUTLINE && down < 0.5) ||
     (vUv.x < OUTLINE && left < 0.5) ||
     (vUv.x > 1.0 - OUTLINE && right < 0.5);
+  // A diagonal wall fuses at the shared corner: clear the outline in that corner
+  // square so the diagonal run has no black seam (the outer edges still keep it).
+  bool inTop    = vUv.y < OUTLINE;
+  bool inBottom = vUv.y > 1.0 - OUTLINE;
+  bool inLeft   = vUv.x < OUTLINE;
+  bool inRight  = vUv.x > 1.0 - OUTLINE;
+  if ((inTop && inLeft && upLeft > 0.5) ||
+      (inTop && inRight && upRight > 0.5) ||
+      (inBottom && inRight && downRight > 0.5) ||
+      (inBottom && inLeft && downLeft > 0.5)) {
+    onOutline = false;
+  }
   if (onOutline) {
     fragColor = vec4(0.0, 0.0, 0.0, a);
     return;

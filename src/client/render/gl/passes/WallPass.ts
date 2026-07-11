@@ -22,8 +22,11 @@ import wallFragSrc from "../shaders/wall/wall.frag.glsl?raw";
 import wallVertSrc from "../shaders/wall/wall.vert.glsl?raw";
 
 // Per-instance: x, y, ownerID, underConstruction, neighbourMask
-// neighbourMask bits: 1=up(-y) 2=right(+x) 4=down(+y) 8=left(-x). A side with no
-// neighbouring wall gets a black outline in the fragment shader.
+// neighbourMask bits: 1=up(-y) 2=right(+x) 4=down(+y) 8=left(-x) for the four
+// orthogonal sides, plus 16=up-left 32=up-right 64=down-right 128=down-left for
+// the diagonals. A side with no neighbouring wall gets a black outline; a corner
+// with a diagonal neighbour drops its outline so a diagonal wall run (the auto-
+// connect Bresenham line steps diagonally) fuses seamlessly.
 const FLOATS_PER_INSTANCE = 5;
 const BYTES_PER_INSTANCE = FLOATS_PER_INSTANCE * 4;
 
@@ -127,10 +130,20 @@ export class WallPass {
       // horizontal wrap-around at the map edges; out-of-range tiles simply
       // aren't in wallSet.
       let mask = 0;
-      if (y > 0 && wallSet.has(unit.pos - mapW)) mask |= 1; // up
-      if (x < mapW - 1 && wallSet.has(unit.pos + 1)) mask |= 2; // right
-      if (wallSet.has(unit.pos + mapW)) mask |= 4; // down
-      if (x > 0 && wallSet.has(unit.pos - 1)) mask |= 8; // left
+      const up = unit.pos - mapW;
+      const down = unit.pos + mapW;
+      const hasLeft = x > 0;
+      const hasRight = x < mapW - 1;
+      if (y > 0 && wallSet.has(up)) mask |= 1; // up
+      if (hasRight && wallSet.has(unit.pos + 1)) mask |= 2; // right
+      if (wallSet.has(down)) mask |= 4; // down
+      if (hasLeft && wallSet.has(unit.pos - 1)) mask |= 8; // left
+      // Diagonals (same wrap guards): drop the corner outline where a diagonal
+      // wall touches, so a Bresenham-stepped diagonal run reads as continuous.
+      if (y > 0 && hasLeft && wallSet.has(up - 1)) mask |= 16; // up-left
+      if (y > 0 && hasRight && wallSet.has(up + 1)) mask |= 32; // up-right
+      if (hasRight && wallSet.has(down + 1)) mask |= 64; // down-right
+      if (hasLeft && wallSet.has(down - 1)) mask |= 128; // down-left
       this.instanceBuf.float32[off + 0] = x;
       this.instanceBuf.float32[off + 1] = y;
       this.instanceBuf.float32[off + 2] = unit.ownerID;
