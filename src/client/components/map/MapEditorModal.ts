@@ -36,13 +36,7 @@ import {
   serializeCustomMap,
 } from "./CustomMapStore";
 import "./CustomMapThumb";
-import {
-  fetchOsmCoastlines,
-  fetchOsmTerrain,
-  fetchOsmWaterPolygons,
-  fetchOsmWaterways,
-  geocodePlace,
-} from "./OsmSource";
+import { fetchOsmAll, geocodePlace } from "./OsmSource";
 import { playCustomMapSolo } from "./playCustomMap";
 
 const MIN_SIZE = 40;
@@ -432,63 +426,74 @@ export class MapEditorModal extends BaseModal {
     // stays fast, then apply the user's zoom crop around the center.
     const { bbox: capBox, capped } = clampBBox(found, 1.5, 1.0);
     const bbox = scaleBBox(capBox, Math.pow(2, -this.osmZoom));
-    {
-      const { width, height } = gridSizeForBBox(bbox, MAX_SIZE);
-      // Land-cover terrain first (forest → tan Highland, bare rock/glacier →
-      // Mountain), painted onto a Plains base. Water is layered on top afterwards
-      // so lakes/coast/rivers always win over terrain.
-      const terrain = await fetchOsmTerrain(bbox);
-      const paint = new Uint8Array(width * height).fill(PaintTile.Plains);
-      rasterizePolygonsInto(
-        paint,
-        bbox,
-        width,
-        height,
-        terrain.forest,
-        PaintTile.Highland,
-      );
-      rasterizePolygonsInto(
-        paint,
-        bbox,
-        width,
-        height,
-        terrain.rock,
-        PaintTile.Mountain,
-      );
-      // OSM water areas (lakes, wide rivers) cut out; the editor still
-      // flood-fills ocean/shoreline at compile time.
-      const water = await fetchOsmWaterPolygons(bbox);
-      rasterizePolygonsInto(paint, bbox, width, height, water, PaintTile.Water);
-      // Coastline → sea (guarded: leaves the map as land if the coast doesn't
-      // cleanly separate the area, so a coastal bbox never floods to all-water).
-      const coast = await fetchOsmCoastlines(bbox);
-      applyCoastlineSea(paint, bbox, width, height, coast, PaintTile.Water);
-      // Clean speckles into solid areas before drawing thin rivers on top.
-      const clean = denoisePaint(paint, width, height);
-      // Waterway centre-lines (rivers/streams) drawn as continuous strokes so
-      // narrow rivers appear and never break into dots.
-      const rivers = await fetchOsmWaterways(bbox);
-      rasterizeLinesInto(
-        clean,
-        bbox,
-        width,
-        height,
-        rivers,
-        PaintTile.Water,
-        width >= 120 ? 1 : 0,
-      );
-      this.editingId = null;
-      this.name = this.osmQuery.trim().slice(0, 40) || this.name;
-      this.gridW = width;
-      this.gridH = height;
-      this.paint = clean;
-      await this.updateComplete;
-      this.rebuildImage();
-      this.showNotice(
-        translateText(capped ? "map_editor.osm_capped" : "map_editor.osm_done"),
-        false,
-      );
-    }
+    const { width, height } = gridSizeForBBox(bbox, MAX_SIZE);
+    // All layers come from ONE Overpass request — the public endpoint rate-limits
+    // (HTTP 429), so we must not fire a query per layer.
+    const layers = await fetchOsmAll(bbox);
+    // Land-cover terrain first (forest → tan Highland, bare rock/glacier →
+    // Mountain) on a Plains base; water is layered on top so lakes/coast/rivers
+    // always win over terrain.
+    const paint = new Uint8Array(width * height).fill(PaintTile.Plains);
+    rasterizePolygonsInto(
+      paint,
+      bbox,
+      width,
+      height,
+      layers.terrain.forest,
+      PaintTile.Highland,
+    );
+    rasterizePolygonsInto(
+      paint,
+      bbox,
+      width,
+      height,
+      layers.terrain.rock,
+      PaintTile.Mountain,
+    );
+    // OSM water areas (lakes, wide rivers) cut out; the editor still flood-fills
+    // ocean/shoreline at compile time.
+    rasterizePolygonsInto(
+      paint,
+      bbox,
+      width,
+      height,
+      layers.water,
+      PaintTile.Water,
+    );
+    // Coastline → sea (guarded: leaves the map as land if the coast doesn't
+    // cleanly separate the area, so a coastal bbox never floods to all-water).
+    applyCoastlineSea(
+      paint,
+      bbox,
+      width,
+      height,
+      layers.coastlines,
+      PaintTile.Water,
+    );
+    // Clean speckles into solid areas before drawing thin rivers on top.
+    const clean = denoisePaint(paint, width, height);
+    // Waterway centre-lines (rivers/streams) as continuous strokes so narrow
+    // rivers appear and never break into dots.
+    rasterizeLinesInto(
+      clean,
+      bbox,
+      width,
+      height,
+      layers.waterways,
+      PaintTile.Water,
+      width >= 120 ? 1 : 0,
+    );
+    this.editingId = null;
+    this.name = this.osmQuery.trim().slice(0, 40) || this.name;
+    this.gridW = width;
+    this.gridH = height;
+    this.paint = clean;
+    await this.updateComplete;
+    this.rebuildImage();
+    this.showNotice(
+      translateText(capped ? "map_editor.osm_capped" : "map_editor.osm_done"),
+      false,
+    );
   }
 
   private newMap() {

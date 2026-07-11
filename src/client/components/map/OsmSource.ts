@@ -260,3 +260,114 @@ export async function fetchOsmTerrain(
   }
   return parseOverpassTerrain(await res.json());
 }
+
+/** All OSM layers the importer needs, from a single Overpass request. */
+export interface OsmLayers {
+  water: Polygon[]; // lakes / wide-water areas
+  coastlines: Ring[]; // land/sea boundary
+  waterways: Ring[]; // river/stream/canal centre-lines
+  terrain: OsmTerrain; // forest + rock land-cover
+}
+
+const WATERWAY_LINE = new Set(["river", "stream", "canal"]);
+
+/**
+ * One Overpass query for every layer at once — water, coastline, waterways and
+ * terrain. The public Overpass endpoint rate-limits hard (HTTP 429), so we make
+ * a SINGLE request per import instead of one per layer. `out tags geom` gives the
+ * tags the parser uses to sort each element into the right layer.
+ */
+export function buildCombinedQuery(bbox: GeoBBox): string {
+  const b = `${bbox.minLat},${bbox.minLon},${bbox.maxLat},${bbox.maxLon}`;
+  const rock = [...ROCK_NATURAL].join("|");
+  return [
+    "[out:json][timeout:25];",
+    "(",
+    `  way["natural"="water"](${b});`,
+    `  way["waterway"="riverbank"](${b});`,
+    `  relation["natural"="water"](${b});`,
+    `  way["natural"="coastline"](${b});`,
+    `  way["waterway"~"^(river|stream|canal)$"](${b});`,
+    `  way["natural"="wood"](${b});`,
+    `  way["landuse"="forest"](${b});`,
+    `  relation["natural"="wood"](${b});`,
+    `  relation["landuse"="forest"](${b});`,
+    `  way["natural"~"^(${rock})$"](${b});`,
+    `  relation["natural"~"^(${rock})$"](${b});`,
+    ");",
+    "out tags geom;",
+  ].join("\n");
+}
+
+/** Sort one combined Overpass response into the four import layers by tags. */
+export function parseOverpassLayers(json: unknown): OsmLayers {
+  const elements = (json as { elements?: OverpassElement[] })?.elements;
+  const out: OsmLayers = {
+    water: [],
+    coastlines: [],
+    waterways: [],
+    terrain: { forest: [], rock: [] },
+  };
+  if (!Array.isArray(elements)) return out;
+  const ring = (geom: OverpassGeomPoint[]) =>
+    geom.map((p) => [p.lon, p.lat] as const);
+  const relationOuterRings = (el: OverpassElement) =>
+    (el.members ?? [])
+      .filter((m) => (m.role ?? "outer") !== "inner" && m.geometry)
+      .map((m) => ring(m.geometry!))
+      .filter((r) => r.length >= 3);
+
+  for (const el of elements) {
+    const tags = el.tags ?? {};
+    const geom = el.geometry;
+
+    if (tags.natural === "coastline") {
+      if (el.type === "way" && geom && geom.length >= 2)
+        out.coastlines.push(ring(geom));
+    } else if (tags.natural === "water" || tags.waterway === "riverbank") {
+      if (el.type === "way" && geom && geom.length >= 3)
+        out.water.push([ring(geom)]);
+      else if (el.type === "relation") {
+        const rings = relationOuterRings(el);
+        if (rings.length > 0) out.water.push(rings);
+      }
+    } else if (
+      tags.waterway !== undefined &&
+      WATERWAY_LINE.has(tags.waterway)
+    ) {
+      if (el.type === "way" && geom && geom.length >= 2)
+        out.waterways.push(ring(geom));
+    } else if (tags.natural !== undefined && ROCK_NATURAL.has(tags.natural)) {
+      if (el.type === "way" && geom && geom.length >= 3)
+        out.terrain.rock.push([ring(geom)]);
+      else if (el.type === "relation") {
+        const rings = relationOuterRings(el);
+        if (rings.length > 0) out.terrain.rock.push(rings);
+      }
+    } else if (tags.natural === "wood" || tags.landuse === "forest") {
+      if (el.type === "way" && geom && geom.length >= 3)
+        out.terrain.forest.push([ring(geom)]);
+      else if (el.type === "relation") {
+        const rings = relationOuterRings(el);
+        if (rings.length > 0) out.terrain.forest.push(rings);
+      }
+    }
+  }
+  return out;
+}
+
+/** Fetch every import layer for a bbox in a SINGLE Overpass request. */
+export async function fetchOsmAll(
+  bbox: GeoBBox,
+  endpoint: string = DEFAULT_OVERPASS,
+): Promise<OsmLayers> {
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain" },
+    body: buildCombinedQuery(bbox),
+  });
+  if (!res.ok) {
+    throw new Error(`Overpass ${res.status}: ${res.statusText}`);
+  }
+  return parseOverpassLayers(await res.json());
+}
