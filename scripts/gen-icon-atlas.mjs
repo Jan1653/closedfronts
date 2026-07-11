@@ -161,13 +161,6 @@ function rect(c, x, y, w, h, on) {
   for (let py = y0; py < y1; py++)
     for (let px = x0; px < x1; px++) set(c, px, py, on);
 }
-function pointInTri(px, py, ax, ay, bx, by, cx, cy) {
-  const d = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy);
-  const a = ((by - cy) * (px - cx) + (cx - bx) * (py - cy)) / d;
-  const b = ((cy - ay) * (px - cx) + (ax - cx) * (py - cy)) / d;
-  const g = 1 - a - b;
-  return a >= 0 && b >= 0 && g >= 0;
-}
 
 function drawWall() {
   const c = cell();
@@ -194,17 +187,36 @@ function drawToll() {
   return c;
 }
 function drawOilPump() {
+  // A smooth teardrop (matches resources/images/OilPumpIconWhite.svg): a round
+  // bulb at the bottom whose sides curve up to a point, so it reads as an oil
+  // drop rather than a cone. A tiny hole punches the SVG's inner "shine" detail.
   const c = cell();
-  const cxr = 12,
-    cyr = 14.5,
-    r = 6.5;
+  const cx = 12,
+    apexY = 2.5,
+    cyr = 15,
+    r = 6.2;
   for (let py = 0; py < CELL; py++) {
     for (let px = 0; px < CELL; px++) {
       const sx = (px + 0.5) / S,
         sy = (py + 0.5) / S; // back to SVG space
-      const inCircle = (sx - cxr) ** 2 + (sy - cyr) ** 2 <= r * r;
-      const inTri = pointInTri(sx, sy, 12, 2, 5.5, cyr, 18.5, cyr);
-      if (inCircle || inTri) set(c, px, py, true);
+      let on = false;
+      if ((sx - cx) ** 2 + (sy - cyr) ** 2 <= r * r) {
+        on = true; // bottom bulb
+      } else if (sy >= apexY && sy <= cyr) {
+        // Curved taper from the apex down to the bulb (bulging shoulders).
+        const t = (sy - apexY) / (cyr - apexY); // 0 at apex … 1 at bulb centre
+        const halfW = r * Math.pow(t, 0.62);
+        if (Math.abs(sx - cx) <= halfW) on = true;
+      }
+      if (on) set(c, px, py, true);
+    }
+  }
+  // Inner "shine" cut (like the SVG's curved highlight) — a small hole.
+  for (let py = 0; py < CELL; py++) {
+    for (let px = 0; px < CELL; px++) {
+      const sx = (px + 0.5) / S,
+        sy = (py + 0.5) / S;
+      if ((sx - 10) ** 2 + (sy - 15.5) ** 2 <= 1.3 * 1.3) set(c, px, py, false);
     }
   }
   return c;

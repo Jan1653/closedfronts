@@ -27,8 +27,10 @@ Reihenfolge laut Nutzer: **erst die einfachen/kritischen Sachen.** Alles gesamme
       **idempotent** (6 Basis-Spalten + alle ClosedFronts-Glyphen); Atlas neu
       generiert (10 Spalten). `StructurePass` mappt Öllager auf die eigene Spalte
       (Aliasing entfernt), Shape-Config gespiegelt. *Optik im Browser prüfen.*
-  - [ ] Ölpumpen-Karten-Sprite ist weiterhin „Tropfen aus Kreis+Dreieck"
-        (`drawOilPump`); falls das nicht gefällt, bräuchte es feinere Sprite-Art.
+  - [x] Ölpumpen-Karten-Sprite geglättet: `drawOilPump` zeichnet jetzt einen
+        **echten Tropfen** (runder Bauch + gebauchte Schultern zur Spitze, statt
+        Kreis+Dreieck-Kegel) mit kleinem „Shine"-Loch — angelehnt an
+        `OilPumpIconWhite.svg`. Atlas neu generiert. *Optik im Browser prüfen.*
 
 ### Zollstation
 
