@@ -49,14 +49,10 @@ Reihenfolge laut Nutzer: **erst die einfachen/kritischen Sachen.** Alles gesamme
       `9d10301`): `!isUnderConstruction`-Filter in Desktop- + Mobile-Bar.
 - [x] **Elektrobomben-Radius** (Commit `eee3d4f`): + Flugbahn/Allianz-Warnung/
       Ghost-bleibt, wie Atom/Wasserstoff.
-- [ ] **Neuer „Bomben"-Button** ersetzt die einzelnen Bomben in der Bar.
-  - PC: über dem Haupt-Reiter ein kleiner Reiter mit 4 Buttons in Reihenfolge
-    **Elektrobombe, Atombombe, Wasserstoffbombe, MIRV**. Auswahl wird
-    **gespeichert** (beim erneuten „Bomben"-Klick ist das Gewählte wieder aktiv).
-  - Handy: **nur** der „Bomben"-Button (keine Einzel-Bomben) — UI passend lösen.
-- [ ] **PC-Bar breiter machen**: durch den Bomben-Button werden 3 Felder frei;
-      Bar verbreitern, damit alles in **eine Reihe** passt (aktuell 2 Reihen),
-      alle Alt-Sachen in die obere Reihe.
+- [x] **„Bomben"-Button** ersetzt die Einzel-Bomben (Commit `2e81ac6`): PC-Fly-out
+      mit 4 Buttons (Elektro/Atom/Wasserstoff/MIRV), **gemerkte Auswahl**
+      (localStorage); Handy nur der „Bomben"-Button + Fly-out. Live bestätigt.
+- [x] **PC-Bar breiter** (500→620px): 12 Items jetzt in **einer Reihe**. Live bestätigt.
 
 ### Handy-UX
 
