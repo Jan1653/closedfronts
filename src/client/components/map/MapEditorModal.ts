@@ -46,11 +46,11 @@ const MAX_SIZE = 240;
 const DEFAULT_W = 120;
 const DEFAULT_H = 80;
 
-// Largest area the OSM import will convert (degrees). Generous — you can grab a
-// whole large region / small country. Only truly continental views (where the
-// grid gets hopelessly coarse) are refused with a zoom-in hint.
-const MAX_IMPORT_LON_SPAN = 8;
-const MAX_IMPORT_LAT_SPAN = 6;
+// Largest area the OSM import will convert (degrees). Very generous — you can
+// grab a whole country. Beyond this the grid is hopelessly coarse (and Overpass
+// would time out), so it's refused with a zoom-in hint.
+const MAX_IMPORT_LON_SPAN = 16;
+const MAX_IMPORT_LAT_SPAN = 12;
 
 const clamp = (v: number, lo: number, hi: number) =>
   Math.max(lo, Math.min(hi, v));
@@ -488,7 +488,9 @@ export class MapEditorModal extends BaseModal {
     // a coarser (larger-area) grid, use a thicker coast barrier so gaps between
     // coastline ways don't let the fill leak inland.
     const lonSpan = bbox.maxLon - bbox.minLon;
-    const coastBarrier = lonSpan > 3 ? 2 : lonSpan > 1 ? 1 : 0;
+    // Thicken only slightly on large (coarse) grids — a too-thick barrier seals
+    // off narrow straits/bays (e.g. Gibraltar) and leaves no sea to fill.
+    const coastBarrier = lonSpan > 2 ? 1 : 0;
     applyCoastlineSea(
       paint,
       bbox,

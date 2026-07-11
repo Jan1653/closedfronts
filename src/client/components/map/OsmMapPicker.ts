@@ -152,17 +152,18 @@ export class OsmMapPicker extends LitElement {
     for (let ty = y0; ty <= y1; ty++) {
       if (ty < 0 || ty >= n) continue; // no tiles past the poles
       for (let tx = x0; tx <= x1; tx++) {
-        const px = offsetX + (tx - x0) * TILE_SIZE;
-        const py = offsetY + (ty - y0) * TILE_SIZE;
+        // Round to whole pixels + add 1px of overlap so no dark seams/stripes
+        // show between tiles from sub-pixel positioning.
+        const px = Math.round(offsetX + (tx - x0) * TILE_SIZE);
+        const py = Math.round(offsetY + (ty - y0) * TILE_SIZE);
         const url = `${OSM_TILE}/${z}/${wrapTileX(tx, z)}/${ty}.png`;
         tiles.push(html`
           <img
             src=${url}
-            width=${TILE_SIZE}
-            height=${TILE_SIZE}
             draggable="false"
-            loading="lazy"
-            style="position:absolute; left:${px}px; top:${py}px; pointer-events:none; user-select:none;"
+            style="position:absolute; left:${px}px; top:${py}px; width:${TILE_SIZE +
+            1}px; height:${TILE_SIZE +
+            1}px; pointer-events:none; user-select:none;"
           />
         `);
       }

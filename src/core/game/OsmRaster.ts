@@ -264,10 +264,16 @@ export function applyCoastlineSea(
     tryCell(x, y + 1);
   }
 
-  // Guards: a leak onto the land side, or flooding nearly everything, means the
-  // coast didn't cleanly separate the bbox — keep the land map instead.
-  if (filled > 0.95 * n) return { applied: false };
-  for (const l of landSeeds) if (visited[l]) return { applied: false };
+  // Guards against a bad separation: keep the land map if the flood swallows
+  // nearly everything, or if it leaks across the coast onto MOST of the land. A
+  // few wet land seeds are tolerated — that just means the coast runs off the
+  // bbox edge (normal for a coastal view), which used to wrongly cancel the sea.
+  if (filled > 0.97 * n) return { applied: false };
+  let landFlooded = 0;
+  for (const l of landSeeds) if (visited[l]) landFlooded++;
+  if (landSeeds.length > 0 && landFlooded > 0.5 * landSeeds.length) {
+    return { applied: false };
+  }
 
   for (let i = 0; i < n; i++) if (visited[i] && barrier[i] === 0) grid[i] = sea;
   return { applied: true };
@@ -321,17 +327,12 @@ export function denoisePaint(
   return out;
 }
 
-// Above this real elevation (metres) a cell becomes an impassable Peak — kept
-// absolute so gentle lowland hills never turn into walls, only genuine high
-// mountains do.
-const PEAK_METRES = 1800;
-
 /**
  * Turn a per-cell real-world elevation grid (metres, NaN = no data) into terrain
  * height on the land cells of `paint`: Plains → Highland → Mountain by locally
  * normalised height (so even a gently rolling area gets visible variation — the
- * "escalated" look), plus impassable Peak where the absolute height is alpine.
- * Water cells are left untouched. Mutates `paint` in place.
+ * "escalated" look). Never produces impassable Peak walls. Water cells are left
+ * untouched. Mutates `paint` in place.
  */
 export function applyElevation(
   paint: Uint8Array,
@@ -355,14 +356,12 @@ export function applyElevation(
     if (Number.isNaN(e)) continue;
     // Escalate: pow<1 pushes more of the range up a tier for a dramatic look.
     const t = Math.pow((e - min) / range, escalate);
-    let tile: PaintTile =
+    paint[i] =
       t < 0.35
         ? PaintTile.Plains
         : t < 0.65
           ? PaintTile.Highland
           : PaintTile.Mountain;
-    if (e > PEAK_METRES) tile = PaintTile.Peak;
-    paint[i] = tile;
   }
 }
 
