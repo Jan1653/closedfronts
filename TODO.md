@@ -795,9 +795,15 @@ verifizierbar → im Browser live testen.
       Commit `0fd5a0f`): Flood-Fill von der See-Seite (OSM Land-links-Regel) mit
       **Guard** — leckt der Fill auf die Landseite oder flutet >95%, wird er
       verworfen (Karte bleibt Land, keine Regression). Live-Test empfohlen.
-- [ ] **Terrain-Typen** aus `landuse`/Höhe (DEM) — mappt nicht sauber aufs
-      Höhen-Modell, braucht Konzept. Phase B/C.
-- [ ] **Entrauschen** (Streu-Pixel), erst grobe Flächen, dann verfeinern.
+- [x] **Terrain-Typen** aus `landuse`/`natural`: neue Overpass-Terrain-Query
+      (`fetchOsmTerrain`) holt Wald/Fels-Polygone; `parseOverpassTerrain` teilt
+      per Tag in **Wald** (`natural=wood`/`landuse=forest` → Highland) und **Fels**
+      (`bare_rock`/`scree`/`fell`/`glacier`/… → Mountain). `rasterizePolygonsInto`
+      schichtet sie auf die Plains-Basis (vor dem Wasser, das immer gewinnt).
+      Wegwerf-getestet (Schicht-Logik + Tag-Klassifikation). *Höhen aus echtem
+      DEM bleibt offen — hier nur Landcover→Höhenstufe.* Live-Test im Browser.
+- [x] **Entrauschen** (Streu-Pixel → grobe Flächen): `denoisePaint` (8-Nachbar-
+      Mehrheitsglättung, vor den Flüssen). Verifiziert.
 - [x] Ergebnis ist eine normale Custom-Map (benennen, spielen, veröffentlichen).
 
 **Technik (bei Umsetzung klären):**

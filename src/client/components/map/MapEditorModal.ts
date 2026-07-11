@@ -11,7 +11,7 @@ import {
   denoisePaint,
   gridSizeForBBox,
   rasterizeLinesInto,
-  rasterizePolygons,
+  rasterizePolygonsInto,
 } from "../../../core/game/OsmRaster";
 import { publishCommunityMap } from "../../Api";
 import { getAuthHeader } from "../../Auth";
@@ -36,6 +36,7 @@ import {
 import "./CustomMapThumb";
 import {
   fetchOsmCoastlines,
+  fetchOsmTerrain,
   fetchOsmWaterPolygons,
   fetchOsmWaterways,
   geocodePlace,
@@ -391,18 +392,31 @@ export class MapEditorModal extends BaseModal {
       // city-sized area so Overpass stays fast and the map stays detailed.
       const { bbox, capped } = clampBBox(found, 1.5, 1.0);
       const { width, height } = gridSizeForBBox(bbox, MAX_SIZE);
-      // Land background with OSM water areas (lakes, wide rivers) cut out; the
-      // editor still flood-fills ocean/shoreline at compile time. Coastlines and
-      // terrain types come in a later phase.
-      const water = await fetchOsmWaterPolygons(bbox);
-      const paint = rasterizePolygons(
+      // Land-cover terrain first (forest → tan Highland, bare rock/glacier →
+      // Mountain), painted onto a Plains base. Water is layered on top afterwards
+      // so lakes/coast/rivers always win over terrain.
+      const terrain = await fetchOsmTerrain(bbox);
+      const paint = new Uint8Array(width * height).fill(PaintTile.Plains);
+      rasterizePolygonsInto(
+        paint,
         bbox,
         width,
         height,
-        water,
-        PaintTile.Water,
-        PaintTile.Plains,
+        terrain.forest,
+        PaintTile.Highland,
       );
+      rasterizePolygonsInto(
+        paint,
+        bbox,
+        width,
+        height,
+        terrain.rock,
+        PaintTile.Mountain,
+      );
+      // OSM water areas (lakes, wide rivers) cut out; the editor still
+      // flood-fills ocean/shoreline at compile time.
+      const water = await fetchOsmWaterPolygons(bbox);
+      rasterizePolygonsInto(paint, bbox, width, height, water, PaintTile.Water);
       // Coastline → sea (guarded: leaves the map as land if the coast doesn't
       // cleanly separate the area, so a coastal bbox never floods to all-water).
       const coast = await fetchOsmCoastlines(bbox);

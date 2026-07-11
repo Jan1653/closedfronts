@@ -41,6 +41,7 @@ interface OverpassElement {
   type: "node" | "way" | "relation";
   geometry?: OverpassGeomPoint[];
   members?: Array<{ role?: string; geometry?: OverpassGeomPoint[] }>;
+  tags?: Record<string, string>;
 }
 
 /**
@@ -178,4 +179,84 @@ export async function fetchOsmCoastlines(
     throw new Error(`Overpass ${res.status}: ${res.statusText}`);
   }
   return parseOverpassWaterways(await res.json());
+}
+
+/** Terrain polygons split by the height tier they map to on the game grid. */
+export interface OsmTerrain {
+  forest: Polygon[]; // wood / forest → Highland (tan wooded hills)
+  rock: Polygon[]; // bare rock / scree / fell / glacier → Mountain
+}
+
+// natural= values we treat as bare high ground (→ Mountain).
+const ROCK_NATURAL = new Set([
+  "bare_rock",
+  "scree",
+  "fell",
+  "rock",
+  "glacier",
+  "ridge",
+]);
+
+/**
+ * Overpass QL for land-cover areas we turn into terrain height: forests/woods
+ * and bare rock/mountain surfaces. `out tags geom` so the parser can tell which
+ * tier each element maps to.
+ */
+export function buildTerrainQuery(bbox: GeoBBox): string {
+  const b = `${bbox.minLat},${bbox.minLon},${bbox.maxLat},${bbox.maxLon}`;
+  const rock = [...ROCK_NATURAL].join("|");
+  return [
+    "[out:json][timeout:25];",
+    "(",
+    `  way["natural"="wood"](${b});`,
+    `  way["landuse"="forest"](${b});`,
+    `  relation["natural"="wood"](${b});`,
+    `  relation["landuse"="forest"](${b});`,
+    `  way["natural"~"^(${rock})$"](${b});`,
+    `  relation["natural"~"^(${rock})$"](${b});`,
+    ");",
+    "out tags geom;",
+  ].join("\n");
+}
+
+/** Parse an Overpass `out tags geom` response into forest vs rock polygons. */
+export function parseOverpassTerrain(json: unknown): OsmTerrain {
+  const elements = (json as { elements?: OverpassElement[] })?.elements;
+  const out: OsmTerrain = { forest: [], rock: [] };
+  if (!Array.isArray(elements)) return out;
+  const ringFromGeom = (geom: OverpassGeomPoint[]) =>
+    geom.map((p) => [p.lon, p.lat] as const);
+
+  for (const el of elements) {
+    const tags = el.tags ?? {};
+    const isRock = tags.natural !== undefined && ROCK_NATURAL.has(tags.natural);
+    const bucket = isRock ? out.rock : out.forest;
+
+    if (el.type === "way" && el.geometry && el.geometry.length >= 3) {
+      bucket.push([ringFromGeom(el.geometry)]);
+    } else if (el.type === "relation" && Array.isArray(el.members)) {
+      const rings = el.members
+        .filter((m) => (m.role ?? "outer") !== "inner" && m.geometry)
+        .map((m) => ringFromGeom(m.geometry!))
+        .filter((r) => r.length >= 3);
+      if (rings.length > 0) bucket.push(rings);
+    }
+  }
+  return out;
+}
+
+/** Fetch land-cover terrain polygons (forest + rock) for a bbox from Overpass. */
+export async function fetchOsmTerrain(
+  bbox: GeoBBox,
+  endpoint: string = DEFAULT_OVERPASS,
+): Promise<OsmTerrain> {
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain" },
+    body: buildTerrainQuery(bbox),
+  });
+  if (!res.ok) {
+    throw new Error(`Overpass ${res.status}: ${res.statusText}`);
+  }
+  return parseOverpassTerrain(await res.json());
 }

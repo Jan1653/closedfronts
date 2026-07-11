@@ -356,6 +356,59 @@ export function pointInPolygon(
 }
 
 /**
+ * Like rasterizePolygons but layers ONTO an existing grid: cells whose center
+ * falls inside any polygon are set to `fill`, all others are left as they are.
+ * Used to stack OSM terrain layers (forest → Highland, rock → Mountain, then
+ * water on top) without wiping the layers underneath. Mutates `grid` in place.
+ */
+export function rasterizePolygonsInto(
+  grid: Uint8Array,
+  bbox: GeoBBox,
+  width: number,
+  height: number,
+  polygons: ReadonlyArray<Polygon>,
+  fill: PaintTile,
+): void {
+  if (polygons.length === 0) return;
+  const bounds = polygonBounds(polygons);
+  for (let cy = 0; cy < height; cy++) {
+    for (let cx = 0; cx < width; cx++) {
+      const { lon, lat } = cellToLonLat(bbox, width, height, cx, cy);
+      for (let p = 0; p < polygons.length; p++) {
+        const b = bounds[p];
+        if (lon < b.minX || lon > b.maxX || lat < b.minY || lat > b.maxY) {
+          continue;
+        }
+        if (pointInPolygon(polygons[p], lon, lat)) {
+          grid[cy * width + cx] = fill;
+          break;
+        }
+      }
+    }
+  }
+}
+
+// Per-polygon lon/lat bounding boxes, so a cell far from a polygon can skip the
+// point-in-polygon test (cities can carry many small features).
+function polygonBounds(polygons: ReadonlyArray<Polygon>) {
+  return polygons.map((poly) => {
+    let minX = Infinity,
+      minY = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
+    for (const ring of poly) {
+      for (const [x, y] of ring) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+    return { minX, minY, maxX, maxY };
+  });
+}
+
+/**
  * Rasterise polygons into a PaintTile grid over `bbox`. A cell whose center
  * falls inside any polygon becomes `fill`; the rest become `background`. Used to
  * paint OSM water areas onto an otherwise-land grid (or vice-versa); the editor
