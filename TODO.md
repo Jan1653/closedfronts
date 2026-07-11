@@ -805,8 +805,15 @@ verifizierbar → im Browser live testen.
       per Tag in **Wald** (`natural=wood`/`landuse=forest` → Highland) und **Fels**
       (`bare_rock`/`scree`/`fell`/`glacier`/… → Mountain). `rasterizePolygonsInto`
       schichtet sie auf die Plains-Basis (vor dem Wasser, das immer gewinnt).
-      Wegwerf-getestet (Schicht-Logik + Tag-Klassifikation). *Höhen aus echtem
-      DEM bleibt offen — hier nur Landcover→Höhenstufe.* Live-Test im Browser.
+      Wegwerf-getestet. Dient jetzt als **Fallback**, wenn kein DEM verfügbar ist.
+- [x] **Echte Höhen (DEM)**: `DemSource` lädt offene **Terrarium**-Höhenkacheln
+      (`elevation-tiles-prod`, CORS), tastet die Höhe pro Zelle ab; `applyElevation`
+      mappt **lokal normalisiert** auf Plains→Highland→Mountain (eskalierte
+      Variation, auch in flachen Städten) + **Peak** ab ~1800 m absolut. Fällt bei
+      Netzfehler auf Landcover zurück. Wegwerf-getestet. Live-Test im Browser.
+- [x] **Strand/Dünen** (`natural=beach|sand|dune`) → tan Highland-Streifen an der Küste.
+- [x] **Flüsse dünner** (1-Kachel-Strich); **große Ausschnitte** erlaubt
+      (Limit 8°×6°, dickere Küstenbarriere gegen Lecks bei groben Karten).
 - [x] **Entrauschen** (Streu-Pixel → grobe Flächen): `denoisePaint` (8-Nachbar-
       Mehrheitsglättung, vor den Flüssen). Verifiziert.
 - [x] Ergebnis ist eine normale Custom-Map (benennen, spielen, veröffentlichen).
