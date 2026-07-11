@@ -32,6 +32,24 @@ const wallIcon = assetUrl("images/WallIconWhite.svg");
 const oilPumpIcon = assetUrl("images/OilPumpIconWhite.svg");
 const tollStationIcon = assetUrl("images/TollStationIconWhite.svg");
 
+// The four bombs collapse into one "Bombs" button with a sub-menu. Order per
+// design: Electric, Atom, Hydrogen, MIRV.
+const BOMBS: { type: PlayerBuildableUnitType; icon: string; key: string }[] = [
+  { type: UnitType.ElectricBomb, icon: electricBombIcon, key: "electric_bomb" },
+  { type: UnitType.AtomBomb, icon: atomBombIcon, key: "atom_bomb" },
+  { type: UnitType.HydrogenBomb, icon: hydrogenBombIcon, key: "hydrogen_bomb" },
+  { type: UnitType.MIRV, icon: mirvIcon, key: "mirv" },
+];
+const BOMB_TYPES: ReadonlySet<PlayerBuildableUnitType> = new Set(
+  BOMBS.map((b) => b.type),
+);
+const SELECTED_BOMB_KEY = "unitDisplay.selectedBomb";
+
+function loadSelectedBomb(): PlayerBuildableUnitType {
+  const saved = localStorage.getItem(SELECTED_BOMB_KEY);
+  return BOMBS.find((b) => b.type === saved)?.type ?? UnitType.AtomBomb;
+}
+
 @customElement("unit-display")
 export class UnitDisplay extends LitElement implements Controller {
   public game: GameView;
@@ -52,6 +70,8 @@ export class UnitDisplay extends LitElement implements Controller {
   private _waterTollStation = 0;
   private allDisabled = false;
   private _hoveredUnit: PlayerBuildableUnitType | null = null;
+  private bombMenuOpen = false;
+  private selectedBomb: PlayerBuildableUnitType = loadSelectedBomb();
 
   createRenderRoot() {
     return this;
@@ -120,6 +140,11 @@ export class UnitDisplay extends LitElement implements Controller {
     this._oilPump = player.totalUnitLevels(UnitType.OilPump);
     this._oilStorage = player.totalUnitLevels(UnitType.OilStorage);
     this._waterTollStation = player.totalUnitLevels(UnitType.WaterTollStation);
+    // Close the bomb fly-out once a non-bomb structure gets armed elsewhere.
+    const g = this.uiState.ghostStructure;
+    if (this.bombMenuOpen && g !== null && !BOMB_TYPES.has(g)) {
+      this.bombMenuOpen = false;
+    }
     this.requestUpdate();
   }
 
@@ -189,34 +214,7 @@ export class UnitDisplay extends LitElement implements Controller {
             "warship",
             this.keybinds["buildWarship"]?.key ?? "7",
           )}
-          ${this.renderUnitItem(
-            atomBombIcon,
-            null,
-            UnitType.AtomBomb,
-            "atom_bomb",
-            this.keybinds["buildAtomBomb"]?.key ?? "8",
-          )}
-          ${this.renderUnitItem(
-            hydrogenBombIcon,
-            null,
-            UnitType.HydrogenBomb,
-            "hydrogen_bomb",
-            this.keybinds["buildHydrogenBomb"]?.key ?? "9",
-          )}
-          ${this.renderUnitItem(
-            mirvIcon,
-            null,
-            UnitType.MIRV,
-            "mirv",
-            this.keybinds["buildMIRV"]?.key ?? "0",
-          )}
-          ${this.renderUnitItem(
-            electricBombIcon,
-            null,
-            UnitType.ElectricBomb,
-            "electric_bomb",
-            "",
-          )}
+          ${this.renderBombButton()}
           ${this.renderUnitItem(
             wallIcon,
             this._wall,
@@ -355,6 +353,75 @@ export class UnitDisplay extends LitElement implements Controller {
             ${number !== null
               ? html`<span class="text-xs">${renderNumber(number)}</span>`
               : null}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  private isBombArmed(): boolean {
+    const g = this.uiState.ghostStructure;
+    return g !== null && BOMB_TYPES.has(g);
+  }
+
+  private toggleBombMenu() {
+    this.bombMenuOpen = !this.bombMenuOpen;
+    this.requestUpdate();
+  }
+
+  private selectBomb(type: PlayerBuildableUnitType) {
+    this.selectedBomb = type;
+    try {
+      localStorage.setItem(SELECTED_BOMB_KEY, type);
+    } catch {
+      /* storage unavailable */
+    }
+    if (this.canBuild(type)) this.uiState.ghostStructure = type;
+    this.bombMenuOpen = false;
+    this.requestUpdate();
+  }
+
+  // Single "Bombs" bar item that opens a sub-menu of the four bombs. The button
+  // shows the remembered selection and highlights while any bomb is armed.
+  private renderBombButton() {
+    const cfg = this.game.config();
+    const bombs = BOMBS.filter((b) => !cfg.isUnitDisabled(b.type));
+    if (bombs.length === 0) return html``;
+    const armed = this.isBombArmed();
+    const sel = bombs.find((b) => b.type === this.selectedBomb) ?? bombs[0];
+    return html`
+      <div class="flex flex-col items-center relative">
+        ${this.bombMenuOpen
+          ? html`<div
+              class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 flex gap-0.5 p-0.5 bg-gray-800/95 backdrop-blur-sm rounded-md shadow-lg z-[110]"
+            >
+              ${bombs.map((b) => {
+                const enabled = this.canBuild(b.type);
+                const active = this.selectedBomb === b.type;
+                return html`<button
+                  class="w-9 h-9 flex items-center justify-center rounded border transition-colors ${active
+                    ? "border-sky-300 bg-sky-400/20"
+                    : "border-slate-500 hover:bg-gray-700"} ${enabled
+                    ? ""
+                    : "opacity-40"}"
+                  title=${translateText("unit_type." + b.key)}
+                  @click=${() => this.selectBomb(b.type)}
+                >
+                  <img src=${b.icon} class="size-5" />
+                </button>`;
+              })}
+            </div>`
+          : null}
+        <div
+          class="border border-slate-500 rounded-sm px-0.5 pb-0.5 flex items-center gap-0.5 cursor-pointer hover:bg-gray-800 text-white ${armed
+            ? "bg-slate-400/20"
+            : ""}"
+          title=${translateText("unit_type.bombs")}
+          @click=${() => this.toggleBombMenu()}
+        >
+          <div class="ml-0.5"></div>
+          <div class="flex items-center gap-0.5 pt-0.5">
+            <img src=${sel.icon} alt="bombs" class="align-middle size-5" />
           </div>
         </div>
       </div>
