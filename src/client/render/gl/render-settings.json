@@ -166,6 +166,10 @@
       "Water Toll Station": {
         "scale": 1.1,
         "iconFill": 0.85
+      },
+      "Oil Storage": {
+        "scale": 1.1,
+        "iconFill": 0.85
       }
     },
     "highlightOutlineWidth": 0.04,

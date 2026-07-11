@@ -1,8 +1,11 @@
-// Regenerates resources/atlases/icon-atlas.png, appending dedicated columns for
-// the ClosedFronts structures (Oil Pump, Wall, Water Toll Station) so they get
-// their own map icons instead of borrowing City/Port/Factory/DefensePost — which
-// also fixes the build-button hover highlighting the wrong structure (highlight
-// is keyed by atlas column, so shared columns cross-highlight).
+// Regenerates resources/atlases/icon-atlas.png with dedicated columns for the
+// ClosedFronts structures (Oil Pump, Wall, Water Toll Station, Oil Storage) so
+// they get their own map icons instead of borrowing City/Port/Factory/DefensePost
+// — which also fixes the build-button hover highlighting the wrong structure
+// (highlight is keyed by atlas column, so shared columns cross-highlight).
+//
+// Idempotent: keeps only the 6 original OpenFront columns and re-appends every
+// ClosedFronts glyph, so re-running never duplicates columns.
 //
 // Dependency-free on purpose: node-canvas's native binary isn't built here
 // (deps install with --ignore-scripts), so this does its own tiny PNG
@@ -33,32 +36,40 @@ const crcTable = (() => {
 })();
 function crc32(buf) {
   let c = 0xffffffff;
-  for (let i = 0; i < buf.length; i++) c = crcTable[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
+  for (let i = 0; i < buf.length; i++)
+    c = crcTable[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
   return (c ^ 0xffffffff) >>> 0;
 }
 function paeth(a, b, c) {
   const p = a + b - c;
-  const pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c);
+  const pa = Math.abs(p - a),
+    pb = Math.abs(p - b),
+    pc = Math.abs(p - c);
   if (pa <= pb && pa <= pc) return a;
   return pb <= pc ? b : c;
 }
 function decodePng(buf) {
   if (buf.readUInt32BE(0) !== 0x89504e47) throw new Error("not a png");
-  let o = 8, w = 0, h = 0;
+  let o = 8,
+    w = 0,
+    h = 0;
   const idat = [];
   while (o < buf.length) {
     const len = buf.readUInt32BE(o);
     const type = buf.toString("ascii", o + 4, o + 8);
     const data = buf.subarray(o + 8, o + 8 + len);
     if (type === "IHDR") {
-      w = data.readUInt32BE(0); h = data.readUInt32BE(4);
-      if (data[8] !== 8 || data[9] !== 6) throw new Error("expected 8-bit RGBA");
+      w = data.readUInt32BE(0);
+      h = data.readUInt32BE(4);
+      if (data[8] !== 8 || data[9] !== 6)
+        throw new Error("expected 8-bit RGBA");
     } else if (type === "IDAT") idat.push(data);
     else if (type === "IEND") break;
     o += 12 + len;
   }
   const raw = zlib.inflateSync(Buffer.concat(idat));
-  const bpp = 4, stride = w * bpp;
+  const bpp = 4,
+    stride = w * bpp;
   const out = Buffer.alloc(h * stride);
   let p = 0;
   for (let y = 0; y < h; y++) {
@@ -70,12 +81,23 @@ function decodePng(buf) {
       const c = x >= bpp && y > 0 ? out[(y - 1) * stride + x - bpp] : 0;
       let v;
       switch (filter) {
-        case 0: v = rawv; break;
-        case 1: v = rawv + a; break;
-        case 2: v = rawv + b; break;
-        case 3: v = rawv + ((a + b) >> 1); break;
-        case 4: v = rawv + paeth(a, b, c); break;
-        default: throw new Error("bad filter " + filter);
+        case 0:
+          v = rawv;
+          break;
+        case 1:
+          v = rawv + a;
+          break;
+        case 2:
+          v = rawv + b;
+          break;
+        case 3:
+          v = rawv + ((a + b) >> 1);
+          break;
+        case 4:
+          v = rawv + paeth(a, b, c);
+          break;
+        default:
+          throw new Error("bad filter " + filter);
       }
       out[y * stride + x] = v & 0xff;
     }
@@ -83,21 +105,29 @@ function decodePng(buf) {
   return { w, h, data: out };
 }
 function chunk(type, data) {
-  const len = Buffer.alloc(4); len.writeUInt32BE(data.length, 0);
+  const len = Buffer.alloc(4);
+  len.writeUInt32BE(data.length, 0);
   const td = Buffer.concat([Buffer.from(type, "ascii"), data]);
-  const crc = Buffer.alloc(4); crc.writeUInt32BE(crc32(td), 0);
+  const crc = Buffer.alloc(4);
+  crc.writeUInt32BE(crc32(td), 0);
   return Buffer.concat([len, td, crc]);
 }
 function encodePng(w, h, data) {
-  const bpp = 4, stride = w * bpp;
+  const bpp = 4,
+    stride = w * bpp;
   const raw = Buffer.alloc(h * (stride + 1));
   for (let y = 0; y < h; y++) {
     raw[y * (stride + 1)] = 0; // filter: none
     data.copy(raw, y * (stride + 1) + 1, y * stride, y * stride + stride);
   }
   const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4);
-  ihdr[8] = 8; ihdr[9] = 6; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0;
+  ihdr.writeUInt32BE(w, 0);
+  ihdr.writeUInt32BE(h, 4);
+  ihdr[8] = 8;
+  ihdr[9] = 6;
+  ihdr[10] = 0;
+  ihdr[11] = 0;
+  ihdr[12] = 0;
   return Buffer.concat([
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
     chunk("IHDR", ihdr),
@@ -113,14 +143,23 @@ function cell() {
 function set(c, x, y, on) {
   if (x < 0 || y < 0 || x >= CELL || y >= CELL) return;
   const i = (y * CELL + x) * 4;
-  if (on) { c.data[i] = 255; c.data[i + 1] = 255; c.data[i + 2] = 255; c.data[i + 3] = 255; }
-  else { c.data[i + 3] = 0; } // punch hole
+  if (on) {
+    c.data[i] = 255;
+    c.data[i + 1] = 255;
+    c.data[i + 2] = 255;
+    c.data[i + 3] = 255;
+  } else {
+    c.data[i + 3] = 0;
+  } // punch hole
 }
 // SVG-space rect (x,y,w,h) -> fill/hole
 function rect(c, x, y, w, h, on) {
-  const x0 = Math.round(x * S), y0 = Math.round(y * S);
-  const x1 = Math.round((x + w) * S), y1 = Math.round((y + h) * S);
-  for (let py = y0; py < y1; py++) for (let px = x0; px < x1; px++) set(c, px, py, on);
+  const x0 = Math.round(x * S),
+    y0 = Math.round(y * S);
+  const x1 = Math.round((x + w) * S),
+    y1 = Math.round((y + h) * S);
+  for (let py = y0; py < y1; py++)
+    for (let px = x0; px < x1; px++) set(c, px, py, on);
 }
 function pointInTri(px, py, ax, ay, bx, by, cx, cy) {
   const d = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy);
@@ -134,7 +173,15 @@ function drawWall() {
   const c = cell();
   for (const y of [4, 10, 16]) rect(c, 2, y, 20, 4, true);
   // dark brick separators -> holes
-  for (const [x, y] of [[9, 4], [15, 4], [6, 10], [12, 10], [18, 10], [9, 16], [15, 16]])
+  for (const [x, y] of [
+    [9, 4],
+    [15, 4],
+    [6, 10],
+    [12, 10],
+    [18, 10],
+    [9, 16],
+    [15, 16],
+  ])
     rect(c, x, y, 1.2, 4, false);
   return c;
 }
@@ -148,15 +195,29 @@ function drawToll() {
 }
 function drawOilPump() {
   const c = cell();
-  const cxr = 12, cyr = 14.5, r = 6.5;
+  const cxr = 12,
+    cyr = 14.5,
+    r = 6.5;
   for (let py = 0; py < CELL; py++) {
     for (let px = 0; px < CELL; px++) {
-      const sx = (px + 0.5) / S, sy = (py + 0.5) / S; // back to SVG space
+      const sx = (px + 0.5) / S,
+        sy = (py + 0.5) / S; // back to SVG space
       const inCircle = (sx - cxr) ** 2 + (sy - cyr) ** 2 <= r * r;
       const inTri = pointInTri(sx, sy, 12, 2, 5.5, cyr, 18.5, cyr);
       if (inCircle || inTri) set(c, px, py, true);
     }
   }
+  return c;
+}
+// A storage tank: rounded body with two band separators and a lid nub on top
+// (mirrors resources/images/OilStorageIconWhite.svg) — deliberately unlike the
+// oil pump's teardrop so the two read differently on the map.
+function drawOilStorage() {
+  const c = cell();
+  rect(c, 5, 6, 14, 14, true); // tank body
+  rect(c, 9, 3.5, 6, 3, true); // lid / handle nub on top
+  rect(c, 5, 9.4, 14, 1.2, false); // upper band separator (hole)
+  rect(c, 5, 13.4, 14, 1.2, false); // lower band separator (hole)
   return c;
 }
 
@@ -178,18 +239,28 @@ function asciiPreview(img, cols) {
 }
 
 // ── compose ────────────────────────────────────────────────────────────────
+// Idempotent: keep only the BASE_COLS original OpenFront columns (City, Port,
+// Factory, DefensePost, SAM, Silo) and re-append every ClosedFronts glyph, so
+// re-running on an already-extended atlas doesn't duplicate columns.
+const BASE_COLS = 6;
 const old = decodePng(fs.readFileSync(ATLAS));
-const oldCols = old.w / CELL; // 6
-const newCols = oldCols + 3;
-const W = newCols * CELL, H = CELL;
+// order must match STRUCTURE_ORDER in StructurePass.ts
+const glyphs = [drawOilPump(), drawWall(), drawToll(), drawOilStorage()];
+const newCols = BASE_COLS + glyphs.length;
+const W = newCols * CELL,
+  H = CELL;
 const out = Buffer.alloc(W * H * 4);
-// copy existing columns row by row
+// copy the first BASE_COLS columns row by row (ignoring any previously appended)
 for (let y = 0; y < H; y++) {
-  old.data.copy(out, y * W * 4, y * old.w * 4, y * old.w * 4 + old.w * 4);
+  old.data.copy(
+    out,
+    y * W * 4,
+    y * old.w * 4,
+    y * old.w * 4 + BASE_COLS * CELL * 4,
+  );
 }
-const glyphs = [drawOilPump(), drawWall(), drawToll()]; // order matters (see below)
 glyphs.forEach((g, gi) => {
-  const colX = (oldCols + gi) * CELL;
+  const colX = (BASE_COLS + gi) * CELL;
   for (let y = 0; y < CELL; y++)
     g.data.copy(out, (y * W + colX) * 4, y * CELL * 4, y * CELL * 4 + CELL * 4);
 });
@@ -199,6 +270,7 @@ fs.writeFileSync(ATLAS, png);
 
 // validate: decode back + preview the 3 new columns
 const check = decodePng(fs.readFileSync(ATLAS));
-if (check.w !== W || check.h !== H) throw new Error("size mismatch after write");
+if (check.w !== W || check.h !== H)
+  throw new Error("size mismatch after write");
 console.log(`wrote ${ATLAS}: ${W}x${H} (${newCols} columns)`);
 asciiPreview(check, newCols);

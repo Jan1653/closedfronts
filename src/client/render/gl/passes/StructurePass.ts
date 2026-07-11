@@ -59,10 +59,11 @@ const STRUCTURE_ORDER = [
   UT_MISSILE_SILO,
   // ClosedFronts structures get their own atlas columns (see
   // scripts/gen-icon-atlas.mjs). Order here must match the column order the
-  // generator writes: Oil Pump, Wall, Water Toll Station.
+  // generator writes: Oil Pump, Wall, Water Toll Station, Oil Storage.
   UT_OIL_PUMP,
   UT_WALL,
   UT_WATER_TOLL_STATION,
+  UT_OIL_STORAGE,
 ] as const;
 
 const ATLAS_COLS = STRUCTURE_ORDER.length;
@@ -160,15 +161,8 @@ export class StructurePass {
       }
     }
 
-    // Oil Pump, Wall and Water Toll Station now have their own atlas columns
-    // (STRUCTURE_ORDER above), so no placeholder column aliasing is needed.
-
-    // Oil Storage has no dedicated atlas column yet — draw it with the oil pump
-    // icon (distinct build-menu icon; map icon is a follow-up).
-    const oilPumpCol = STRUCTURE_ORDER.indexOf(UT_OIL_PUMP);
-    if (oilPumpCol >= 0) {
-      this.typeToAtlasCol.set(UT_OIL_STORAGE, oilPumpCol);
-    }
+    // Oil Pump, Wall, Water Toll Station and Oil Storage each have their own
+    // atlas column (STRUCTURE_ORDER above), so no placeholder aliasing is needed.
 
     // Compile shaders
     this.program = createProgram(

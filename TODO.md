@@ -21,10 +21,14 @@ Reihenfolge laut Nutzer: **erst die einfachen/kritischen Sachen.** Alles gesamme
 - [x] **Öllager-Hotkey** (Commit `3d624f1`): Alt+4 gebunden + Label „Alt 4".
 - [x] **Multi-Bau-Zahl** (Commit `0a40349`): Ghost-Kosten-Label zeigt jetzt
       „<Kosten> xN" beim Tab+Scroll-Mehrfachbau. Live verifiziert.
-- [ ] **Karten-Texturen (WebGL-Atlas) — braucht Sprite-Art:** Ölpumpen-Karten-
-      Sprite ist „Kreis+Dreieck" (das Bau-/Bar-SVG ist bereits ein Öltropfen);
-      Öllager nutzt mangels eigenem Sprite die Pumpen-Textur (`StructurePass:166`).
-      Beide brauchen eigene Atlas-Sprites (Grafikarbeit, kein Code-Fix).
+- [x] **Öllager eigenes Karten-Sprite** — nutzte bisher die Pumpen-Textur. Der
+      Atlas-Generator (`gen-icon-atlas.mjs`) bekam ein `drawOilStorage`-Glyph
+      (Tank + Bänder + Deckel, angelehnt an `OilStorageIconWhite.svg`), ist jetzt
+      **idempotent** (6 Basis-Spalten + alle ClosedFronts-Glyphen); Atlas neu
+      generiert (10 Spalten). `StructurePass` mappt Öllager auf die eigene Spalte
+      (Aliasing entfernt), Shape-Config gespiegelt. *Optik im Browser prüfen.*
+  - [ ] Ölpumpen-Karten-Sprite ist weiterhin „Tropfen aus Kreis+Dreieck"
+        (`drawOilPump`); falls das nicht gefällt, bräuchte es feinere Sprite-Art.
 
 ### Zollstation
 
