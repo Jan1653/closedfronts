@@ -134,6 +134,19 @@ const OIL_TILES_PER_PUMP = 30000;
 const OIL_DEPOSIT_SAMPLE = 80;
 
 /**
+ * When a nation's oil dips below this fraction of its capacity, securing more
+ * oil becomes a priority: it builds a pump on any owned deposit even if it is
+ * under the usual size-based target (or stacks an existing pump). Harder bots
+ * react earlier — they rush oil.
+ */
+const OIL_LOW_FRACTION_BY_DIFFICULTY: Record<Difficulty, number> = {
+  [Difficulty.Easy]: 0.1,
+  [Difficulty.Medium]: 0.15,
+  [Difficulty.Hard]: 0.25,
+  [Difficulty.Impossible]: 0.35,
+};
+
+/**
  * Max walls a nation builds along a single attack front, per difficulty. Easy
  * nations don't wall at all; harder ones raise a longer barrier. Walls auto-
  * connect into a line, so a few anchors already form a real wall.
@@ -336,43 +349,52 @@ export class NationStructureBehavior {
     // let them lay down their economic base (city/port) before a pump.
     if (this.placementsCount === 0) return false;
 
-    // 1) Build a new pump on an owned deposit while under the size-based target.
-    // No guaranteed first pump: a nation only builds one once it's sizeable,
-    // and far fewer overall (they were flooding the map with pumps).
-    const target = Math.floor(this.player.numTilesOwned() / OIL_TILES_PER_PUMP);
-    if (
-      this.player.unitsOwned(UnitType.OilPump) < target &&
-      this.player.gold() >= this.cost(UnitType.OilPump)
-    ) {
-      const tiles = randTerritoryTileArray(
-        this.random,
-        this.game,
-        this.player,
-        OIL_DEPOSIT_SAMPLE,
-      );
-      for (const t of tiles) {
-        if (!config.isOilDeposit(this.game, t)) continue;
-        if (!this.player.canBuild(UnitType.OilPump, t)) continue;
-        this.game.addExecution(
-          new ConstructionExecution(this.player, UnitType.OilPump, t),
-        );
-        return true;
-      }
-    }
+    const canAfford = this.player.gold() >= this.cost(UnitType.OilPump);
 
-    // 2) Oil-starved with pumps already down → stack (level up) one instead of
-    // hunting for a scarce new deposit. A higher-level pump pumps more.
-    if (
-      this.player.oil() <= 0 &&
-      this.player.unitsOwned(UnitType.OilPump) > 0
-    ) {
+    // 0) Low on oil → securing more oil is the priority. Build a pump on any
+    // owned deposit regardless of the size target (covers a starved nation with
+    // a small territory or no pumps yet); otherwise stack an existing pump so it
+    // produces more. Harder difficulties trigger this earlier.
+    const { difficulty } = config.gameConfig();
+    const lowOilAt =
+      config.maxOil(this.player) * OIL_LOW_FRACTION_BY_DIFFICULTY[difficulty];
+    if (canAfford && this.player.oil() < lowOilAt) {
+      if (this.buildPumpOnOwnedDeposit()) return true;
       const pump = this.lowestLevelUpgradablePump();
-      if (pump !== null && this.player.gold() >= this.cost(UnitType.OilPump)) {
+      if (pump !== null) {
         this.game.addExecution(
           new UpgradeStructureExecution(this.player, pump.id()),
         );
         return true;
       }
+    }
+
+    // 1) Build a new pump on an owned deposit while under the size-based target.
+    // No guaranteed first pump: a nation only builds one once it's sizeable,
+    // and far fewer overall (they were flooding the map with pumps).
+    const target = Math.floor(this.player.numTilesOwned() / OIL_TILES_PER_PUMP);
+    if (canAfford && this.player.unitsOwned(UnitType.OilPump) < target) {
+      if (this.buildPumpOnOwnedDeposit()) return true;
+    }
+    return false;
+  }
+
+  /** Build an oil pump on the first sampled owned oil deposit, if any. */
+  private buildPumpOnOwnedDeposit(): boolean {
+    const config = this.game.config();
+    const tiles = randTerritoryTileArray(
+      this.random,
+      this.game,
+      this.player,
+      OIL_DEPOSIT_SAMPLE,
+    );
+    for (const t of tiles) {
+      if (!config.isOilDeposit(this.game, t)) continue;
+      if (!this.player.canBuild(UnitType.OilPump, t)) continue;
+      this.game.addExecution(
+        new ConstructionExecution(this.player, UnitType.OilPump, t),
+      );
+      return true;
     }
     return false;
   }
