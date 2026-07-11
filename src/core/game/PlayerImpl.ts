@@ -202,13 +202,18 @@ export class PlayerImpl implements Player {
       statsOut !== undefined &&
       (prev.tilesOwned !== full.tilesOwned ||
         prev.gold !== full.gold ||
-        prev.troops !== full.troops)
+        prev.troops !== full.troops ||
+        prev.oil !== full.oil)
     ) {
+      // Oil rides this per-tick compact channel too (like gold/troops) so the
+      // oil readout stays live — the full PlayerUpdate's fast path skips
+      // oil-only changes, which would otherwise leave the display stuck.
       statsOut.push(
         full.smallID!,
         full.tilesOwned!,
         Number(full.gold),
         full.troops!,
+        full.oil ?? 0,
       );
     }
     if (attackTroopsOut !== undefined) {

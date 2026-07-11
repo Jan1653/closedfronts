@@ -95,7 +95,7 @@ export class GameImpl implements Game {
 
   private updates: GameUpdates = createGameUpdatesMap();
   private tileUpdatePairs: number[] = [];
-  /** [smallID, tilesOwned, gold, troops] quads — see PlayerImpl.toUpdate. */
+  /** [smallID, tilesOwned, gold, troops, oil] quints — see PlayerImpl.toUpdate. */
   private playerStatsQuads: number[] = [];
   /** [smallID, direction, index, troops] quads — see packAttackTroopDeltas. */
   private attackTroopsQuads: number[] = [];

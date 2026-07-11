@@ -21,7 +21,7 @@ import {
  * apply line in applyStateUpdate below. A field missing here is never diffed,
  * so its changes silently never reach the main thread after the first update.
  *
- * EXCEPTION: tilesOwned / gold / troops are deliberately NOT diffed here.
+ * EXCEPTION: tilesOwned / gold / troops / oil are deliberately NOT diffed here.
  * They change for nearly every alive player every tick, so they travel on
  * the transferable `GameUpdateViewData.packedPlayerUpdates` channel instead
  * (see PlayerImpl.toUpdate) and appear in PlayerUpdate objects only on a
@@ -89,8 +89,8 @@ export function diffPlayerUpdate(
   setIfDifferent("playerType", prev.playerType === next.playerType);
   setIfDifferent("isAlive", prev.isAlive === next.isAlive);
   setIfDifferent("isDisconnected", prev.isDisconnected === next.isDisconnected);
-  // tilesOwned / gold / troops intentionally absent — see EXCEPTION above.
-  setIfDifferent("oil", prev.oil === next.oil);
+  // tilesOwned / gold / troops / oil intentionally absent — see EXCEPTION
+  // above; oil travels in the per-tick packed quints so it stays live.
   setIfDifferent("isTraitor", prev.isTraitor === next.isTraitor);
   setIfDifferent(
     "traitorRemainingTicks",

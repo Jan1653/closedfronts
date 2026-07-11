@@ -152,14 +152,15 @@ describe("GameView.update — packed channels", () => {
     );
 
     const gu = makeEmptyGu(2);
-    // [smallID, tilesOwned, gold, troops]
-    gu.packedPlayerUpdates = new Float64Array([1, 42, 999, 250]);
+    // [smallID, tilesOwned, gold, troops, oil]
+    gu.packedPlayerUpdates = new Float64Array([1, 42, 999, 250, 77]);
     game.update(gu);
 
     const alice = game.player("alice");
     expect(alice.numTilesOwned()).toBe(42);
     expect(alice.gold()).toBe(999n);
     expect(alice.troops()).toBe(250);
+    expect(alice.oil()).toBe(77);
   });
 
   it("packedAttackUpdates patches troop counts by direction and index", () => {
@@ -291,7 +292,7 @@ describe("GameView.update — packed channels", () => {
     );
     const bigGold = 2 ** 52 + 11; // integer, exactly representable in f64
     const gu = makeEmptyGu(2);
-    gu.packedPlayerUpdates = new Float64Array([1, 0, bigGold, 0]);
+    gu.packedPlayerUpdates = new Float64Array([1, 0, bigGold, 0, 0]);
     game.update(gu);
     expect(game.player("alice").gold()).toBe(BigInt(bigGold));
   });

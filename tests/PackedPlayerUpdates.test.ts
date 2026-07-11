@@ -134,11 +134,11 @@ describe("GameRunner payload cadence", () => {
     const gu = byTick.get(game.ticks())!;
     const packed = gu.packedPlayerUpdates;
     expect(packed).toBeDefined();
-    expect(packed!.length % 4).toBe(0);
+    expect(packed!.length % 5).toBe(0);
     let quad: number[] | undefined;
-    for (let i = 0; i + 3 < packed!.length; i += 4) {
+    for (let i = 0; i + 4 < packed!.length; i += 5) {
       if (packed![i] === alice.smallID()) {
-        quad = Array.from(packed!.subarray(i, i + 4));
+        quad = Array.from(packed!.subarray(i, i + 5));
       }
     }
     expect(quad).toEqual([
@@ -146,6 +146,7 @@ describe("GameRunner payload cadence", () => {
       alice.numTilesOwned(),
       Number(alice.gold()),
       alice.troops(),
+      alice.oil(),
     ]);
     // And the object channel no longer carries the stat fields: alice must
     // not appear in this tick's PlayerUpdates for a gold-only change.

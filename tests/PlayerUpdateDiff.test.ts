@@ -98,6 +98,7 @@ describe("Player update diffing (toUpdate)", () => {
       alice.numTilesOwned(),
       Number(alice.gold()),
       alice.troops(),
+      alice.oil(),
     ]);
 
     // Nothing changed → no quad, no diff.
