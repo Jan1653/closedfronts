@@ -1009,7 +1009,8 @@
     "osm_failed": "Could not load map data",
     "osm_search": "Find",
     "osm_convert": "Convert this view",
-    "osm_map_hint": "Drag to move, scroll or +/− to zoom. The framed view becomes your map.",
+    "osm_zoom_in": "Zoom in to a city or region — the view is too wide to convert",
+    "osm_map_hint": "Drag to move, scroll or +/− to zoom in on a city or region. The framed view becomes your map.",
     "osm_attribution": "Terrain © OpenStreetMap contributors",
     "canvas_hint": "Draw with the selected tile. Enable Fill for a bucket fill."
   },

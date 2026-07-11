@@ -351,7 +351,8 @@
     "osm_failed": "Kartendaten konnten nicht geladen werden",
     "osm_search": "Suchen",
     "osm_convert": "Diesen Ausschnitt konvertieren",
-    "osm_map_hint": "Ziehen zum Verschieben, Scrollen oder +/− zum Zoomen. Der eingerahmte Ausschnitt wird deine Karte.",
+    "osm_zoom_in": "Zoome auf eine Stadt oder Region — der Ausschnitt ist zu groß zum Konvertieren",
+    "osm_map_hint": "Ziehen zum Verschieben, Scrollen oder +/− zum Zoomen auf eine Stadt oder Region. Der eingerahmte Ausschnitt wird deine Karte.",
     "osm_attribution": "Terrain © OpenStreetMap-Mitwirkende",
     "canvas_hint": "Male mit der gewählten Kachel. Für den Farbeimer „Füllen“ aktivieren."
   },

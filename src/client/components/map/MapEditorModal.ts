@@ -8,7 +8,6 @@ import {
 import type { GeoBBox } from "../../../core/game/OsmRaster";
 import {
   applyCoastlineSea,
-  clampBBox,
   denoisePaint,
   gridSizeForBBox,
   rasterizeLinesInto,
@@ -44,6 +43,12 @@ const MIN_SIZE = 40;
 const MAX_SIZE = 240;
 const DEFAULT_W = 120;
 const DEFAULT_H = 80;
+
+// Largest area the OSM import will convert (degrees). Bigger than this and the
+// grid is too coarse and coastlines leak — the user is asked to zoom in. Roughly
+// a large region / metro area, which is what plays well at 240 cells.
+const MAX_IMPORT_LON_SPAN = 2.2;
+const MAX_IMPORT_LAT_SPAN = 1.6;
 
 const clamp = (v: number, lo: number, hi: number) =>
   Math.max(lo, Math.min(hi, v));
@@ -398,10 +403,19 @@ export class MapEditorModal extends BaseModal {
     }
   }
 
-  // Convert whatever the map currently frames into a game map.
+  // Convert exactly what the map frames into a game map ("what you see is what
+  // you get"). Refuse an over-wide view: at continental scale the grid is far too
+  // coarse and coastlines get gaps the sea-fill leaks through — ask to zoom in.
   private async convertCurrentView() {
     const bbox = this.mapPicker?.getViewportBBox();
     if (!bbox) return;
+    if (
+      bbox.maxLon - bbox.minLon > MAX_IMPORT_LON_SPAN ||
+      bbox.maxLat - bbox.minLat > MAX_IMPORT_LAT_SPAN
+    ) {
+      this.showNotice(translateText("map_editor.osm_zoom_in"), true);
+      return;
+    }
     this.osmBusy = true;
     try {
       await this.runOsmImport(bbox);
@@ -413,11 +427,8 @@ export class MapEditorModal extends BaseModal {
     }
   }
 
-  // Fetch + rasterise the OSM layers for `found` into the editor grid.
-  private async runOsmImport(found: GeoBBox) {
-    // Cap an over-wide view (e.g. whole-continent zoom-out) to a workable area so
-    // Overpass stays fast and the map stays detailed.
-    const { bbox, capped } = clampBBox(found, 1.5, 1.0);
+  // Fetch + rasterise the OSM layers for the framed bbox into the editor grid.
+  private async runOsmImport(bbox: GeoBBox) {
     const { width, height } = gridSizeForBBox(bbox, MAX_SIZE);
     // All layers come from ONE Overpass request — the public endpoint rate-limits
     // (HTTP 429), so we must not fire a query per layer.
@@ -482,10 +493,7 @@ export class MapEditorModal extends BaseModal {
     this.paint = clean;
     await this.updateComplete;
     this.rebuildImage();
-    this.showNotice(
-      translateText(capped ? "map_editor.osm_capped" : "map_editor.osm_done"),
-      false,
-    );
+    this.showNotice(translateText("map_editor.osm_done"), false);
   }
 
   private newMap() {
