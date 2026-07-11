@@ -9,7 +9,7 @@ import {
 } from "../../../core/game/Game";
 import { Controller } from "../../Controller";
 import { UIState } from "../../UIState";
-import { translateText } from "../../Utils";
+import { renderNumber, translateText } from "../../Utils";
 import { GameView } from "../../view";
 import { flattenedBuildTable } from "./BuildMenu";
 
@@ -124,9 +124,14 @@ export class MobileBuildBar extends LitElement implements Controller {
               <img
                 src=${item.icon}
                 alt=${item.key ?? ""}
-                width="26"
-                height="26"
+                width="24"
+                height="24"
+                class="-mt-1"
               />
+              <span
+                class="absolute bottom-0 inset-x-0 text-[9px] leading-none text-center font-bold tabular-nums text-yellow-300 bg-black/55 rounded-b-md py-px"
+                >${renderNumber(this.cost(item.unitType))}</span
+              >
             </button>
           `;
         })}
