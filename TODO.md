@@ -92,9 +92,18 @@ Reihenfolge laut Nutzer: **erst die einfachen/kritischen Sachen.** Alles gesamme
       Eckquadrat, wo eine Diagonal-Mauer anschließt. Außenkanten behalten die
       Outline. (`WallPass` + `wall.frag.glsl`; strikt additiv, gerade Mauern
       unverändert.)
-- [ ] **Angriffs-Bar an der Mauer**: beim Angriff eine Bar, wie weit bis zur
-      Zerstörung an der Stelle (die dem Angreifer am nächsten liegt). Bar wird
-      langsamer bei weniger Truppen und **revertet** bei Gegenangriff/Rückeroberung.
+- [x] **Angriffs-Bar an der Mauer** + gradueller Bruch: Mauern haben jetzt
+      **Health** (`wallMaxHealth`=100). `AttackExecution` **belagert** eine
+      Front-Mauer (senkt Health, 1×/Tick, skaliert mit Truppen → langsamer bei
+      weniger Truppen), statt sie sofort zu erobern; bei Health 1 ist sie
+      „gebrochen" → wird erobert (Breach-Cap greift) und **zerstört**.
+      `WallExecution` **regeneriert** Health, sobald **keine** aktive Belagerung
+      mehr anliegt (= „revertet bei Gegenangriff/Rückeroberung"). `WallPass`
+      rendert einen **Schadensbalken** pro Kachel (rot→grün) via `UnitState.health`.
+      Wegwerf-getestet (Health 100→1 über ~16 Ticks, dann Breach-Cap, tief=0);
+      Attack/Wall/AI-Suites grün, **keine** neuen Test-Fehler.
+      *Rendering (Balken) auf diesem Host nicht per Screenshot verifizierbar — bitte
+      im Browser prüfen.*
 - [x] **Mauerfall = ~3-Kachel-Brückenkopf** (Variante „Brückenkopf-Deckel"):
       `AttackExecution` bekam ein per-Angriff **Breach-Budget** (`BREACH_DEPTH=3`).
       Bricht der Angriff eine Mauerkachel durch, darf er nur ~3 Kacheln in die

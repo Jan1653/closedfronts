@@ -213,6 +213,26 @@ export class Config {
     return 50;
   }
 
+  // A wall's "health": it must be sieged from full down to 0 before an attack can
+  // breach it. Higher = walls take longer to break.
+  wallMaxHealth(): number {
+    return 100;
+  }
+
+  // Health a wall regenerates per tick while it is NOT under active siege — this
+  // is how the damage "reverts" when the attacker is repelled.
+  wallRegenPerTick(): number {
+    return 2;
+  }
+
+  // Health a besieging attacker strips from a wall each tick, scaled by the
+  // attacking force so a bigger army breaks through faster (and a small one
+  // barely dents it — slower with fewer troops). Clamped to a sane band.
+  wallSiegeDamagePerTick(attackerTroops: number): number {
+    const dmg = Math.floor(attackerTroops / 1000);
+    return Math.max(2, Math.min(20, dmg));
+  }
+
   // Walls can't be stacked/placed densely: a new wall must be at least this many
   // tiles from any existing wall (like other structures keep spacing).
   wallMinSpacing(): number {
@@ -508,6 +528,9 @@ export class Config {
         info = {
           cost: this.costWrapper(() => 20_000, UnitType.Wall),
           constructionDuration: this.instantBuild() ? 0 : 2 * 10,
+          // A wall must be sieged down before an attack can breach it (a progress
+          // bar shows the damage). Regenerates when the pressure lets up.
+          maxHealth: this.wallMaxHealth(),
         };
         break;
       case UnitType.OilPump:

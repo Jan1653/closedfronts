@@ -32,7 +32,36 @@ export class WallExecution implements Execution {
     const tileOwner = this.mg.owner(this.wall.tile());
     if (tileOwner.isPlayer() && tileOwner !== this.wall.owner()) {
       this.wall.setOwner(tileOwner as Player);
+      return;
     }
+    // Siege damage is applied by the attacker (AttackExecution). Here we only
+    // regenerate health once the wall is no longer under active siege — that's
+    // how the damage bar "reverts" when the attacker is repelled/counterattacked.
+    if (this.underSiege()) return;
+    if (this.wall.health() < this.wall.maxHealth()) {
+      this.wall.modifyHealth(this.mg.config().wallRegenPerTick());
+    }
+  }
+
+  // True while an enemy who is actively attacking this wall's owner holds a tile
+  // next to the wall (i.e. the wall is on the front of a live assault).
+  private underSiege(): boolean {
+    const owner = this.wall.owner();
+    let sieged = false;
+    this.mg.forEachNeighbor(this.wall.tile(), (n) => {
+      if (sieged) return;
+      const nOwner = this.mg.owner(n);
+      if (!nOwner.isPlayer()) return;
+      const enemy = nOwner as Player;
+      if (enemy === owner || enemy.isFriendly(owner)) return;
+      for (const atk of enemy.outgoingAttacks()) {
+        if (atk.isActive() && atk.target() === owner) {
+          sieged = true;
+          return;
+        }
+      }
+    });
+    return sieged;
   }
 
   // Link this wall into nearby walls by filling the straight line between them

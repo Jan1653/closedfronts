@@ -9,6 +9,7 @@ uniform float uUnderConstructionAlpha; // alpha while a wall is still building
 flat in float vOwnerID;
 flat in float vUnderConstruction;
 flat in float vMask;
+flat in float vHealth;
 in vec2 vUv;
 
 out vec4 fragColor;
@@ -74,6 +75,19 @@ void main() {
   if (onOutline) {
     fragColor = vec4(0.0, 0.0, 0.0, a);
     return;
+  }
+
+  // Siege damage bar: a wall being worn down shows a horizontal bar on the tile
+  // (fill = remaining health, red when low → green when near full). Only drawn
+  // while damaged so intact walls stay clean.
+  if (vHealth < 0.995) {
+    if (vUv.y > 0.16 && vUv.y < 0.30 && vUv.x > 0.15 && vUv.x < 0.85) {
+      float t = (vUv.x - 0.15) / 0.70; // 0..1 across the bar
+      vec3 fill = mix(vec3(0.9, 0.15, 0.1), vec3(0.3, 0.85, 0.2), vHealth);
+      vec3 barCol = t <= vHealth ? fill : vec3(0.05);
+      fragColor = vec4(barCol, 1.0);
+      return;
+    }
   }
 
   fragColor = vec4(rgb, a);

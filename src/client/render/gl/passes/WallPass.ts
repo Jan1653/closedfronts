@@ -21,14 +21,19 @@ import { createProgram, shaderSrc } from "../utils/GlUtils";
 import wallFragSrc from "../shaders/wall/wall.frag.glsl?raw";
 import wallVertSrc from "../shaders/wall/wall.vert.glsl?raw";
 
-// Per-instance: x, y, ownerID, underConstruction, neighbourMask
+// Per-instance: x, y, ownerID, underConstruction, neighbourMask, healthFrac
 // neighbourMask bits: 1=up(-y) 2=right(+x) 4=down(+y) 8=left(-x) for the four
 // orthogonal sides, plus 16=up-left 32=up-right 64=down-right 128=down-left for
 // the diagonals. A side with no neighbouring wall gets a black outline; a corner
 // with a diagonal neighbour drops its outline so a diagonal wall run (the auto-
 // connect Bresenham line steps diagonally) fuses seamlessly.
-const FLOATS_PER_INSTANCE = 5;
+// healthFrac is 0..1 (health / max); < 1 draws a siege damage bar on the tile.
+const FLOATS_PER_INSTANCE = 6;
 const BYTES_PER_INSTANCE = FLOATS_PER_INSTANCE * 4;
+
+// Must match Config.wallMaxHealth() — used to turn a wall's absolute health into
+// the 0..1 bar fraction (UnitState carries only absolute health).
+const WALL_MAX_HEALTH = 100;
 
 export class WallPass {
   private program: WebGLProgram;
@@ -123,6 +128,9 @@ export class WallPass {
     gl.enableVertexAttribArray(2);
     gl.vertexAttribPointer(2, 1, gl.FLOAT, false, BYTES_PER_INSTANCE, 16);
     gl.vertexAttribDivisor(2, 1);
+    gl.enableVertexAttribArray(3);
+    gl.vertexAttribPointer(3, 1, gl.FLOAT, false, BYTES_PER_INSTANCE, 20);
+    gl.vertexAttribDivisor(3, 1);
 
     gl.bindVertexArray(null);
     return vao;
@@ -175,6 +183,10 @@ export class WallPass {
       this.instanceBuf.float32[off + 2] = unit.ownerID;
       this.instanceBuf.float32[off + 3] = unit.underConstruction ? 1 : 0;
       this.instanceBuf.float32[off + 4] = this.neighbourMask(unit.pos, wallSet);
+      this.instanceBuf.float32[off + 5] =
+        unit.health !== null
+          ? Math.max(0, Math.min(1, unit.health / WALL_MAX_HEALTH))
+          : 1;
       count++;
     }
 
@@ -217,6 +229,7 @@ export class WallPass {
       this.previewBuf.float32[off + 2] = data.ownerID;
       this.previewBuf.float32[off + 3] = 1; // translucent, like under construction
       this.previewBuf.float32[off + 4] = this.neighbourMask(pos, wallSet);
+      this.previewBuf.float32[off + 5] = 1; // preview walls show no damage bar
       count++;
     }
     this.previewCount = count;

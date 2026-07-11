@@ -10,6 +10,7 @@ import {
   PlayerType,
   TerrainType,
   TerraNullius,
+  Unit,
   UnitType,
 } from "../game/Game";
 import { GameMap, TileRef } from "../game/GameMap";
@@ -55,6 +56,11 @@ export class AttackExecution implements Execution {
   // tile to how many further inward steps are still allowed from it.
   private static readonly BREACH_DEPTH = 3;
   private breachBudget = new Map<TileRef, number>();
+
+  // Gradual wall siege: a wall on the frontier is worn down (health) before it
+  // can be breached. Damage once per wall per tick; the set is reset each tick.
+  private siegedThisTick = new Set<TileRef>();
+  private siegeTickStamp = -1;
 
   constructor(
     private startTroops: number | null = null,
@@ -320,6 +326,25 @@ export class AttackExecution implements Execution {
       ) {
         continue;
       }
+      // A wall must be sieged down before it can be breached. While the wall
+      // here still stands, wear its health down (once per tick) and keep
+      // pressing — don't take the tile yet. Once broken (health 1) it becomes a
+      // normal, breachable target below.
+      const wall = this.anyWallsThisTick()
+        ? this.wallAt(tileToConquer)
+        : undefined;
+      if (wall !== undefined && wall.health() > 1) {
+        this.siegeWall(tileToConquer, wall, troopCount);
+        // Keep the wall on the frontier so the siege continues; consume a
+        // tile-action so this tick's loop still terminates.
+        this.attack.addBorderTile(tileToConquer);
+        this.toConquer.enqueue(
+          tileToConquer,
+          this.mg.ticks() + AttackExecution.WALL_ATTACK_DEFER,
+        );
+        numTilesPerTick -= 1;
+        continue;
+      }
       // Breach budget for expanding out of this tile: breaking a wall opens a
       // fresh bounded bridgehead; an interior tile carries its remaining budget.
       let breachBudget: number | null = null;
@@ -348,8 +373,40 @@ export class AttackExecution implements Execution {
         targetPlayer.removeTroops(defenderTroopLoss);
       }
       this._owner.conquer(tileToConquer);
+      // A breached (broken) wall is destroyed, not captured — remove it so it
+      // stops blocking and doesn't linger as a health-1 wall on the new owner.
+      if (wall !== undefined) {
+        wall.delete();
+      }
       this.handleDeadDefender();
     }
+  }
+
+  // The wall unit sitting on `tile`, if any.
+  private wallAt(tile: TileRef): Unit | undefined {
+    for (const { unit, distSquared } of this.mg.nearbyUnits(tile, 1, [
+      UnitType.Wall,
+    ])) {
+      if (distSquared === 0) return unit as Unit;
+    }
+    return undefined;
+  }
+
+  // Wear down a standing wall by one tick of siege, scaled by the attacking
+  // force (bigger army → faster). Floored at 1 health so it isn't auto-deleted
+  // here; the attack finishes it off (and applies the breach cap) by conquering
+  // the broken tile. Damage is applied at most once per wall per tick.
+  private siegeWall(tile: TileRef, wall: Unit, troopCount: number): void {
+    const tk = this.mg.ticks();
+    if (this.siegeTickStamp !== tk) {
+      this.siegeTickStamp = tk;
+      this.siegedThisTick.clear();
+    }
+    if (this.siegedThisTick.has(tile)) return;
+    this.siegedThisTick.add(tile);
+    const raw = this.mg.config().wallSiegeDamagePerTick(troopCount);
+    const dmg = Math.min(raw, wall.health() - 1);
+    if (dmg > 0) wall.modifyHealth(-dmg, this._owner);
   }
 
   private rejectIncomingAllianceRequests(target: Player) {
@@ -383,7 +440,11 @@ export class AttackExecution implements Execution {
       ) {
         continue;
       }
-      const walled = anyWalls && this.isWalled(neighbor);
+      const wallUnit = anyWalls ? this.wallAt(neighbor) : undefined;
+      const walled = wallUnit !== undefined;
+      // A standing wall (health > 1) blocks; a sieged-down one (health 1) is a
+      // ready breach point and gets normal priority so it's taken promptly.
+      const standing = walled && wallUnit.health() > 1;
       // Once a breach is in progress, don't let it reach past its budget into
       // the enclosed interior; those tiles stay protected by the wall this
       // attack. Wall tiles themselves are always allowed (as a deferred break).
@@ -424,9 +485,9 @@ export class AttackExecution implements Execution {
         (this.random.nextInt(0, 7) + 10) * (1 - numOwnedByMe * 0.5 + mag / 2) +
         tickNow;
 
-      // Defer walled tiles: go around the wall first, break through only if the
+      // Defer standing walls: go around them first, siege through only if the
       // frontier leaves no other tile.
-      if (walled) {
+      if (standing) {
         priority += AttackExecution.WALL_ATTACK_DEFER;
       }
 
