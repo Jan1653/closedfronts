@@ -79,7 +79,8 @@ export class HostLobbyModal extends BaseModal {
   @state() private spawnImmunityDurationMinutes: number | undefined = undefined;
   @state() private infiniteGold: boolean = false;
   @state() private donateGold: boolean = false;
-  @state() private donateOil: boolean = true;
+  // Off by default, like gold/troop donation — the host opts in.
+  @state() private donateOil: boolean = false;
   @state() private infiniteTroops: boolean = false;
   @state() private donateTroops: boolean = false;
   @state() private maxTimer: boolean = false;
@@ -843,7 +844,7 @@ export class HostLobbyModal extends BaseModal {
     this.spawnImmunityDurationMinutes = undefined;
     this.infiniteGold = false;
     this.donateGold = false;
-    this.donateOil = true;
+    this.donateOil = false;
     this.infiniteTroops = false;
     this.donateTroops = false;
     this.maxTimer = false;
