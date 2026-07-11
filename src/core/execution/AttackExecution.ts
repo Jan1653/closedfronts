@@ -47,6 +47,15 @@ export class AttackExecution implements Execution {
   private wallsCheckedTick = -1;
   private wallsExist = false;
 
+  // Bounded breach: breaking a wall tile lets this attack push at most this many
+  // tiles into the enclosed area past that break; tiles deeper stay untouched
+  // (the wall keeps protecting them). To take more, break more wall. Only bites
+  // for a fully-enclosed area — a partial wall can still be flanked (reached with
+  // no breach budget in effect, so uncapped). breachBudget maps a queued interior
+  // tile to how many further inward steps are still allowed from it.
+  private static readonly BREACH_DEPTH = 3;
+  private breachBudget = new Map<TileRef, number>();
+
   constructor(
     private startTroops: number | null = null,
     private _owner: Player,
@@ -311,7 +320,18 @@ export class AttackExecution implements Execution {
       ) {
         continue;
       }
-      this.addNeighbors(tileToConquer);
+      // Breach budget for expanding out of this tile: breaking a wall opens a
+      // fresh bounded bridgehead; an interior tile carries its remaining budget.
+      let breachBudget: number | null = null;
+      if (this.anyWallsThisTick()) {
+        if (this.isWalled(tileToConquer)) {
+          breachBudget = AttackExecution.BREACH_DEPTH;
+        } else {
+          const b = this.breachBudget.get(tileToConquer);
+          if (b !== undefined) breachBudget = b;
+        }
+      }
+      this.addNeighbors(tileToConquer, breachBudget);
       const { attackerTroopLoss, defenderTroopLoss, tilesPerTickUsed } = this.mg
         .config()
         .attackLogic(
@@ -341,12 +361,17 @@ export class AttackExecution implements Execution {
     }
   }
 
-  private addNeighbors(tile: TileRef) {
+  // breachBudget: null in the common case (no wall context). When we're
+  // expanding out of a freshly-broken wall or a bridgehead tile, it's how many
+  // more inward tiles the breach may take — non-wall interior neighbours are
+  // skipped once it hits 0, capping how far one breach reaches (see BREACH_DEPTH).
+  private addNeighbors(tile: TileRef, breachBudget: number | null = null) {
     if (this.attack === null) {
       throw new Error("Attack not initialized");
     }
 
     const tickNow = this.mg.ticks(); // cache tick
+    const anyWalls = this.anyWallsThisTick();
 
     const numNeighbors = this.map.neighbors4(tile, this.nbuf);
     for (let i = 0; i < numNeighbors; i++) {
@@ -357,6 +382,18 @@ export class AttackExecution implements Execution {
         this.map.ownerID(neighbor) !== this.targetSmallID
       ) {
         continue;
+      }
+      const walled = anyWalls && this.isWalled(neighbor);
+      // Once a breach is in progress, don't let it reach past its budget into
+      // the enclosed interior; those tiles stay protected by the wall this
+      // attack. Wall tiles themselves are always allowed (as a deferred break).
+      if (breachBudget !== null && !walled) {
+        if (breachBudget <= 0) continue;
+        const remaining = breachBudget - 1;
+        const prev = this.breachBudget.get(neighbor);
+        if (prev === undefined || prev < remaining) {
+          this.breachBudget.set(neighbor, remaining);
+        }
       }
       this.attack.addBorderTile(neighbor);
       let numOwnedByMe = 0;
@@ -389,7 +426,7 @@ export class AttackExecution implements Execution {
 
       // Defer walled tiles: go around the wall first, break through only if the
       // frontier leaves no other tile.
-      if (this.anyWallsThisTick() && this.isWalled(neighbor)) {
+      if (walled) {
         priority += AttackExecution.WALL_ATTACK_DEFER;
       }
 

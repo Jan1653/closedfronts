@@ -95,12 +95,16 @@ Reihenfolge laut Nutzer: **erst die einfachen/kritischen Sachen.** Alles gesamme
 - [ ] **Angriffs-Bar an der Mauer**: beim Angriff eine Bar, wie weit bis zur
       Zerstörung an der Stelle (die dem Angreifer am nächsten liegt). Bar wird
       langsamer bei weniger Truppen und **revertet** bei Gegenangriff/Rückeroberung.
-- [ ] **Mauerfall = nur 3 Pixel** hinter der Mauer an den Gegner geben (aktuell
-      wird alles hinter der Mauer sofort rübergeschoben) — diese 3 Pixel sind
-      dann normal angreifbar.
-      **Regel (entschieden):** 3-Kachel-**Brückenkopf** — der Angreifer bekommt
-      beim Durchbruch genau ~3 Kacheln direkt hinter der Bruchstelle; alles tiefer
-      dahinter bleibt weiter von der (übrigen) Mauer geschützt/deferiert.
+- [x] **Mauerfall = ~3-Kachel-Brückenkopf** (Variante „Brückenkopf-Deckel"):
+      `AttackExecution` bekam ein per-Angriff **Breach-Budget** (`BREACH_DEPTH=3`).
+      Bricht der Angriff eine Mauerkachel durch, darf er nur ~3 Kacheln in die
+      umschlossene Fläche vordringen; tiefer bleibt unangetastet → der Angriff
+      stockt an der Mauer und endet. Greift **nur bei voll umschlossenen** Flächen
+      (Teilmauern kann man weiter flankieren). Mauerkosten (50×) bleiben.
+      Deterministisch, Wegwerf-getestet (Reihe 51–53 genommen, 54+ = 0, Angriff
+      terminiert), Attack/AI-Attack/Wall-Suites grün.
+      *Bekannte Grenze (bewusst gewählt):* kein „für immer versiegelt" — ein
+      **neuer** Angriff vom Brückenkopf aus kann tiefer, da dort keine Mauer steht.
 
 ### Lobby-Defaults
 
