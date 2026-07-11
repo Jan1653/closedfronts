@@ -64,14 +64,19 @@ export class MobileBuildBar extends LitElement implements Controller {
       case UnitType.HydrogenBomb:
       case UnitType.ElectricBomb:
       case UnitType.MIRV:
+        // Only a FINISHED silo enables bombs — greyed while it's still building.
         return (
           this.cost(type) <= gold &&
-          (player?.units(UnitType.MissileSilo).length ?? 0) > 0
+          (player
+            ?.units(UnitType.MissileSilo)
+            .some((u) => !u.isUnderConstruction()) ??
+            false)
         );
       case UnitType.Warship:
         return (
           this.cost(type) <= gold &&
-          (player?.units(UnitType.Port).length ?? 0) > 0
+          (player?.units(UnitType.Port).some((u) => !u.isUnderConstruction()) ??
+            false)
         );
       default:
         return this.cost(type) <= gold;
