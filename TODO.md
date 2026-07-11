@@ -11,8 +11,10 @@ Reihenfolge laut Nutzer: **erst die einfachen/kritischen Sachen.** Alles gesamme
 
 ### KRITISCHE BUGS
 
-- [ ] **Handy: nichts baubar** — im Solospiel mit genug Geld ist die ganze
-      Seiten-Baubar ausgegraut/nicht klickbar. Nichts lässt sich bauen. (Blocker.)
+- [x] **Handy: nichts baubar** (Commit `44f7dbf`) — `MobileBuildBar` prüfte den
+      tile-abhängigen `bu.canBuild` (ohne Tile immer `false` → alles grau). Jetzt
+      nach Leistbarkeit + Voraussetzungen (wie Desktop). Live verifiziert: 10/15
+      baubar bei 1,7K Gold.
 
 ### Bau-Icons / Texturen / Hotkeys
 
@@ -77,8 +79,7 @@ Reihenfolge laut Nutzer: **erst die einfachen/kritischen Sachen.** Alles gesamme
 
 ### Lobby-Defaults
 
-- [ ] **Öl spenden** in privaten Lobbys **standardmäßig AUS** (wie Gold-/Truppen-
-      spenden schon aus sind).
+- [x] **Öl spenden** in privaten Lobbys **standardmäßig AUS** (Commit `8eeeac2`).
 
 ### Bot-KI (Öl)
 
