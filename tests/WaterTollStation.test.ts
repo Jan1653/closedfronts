@@ -10,7 +10,10 @@ import {
   UnitType,
 } from "../src/core/game/Game";
 import { TileRef } from "../src/core/game/GameMap";
-import { tollStationConnections } from "../src/core/game/TollStationUtils";
+import {
+  tollStationConnections,
+  WATER_TOLL_STATION_RADIUS,
+} from "../src/core/game/TollStationUtils";
 import { setup } from "./util/Setup";
 import { executeTicks } from "./util/utils";
 
@@ -73,14 +76,15 @@ describe("WaterTollStation", () => {
     return null;
   }
 
-  // Open-ocean water tile with no land nearby.
-  function findDeepOceanTile(): TileRef | null {
+  // A water tile that bridges two distinct landmasses: tollStationConnections
+  // returns exactly two land anchors on different landmasses.
+  function findBridgeTile(): TileRef | null {
     for (let y = 0; y < game.height(); y++) {
       for (let x = 0; x < game.width(); x++) {
         const t = game.ref(x, y);
         if (!game.isWater(t)) continue;
-        if (landNear(x, y, 2)) continue;
-        return t;
+        const conns = tollStationConnections(game, t);
+        if (conns.length === 2 && conns.every((c) => game.isLand(c))) return t;
       }
     }
     return null;
@@ -98,12 +102,17 @@ describe("WaterTollStation", () => {
     expect(p1.canBuild(UnitType.WaterTollStation, strait!)).toBe(strait);
   });
 
-  test("cannot be placed in open ocean (needs two landmasses)", () => {
-    const ocean = findDeepOceanTile();
-    expect(ocean).not.toBeNull();
+  test("cannot be placed without a reachable port", () => {
+    // Connections exist at a strait, but a toll station is built by a ship that
+    // launches from a port on the same water body — with no port it can't be
+    // placed even where the anchors are valid.
+    const strait = findStraitTile();
+    expect(strait).not.toBeNull();
     p1.conquer(firstLandTile());
-    expect(tollStationConnections(game, ocean!).length).toBeLessThan(2);
-    expect(p1.canBuild(UnitType.WaterTollStation, ocean!)).toBe(false);
+    expect(tollStationConnections(game, strait!).length).toBeGreaterThanOrEqual(
+      1,
+    );
+    expect(p1.canBuild(UnitType.WaterTollStation, strait!)).toBe(false);
   });
 
   test("survives placement through the real construction path", () => {
@@ -141,21 +150,24 @@ describe("WaterTollStation", () => {
     expect(stations[0].tile()).toBe(strait);
   });
 
-  test("a nearby toll station counts as a connection anchor (chaining)", () => {
-    const strait = findStraitTile();
-    expect(strait).not.toBeNull();
-    // Build station A at a genuine two-landmass spot.
-    p1.buildUnit(UnitType.WaterTollStation, strait!, {});
-
-    // A water tile within range of station A.
-    const near = game.neighbors(strait!).find((n) => game.isWater(n));
-    expect(near).toBeDefined();
-    const conns = tollStationConnections(game, near!);
-
-    // The spot is valid and station A's tile is one of its two anchors — i.e.
-    // stations can be chained, not only bridged between landmasses.
+  test("bridges two distinct landmasses when both are in range", () => {
+    const bridge = findBridgeTile();
+    expect(bridge).not.toBeNull();
+    const conns = tollStationConnections(game, bridge!);
+    // Two land anchors...
     expect(conns.length).toBe(2);
-    expect(conns).toContain(strait);
+    expect(conns.every((c) => game.isLand(c))).toBe(true);
+    // ...on genuinely different landmasses: a land-only flood from one anchor
+    // (bounded to the station's radius) must not reach the other.
+    const [a, b] = conns;
+    const massA = game.bfs(
+      a,
+      (gm, t) =>
+        gm.isLand(t) &&
+        !gm.isImpassable(t) &&
+        gm.manhattanDist(bridge!, t) <= WATER_TOLL_STATION_RADIUS,
+    );
+    expect(massA.has(b)).toBe(false);
   });
 
   test("enemy warship captures the station after holding position", () => {

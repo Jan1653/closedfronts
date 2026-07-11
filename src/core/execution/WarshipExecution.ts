@@ -13,6 +13,7 @@ import { PathStatus } from "../pathfinding/types";
 import { PseudoRandom } from "../PseudoRandom";
 import { findMinimumBy } from "../Util";
 import { ShellExecution } from "./ShellExecution";
+import { CAPTURE_RANGE } from "./StructureCapture";
 
 export class WarshipExecution implements Execution {
   private random: PseudoRandom;
@@ -118,6 +119,18 @@ export class WarshipExecution implements Execution {
     // Priority 3: Hunt trade ship only if not healing and no enemy warship
     if (this.warship.targetUnit()?.type() === UnitType.TradeShip) {
       this.huntDownTradeShip();
+      return;
+    }
+
+    // Priority 4: Sail to and hold next to a capturable enemy water structure
+    // (sea oil pump / toll station). The structure's own execution runs the
+    // 60-tick capture timer once we're within CAPTURE_RANGE; wandering off on a
+    // random patrol would keep resetting it, so approach and then hold. This is
+    // what lets a player capture a water pump/toll by sending a warship at it,
+    // and lets warships auto-seize enemy water structures once at war.
+    const captureTarget = this.findCapturableStructure();
+    if (captureTarget !== undefined) {
+      this.moveToCapture(captureTarget);
       return;
     }
 
@@ -321,6 +334,81 @@ export class WarshipExecution implements Execution {
     }
 
     return bestUnit;
+  }
+
+  /**
+   * Nearest enemy water structure (sea oil pump or toll station) this warship is
+   * allowed to attack, within targetting range and reachable across the same
+   * body of water. Land oil pumps sit on owned land out of a ship's reach and
+   * are skipped; friendly/teammate owners are never targeted. Returns undefined
+   * if there is nothing to seize.
+   */
+  private findCapturableStructure(): Unit | undefined {
+    const owner = this.warship.owner();
+    const range = this.mg.config().warshipTargettingRange();
+    const warshipComponent = this.mg.getWaterComponent(this.warship.tile());
+    let best: Unit | undefined = undefined;
+    let bestDistSquared = 0;
+    for (const { unit, distSquared } of this.mg.nearbyUnits(
+      this.warship.tile(),
+      range,
+      [UnitType.OilPump, UnitType.WaterTollStation],
+    )) {
+      if (
+        !unit.isActive() ||
+        unit.isUnderConstruction() ||
+        unit.owner() === owner ||
+        !owner.canAttackPlayer(unit.owner(), true)
+      ) {
+        continue;
+      }
+      // Only structures standing on open water are reachable by a warship.
+      if (unit.type() === UnitType.OilPump && !this.mg.isWater(unit.tile())) {
+        continue;
+      }
+      // Skip structures on a disconnected body of water we can't sail to.
+      if (
+        warshipComponent !== null &&
+        !this.mg.hasWaterComponent(unit.tile(), warshipComponent)
+      ) {
+        continue;
+      }
+      if (best === undefined || distSquared < bestDistSquared) {
+        best = unit;
+        bestDistSquared = distSquared;
+      }
+    }
+    return best;
+  }
+
+  /**
+   * Approach `structure` and hold once within CAPTURE_RANGE so its execution's
+   * capture timer can fill. Uses greedy stepping when close (upscaled minimap
+   * paths converge poorly at short range) and the pathfinder otherwise.
+   */
+  private moveToCapture(structure: Unit): void {
+    this.warship.updateWarshipState({ isInCombat: true });
+    const structTile = structure.tile();
+    const dist = this.mg.manhattanDist(this.warship.tile(), structTile);
+    if (dist <= CAPTURE_RANGE) {
+      return; // in range — hold position and let the capture timer run
+    }
+    if (dist <= 20) {
+      const nextTile = this.bestNeighborToward(structTile);
+      if (nextTile !== undefined) {
+        this.moveWarship(nextTile);
+        return;
+      }
+    }
+    const result = this.pathfinder.next(this.warship.tile(), structTile);
+    switch (result.status) {
+      case PathStatus.COMPLETE:
+      case PathStatus.NEXT:
+        this.moveWarship(result.node);
+        break;
+      case PathStatus.NOT_FOUND:
+        break;
+    }
   }
 
   private startRepairRetreat(): void {

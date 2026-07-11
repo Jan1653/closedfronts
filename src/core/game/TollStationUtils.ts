@@ -27,12 +27,14 @@ export interface TollConnGame {
 /**
  * Finds the "connection" anchor tiles for a water toll station placed on
  * `waterTile`, and thus whether it's placeable. A station needs at least one
- * connection: to land OR to another toll station. It draws at most one of each:
- *   - the nearest reachable land tile in range (at most ONE land connection), and
- *   - the nearest other active toll station in range (lets stations chain across
- *     open water).
- * So the valid shapes are: one land, one station, or one land + one station —
- * never two land connections (to span a wide strait you build a chain).
+ * connection. Its purpose is to bridge two separate landmasses across a strait,
+ * so it prefers to link BOTH shores:
+ *   - the nearest reachable land tile in range, and
+ *   - the nearest land tile in range on a *different* landmass (not connected to
+ *     the first over land within the radius — i.e. the opposite shore).
+ * When only one landmass is in range it falls back to that single land tile plus
+ * (optionally) the nearest other active toll station, which lets stations chain
+ * across a body of open water too wide for one span.
  *
  * Returns the connection tiles (length 1 or 2), or [] when it can't connect to
  * anything (not placeable).
@@ -44,10 +46,9 @@ export function tollStationConnections(
 ): TileRef[] {
   if (!mg.isWater(waterTile)) return [];
 
-  const connections: TileRef[] = [];
-
-  // At most ONE station connection: the nearest other active toll station in
-  // range. Exclude any station sitting on this very tile (the one being placed).
+  // The nearest other active toll station in range, used only as a fallback
+  // chain link when there aren't two landmasses to bridge. Exclude any station
+  // sitting on this very tile (the one being placed).
   let bestStation: TileRef | null = null;
   let bestStationDist = Infinity;
   for (const u of mg.units(UnitType.WaterTollStation)) {
@@ -60,20 +61,41 @@ export function tollStationConnections(
       bestStation = t;
     }
   }
-  if (bestStation !== null) connections.push(bestStation);
 
-  // At most ONE land connection: the nearest reachable land tile in range.
-  let bestLand: TileRef | null = null;
-  let bestLandDist = Infinity;
+  // Land tiles in range, nearest first.
+  const landTiles: TileRef[] = [];
   for (const t of mg.bfs(waterTile, manhattanDistFN(waterTile, radius))) {
-    if (!mg.isLand(t) || mg.isImpassable(t)) continue;
-    const d = mg.manhattanDist(waterTile, t);
-    if (d < bestLandDist) {
-      bestLandDist = d;
-      bestLand = t;
-    }
+    if (mg.isLand(t) && !mg.isImpassable(t)) landTiles.push(t);
   }
-  if (bestLand !== null) connections.push(bestLand);
+  landTiles.sort(
+    (a, b) => mg.manhattanDist(waterTile, a) - mg.manhattanDist(waterTile, b),
+  );
 
+  // Up to two land anchors on distinct landmasses: the nearest land tile, then
+  // the nearest tile NOT reachable from it over land within the radius (the
+  // opposite shore). A coastline that merely curves around stays one landmass.
+  const landAnchors: TileRef[] = [];
+  if (landTiles.length > 0) {
+    const nearestLand = landTiles[0];
+    landAnchors.push(nearestLand);
+    const sameLandmass = mg.bfs(
+      nearestLand,
+      (_, t) =>
+        mg.isLand(t) &&
+        !mg.isImpassable(t) &&
+        mg.manhattanDist(waterTile, t) <= radius,
+    );
+    const otherShore = landTiles.find((t) => !sameLandmass.has(t));
+    if (otherShore !== undefined) landAnchors.push(otherShore);
+  }
+
+  // Prefer bridging two landmasses; otherwise one land + a station chain (or a
+  // lone station out on open water).
+  if (landAnchors.length >= 2) {
+    return [landAnchors[0], landAnchors[1]];
+  }
+  const connections: TileRef[] = [];
+  if (bestStation !== null) connections.push(bestStation);
+  if (landAnchors.length === 1) connections.push(landAnchors[0]);
   return connections;
 }

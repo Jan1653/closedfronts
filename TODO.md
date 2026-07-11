@@ -28,20 +28,24 @@ Reihenfolge laut Nutzer: **erst die einfachen/kritischen Sachen.** Alles gesamme
 
 ### Zollstation
 
-- [ ] **Ausgegraut, wenn nicht platzierbar** — wie das Kriegsschiff ohne Hafen
-      komplett ausgegraut ist; **keine** Platz-Vorschau, wenn nicht klickbar.
-- [ ] **Zwei Landmassen verbinden**: beim Platzieren prüfen, ob zwei
-      *verschiedene, im Umkreis nicht verbundene* Landmassen in Reichweite sind →
-      dann beide verbinden (z. B. Fluss absperren). Platzierung mit nur einer
-      Verbindung bleibt möglich.
-- [ ] **~100.000 pro durchfahrendem Schiff** (aktuell weniger).
+- [x] **Ausgegraut ohne Hafen** — Zollstation braucht (wie das Kriegsschiff)
+      einen **fertigen** Hafen, der sie per Boot erreicht; Bau-Balken (Desktop +
+      Mobile) graut sie sonst aus. Die per-Kachel-Vorschau (grün/rot) greift eh
+      schon über `canBuild`. (`UnitDisplay`/`MobileBuildBar`.)
+- [x] **Zwei Landmassen verbinden**: `tollStationConnections` verbindet jetzt
+      **zwei verschiedene, im Umkreis nicht (über Land) verbundene** Landmassen,
+      wenn beide in Reichweite sind (Land-BFS begrenzt auf den Radius). Fallback:
+      eine Landmasse + Ketten-Station. Rendering zieht automatisch beide Linien.
+- [x] **~100.000 pro durchfahrendem Schiff** (`TOLL_GOLD` 10k → 100k).
 
 ### Wasser-Strukturen erobern (Kriegsschiff)
 
-- [ ] Kriegsschiff kann **Ölpumpen auf Wasser anvisieren → übernehmen**.
-- [ ] Kriegsschiff kann **Zollstationen auf Wasser anvisieren → übernehmen**.
-- [ ] Im **Krieg** werden Wasser-Ölpumpen/Zollstationen **automatisch** vom
-      Gegner übernommen (aktuell nicht).
+- [x] Kriegsschiff **steuert erobernbare Wasser-Strukturen aktiv an** (See-Ölpumpe
+      + Zollstation): neue Priorität in `WarshipExecution` fährt hin und **hält**
+      in Capture-Reichweite, bis der 60-Tick-Timer (`WarshipCaptureTracker`)
+      füllt. Damit greift sowohl **manuelles Anvisieren** (Schiff hinschicken) als
+      auch **Auto-Übernahme im Krieg** (`canAttackPlayer`-Filter). Nur Strukturen
+      auf offenem Wasser + gleicher Wasser-Komponente werden angesteuert.
 
 ### Bomben / Raketensilo / Kriegsschiff-Gating
 

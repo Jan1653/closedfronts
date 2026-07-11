@@ -113,6 +113,9 @@ export class UnitDisplay extends LitElement implements Controller {
             false)
         );
       case UnitType.Warship:
+      case UnitType.WaterTollStation:
+        // Both need a FINISHED port (a toll station must be reachable by boat
+        // from one), so grey them out until a port is built — like the warship.
         return (
           this.cost(item) <= (player?.gold() ?? 0n) &&
           (player?.units(UnitType.Port).some((u) => !u.isUnderConstruction()) ??

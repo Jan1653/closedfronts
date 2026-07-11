@@ -6,7 +6,7 @@ import { WarshipCaptureTracker } from "./StructureCapture";
 // How close (manhattan distance) a boat must be to the station to be tolled.
 const TOLL_GATE_RADIUS = 2;
 // Gold paid once per pass by each enemy/neutral boat.
-const TOLL_GOLD = 10_000n;
+const TOLL_GOLD = 100_000n;
 
 /**
  * Water toll station.
