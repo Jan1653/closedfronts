@@ -1,4 +1,5 @@
 import {
+  Difficulty,
   Execution,
   Game,
   GameType,
@@ -22,6 +23,11 @@ export class SpawnExecution implements Execution {
   active: boolean = true;
   private mg: Game;
   private static readonly MAX_SPAWN_TRIES = 1_000;
+  // Hard+ bots prefer to start next to an oil deposit: for this many of the
+  // spawn tries a candidate is rejected unless a deposit sits within
+  // OIL_SPAWN_RADIUS; after that the preference relaxes so a spawn is guaranteed.
+  private static readonly OIL_BIAS_TRIES = 700;
+  private static readonly OIL_SPAWN_RADIUS = 12;
 
   constructor(
     gameID: GameID,
@@ -146,6 +152,17 @@ export class SpawnExecution implements Execution {
         continue;
       }
 
+      // Hard+ bots bias toward starting near an oil deposit (with a fallback so
+      // they always spawn — see OIL_BIAS_TRIES). Only affects bots at Hard/
+      // Impossible; humans and easier difficulties are untouched.
+      if (
+        tries < SpawnExecution.OIL_BIAS_TRIES &&
+        this.preferOilSpawn() &&
+        !this.isNearOilDeposit(center)
+      ) {
+        continue;
+      }
+
       const tiles = getSpawnTiles(this.mg, center, true);
       if (!tiles) {
         // if some of the spawn tile is outside of the land, we want to find another spawn tile
@@ -167,6 +184,33 @@ export class SpawnExecution implements Execution {
     const x = this.random.nextInt(0, this.mg.width());
     const y = this.random.nextInt(0, this.mg.height());
     return this.mg.ref(x, y);
+  }
+
+  // True for a bot on a Hard/Impossible game — those get the oil spawn bias.
+  private preferOilSpawn(): boolean {
+    if (this.playerInfo.playerType !== PlayerType.Bot) return false;
+    const difficulty = this.mg.config().gameConfig().difficulty;
+    return (
+      difficulty === Difficulty.Hard || difficulty === Difficulty.Impossible
+    );
+  }
+
+  // Whether any oil deposit sits within OIL_SPAWN_RADIUS of `center`.
+  private isNearOilDeposit(center: TileRef): boolean {
+    const r = SpawnExecution.OIL_SPAWN_RADIUS;
+    const cx = this.mg.x(center);
+    const cy = this.mg.y(center);
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        const x = cx + dx;
+        const y = cy + dy;
+        if (!this.mg.isValidCoord(x, y)) continue;
+        if (this.mg.config().isOilDeposit(this.mg, this.mg.ref(x, y))) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   private getTeamSpawnArea(): SpawnArea | undefined {

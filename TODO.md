@@ -129,9 +129,13 @@ Reihenfolge laut Nutzer: **erst die einfachen/kritischen Sachen.** Alles gesamme
       eine schwierigkeitsabhängige Schwelle (Easy 10% … Impossible 35% der
       Kapazität), baut der Bot prioritär eine Pumpe auf ein eigenes Vorkommen
       (oder stapelt eine) — vor dem größenbasierten Ziel. Schwer+ reagiert früher.
-- [ ] Bots ab **schwer**: Spawnpunkt etwas näher an Öl-Vorkommen. (Verschoben —
-      Bot-Spawn läuft über den geteilten `SpawnExecution`-Pfad; Öl-Bias dort ist
-      riskanter für marginalen Nutzen.)
+- [x] Bots ab **schwer**: Spawnpunkt näher an Öl-Vorkommen. `SpawnExecution`
+      verwirft für die ersten `OIL_BIAS_TRIES` (700) Versuche ein Center, das
+      **kein** Öl-Vorkommen im Umkreis `OIL_SPAWN_RADIUS` (12) hat — danach
+      relaxt es (Fallback → garantierter Spawn). Greift **nur** für Bots bei
+      Hard/Impossible; Menschen & leichtere Stufen unberührt (geteilter Pfad
+      sicher via `preferOilSpawn`-Gate). Wegwerf-getestet: Hard=1.00 vs
+      Medium=0.00 nahe Öl (1 Bot/Spiel); Spawn/Attack-Suites grün.
 
 ---
 
