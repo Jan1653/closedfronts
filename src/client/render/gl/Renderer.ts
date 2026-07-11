@@ -988,6 +988,7 @@ export class GPURenderer {
             tileX: data.tileX,
             tileY: data.tileY,
             cost: data.cost,
+            quantity: data.quantity,
             canAfford: data.canAfford,
             canPlace: data.canBuild || data.canUpgrade,
           }

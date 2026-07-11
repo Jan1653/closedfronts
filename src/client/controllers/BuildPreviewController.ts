@@ -489,6 +489,7 @@ export class BuildPreviewController implements Controller {
       canBuild: u.canBuild !== false,
       canUpgrade: u.canUpgrade !== false,
       cost: Number(cost),
+      quantity,
       showCost: this.userSettings.cursorCostLabel(),
       canAfford: myPlayer.gold() >= cost,
       ghostRailPaths: u.ghostRailPaths,

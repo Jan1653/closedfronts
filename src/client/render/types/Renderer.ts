@@ -209,7 +209,9 @@ export interface GhostPreviewData {
   radiusTileY: number;
   canBuild: boolean; // Valid placement?
   canUpgrade: boolean; // Upgrading existing structure?
-  cost: number; // Gold cost
+  cost: number; // Gold cost (already scaled by quantity)
+  /** How many copies a single click places (Tab+wheel). 1 unless multi-build. */
+  quantity: number;
   /** Whether to render the cost label under the ghost (user setting). */
   showCost: boolean;
   /** True if the player has enough gold to afford this build (drives label color). */

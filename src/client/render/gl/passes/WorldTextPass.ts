@@ -362,6 +362,7 @@ export class WorldTextPass {
       tileX: number;
       tileY: number;
       cost: number;
+      quantity: number;
       canAfford: boolean;
       canPlace: boolean;
     } | null,
@@ -388,7 +389,11 @@ export class WorldTextPass {
     this.ghostCostLabel = {
       x: label.tileX,
       y: label.tileY,
-      text: renderNumber(label.cost),
+      // Show the multi-build count next to the (already-scaled) total cost.
+      text:
+        label.quantity > 1
+          ? `${renderNumber(label.cost)} x${label.quantity}`
+          : renderNumber(label.cost),
       colorR: r,
       colorG: g,
       colorB: b,
