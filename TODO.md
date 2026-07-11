@@ -298,9 +298,10 @@ Reihenfolge laut Nutzer: **erst die einfachen Sachen.** Alles hier gesammelt.
       auf die neue Verbindungsregel umgestellt (`>= 1` statt `=== 2`),
       Platzierungs-Tests bauen den erforderlichen Hafen, Map von der sehr langsamen
       „world" auf `ocean_and_land`. **10/10 grün in 5,5 s** (vorher 240 s / 9 rot).
-- [ ] **Verbindungsregel**: Station kann mit **2 verschiedenen Landmassen** ODER
-      **1 Landmasse** verbunden sein — aber **nicht 2×** mit **derselben**
-      Landmasse (außer die Verbindung ist sehr weit weg).
+- [x] **Verbindungsregel** (Commit `9ece65e`): Station verbindet **2 verschiedene
+      Landmassen** (Land-BFS im Radius stellt sicher, dass der 2. Anker nicht über
+      Land mit dem 1. verbunden ist) ODER fällt auf **1 Landmasse + Ketten-Station**
+      zurück. Rendering zieht beide Linien automatisch.
 - [ ] **Bug: rotes Fadenkreuz bleibt** auf einer Zollstation hängen, wenn man ein
       Kriegsschiff auswählt und ein Ziel anklickt (CrosshairPass säubern).
 - [x] **Radius etwas höher** — `WATER_TOLL_STATION_RADIUS` 14 → 18.
@@ -645,7 +646,9 @@ Alles aus der letzten Sprachnachricht, damit nichts vergessen wird.
 - [x] **Eigenes Icon** (Mauerwerk) statt Platzhalter
 - [x] **Kein Stapeln, Mindestabstand** (`wallMinSpacing`)
 - [x] **Umkreis + Auto-Verbindung** zu naher Wand als kostenlose Wand-Linie
-- [ ] Timer über der Wand beim Durchbrechen (Client)
+- [x] Timer/Balken über der Wand beim Durchbrechen (Commit `31e8746`): Mauern
+      haben Health; `WallPass` rendert einen Schadensbalken (rot→grün) pro Kachel,
+      der sich bei Belagerung leert und bei Rückzug regeneriert.
 - [x] **„Nur brechen, wenn kein Weg drumherum":** Angriffe deferieren Wand-Kacheln
       in der Eroberungs-Priorität (`AttackExecution`) → gehen zuerst drumherum,
       brechen die Wand erst, wenn kein anderer Rand frei ist. Getestet. (Wirkt bei
