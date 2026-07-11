@@ -5,6 +5,89 @@ Handy-/Mobile-UI funktionieren.**
 
 ---
 
+## 🆕 Sprachnachricht 6 (neuestes Feedback) — großes Paket
+
+Reihenfolge laut Nutzer: **erst die einfachen/kritischen Sachen.** Alles gesammelt.
+
+### KRITISCHE BUGS
+
+- [ ] **Handy: nichts baubar** — im Solospiel mit genug Geld ist die ganze
+      Seiten-Baubar ausgegraut/nicht klickbar. Nichts lässt sich bauen. (Blocker.)
+
+### Bau-Icons / Texturen / Hotkeys
+
+- [ ] **Öllager = gleiches Icon wie Ölpumpe** → eigenes Icon geben.
+- [ ] **Ölpumpen-Bau-Icon hässlich** (Kreis + kleines Dreieck oben). Das schöne
+      Öltropfen-Logo aus der Bar stattdessen als Bau-Icon nehmen.
+- [ ] **Öllager hat keine Hotkey-Kennzahl** (Alt+2 etc.) → Keybind geben.
+- [ ] **Öllager braucht die richtige Karten-Textur** (aktuell = Ölpumpe).
+- [ ] **Multi-Bau-Zahl anzeigen**: beim Halten von Tab + Hochscrollen (mehrere
+      bauen) muss rechts am Icon die Anzahl stehen, die man gerade baut.
+
+### Zollstation
+
+- [ ] **Ausgegraut, wenn nicht platzierbar** — wie das Kriegsschiff ohne Hafen
+      komplett ausgegraut ist; **keine** Platz-Vorschau, wenn nicht klickbar.
+- [ ] **Zwei Landmassen verbinden**: beim Platzieren prüfen, ob zwei
+      *verschiedene, im Umkreis nicht verbundene* Landmassen in Reichweite sind →
+      dann beide verbinden (z. B. Fluss absperren). Platzierung mit nur einer
+      Verbindung bleibt möglich.
+- [ ] **~100.000 pro durchfahrendem Schiff** (aktuell weniger).
+
+### Wasser-Strukturen erobern (Kriegsschiff)
+
+- [ ] Kriegsschiff kann **Ölpumpen auf Wasser anvisieren → übernehmen**.
+- [ ] Kriegsschiff kann **Zollstationen auf Wasser anvisieren → übernehmen**.
+- [ ] Im **Krieg** werden Wasser-Ölpumpen/Zollstationen **automatisch** vom
+      Gegner übernommen (aktuell nicht).
+
+### Bomben / Raketensilo / Kriegsschiff-Gating
+
+- [ ] **Elektrobombe zeigt keinen Radius** → Radius-Vorschau ergänzen.
+- [ ] Bomben erst **entgraut, wenn das Raketensilo FERTIG gebaut** ist (nicht
+      schon während des Baus). **Gleiches beim Kriegsschiff** (Hafen fertig).
+- [ ] **Neuer „Bomben"-Button** ersetzt die einzelnen Bomben in der Bar.
+  - PC: über dem Haupt-Reiter ein kleiner Reiter mit 4 Buttons in Reihenfolge
+    **Elektrobombe, Atombombe, Wasserstoffbombe, MIRV**. Auswahl wird
+    **gespeichert** (beim erneuten „Bomben"-Klick ist das Gewählte wieder aktiv).
+  - Handy: **nur** der „Bomben"-Button (keine Einzel-Bomben) — UI passend lösen.
+- [ ] **PC-Bar breiter machen**: durch den Bomben-Button werden 3 Felder frei;
+      Bar verbreitern, damit alles in **eine Reihe** passt (aktuell 2 Reihen),
+      alle Alt-Sachen in die obere Reihe.
+
+### Handy-UX
+
+- [ ] **Preise auf dem Handy anzeigen** (aktuell nicht sichtbar).
+- [ ] **Multi-Bau-Auswahl auf dem Handy** (mehrere bauen) — fehlt noch.
+
+### Mauern (Walls) — Bausystem-Umbau
+
+- [ ] **Neues Ziehen-Bausystem**: Mauer wählen → 1 Pixel am Cursor, 1. Klick
+      setzt Start, dann zieht die Mauer mit dem Cursor mit, 2. Klick baut die
+      Linie. **Handy:** Start antippen, Ziel antippen, **kein** Auto-Bau — extra
+      **Bauen**-Button + **Abbrechen**-Button.
+- [ ] **Outline-Fix**: keine Outline dort, wo eine Mauer eine verbundene Nachbar-
+      Mauer berührt (auch über den vertikalen Pixel) → verbundenes Aussehen.
+- [ ] **Angriffs-Bar an der Mauer**: beim Angriff eine Bar, wie weit bis zur
+      Zerstörung an der Stelle (die dem Angreifer am nächsten liegt). Bar wird
+      langsamer bei weniger Truppen und **revertet** bei Gegenangriff/Rückeroberung.
+- [ ] **Mauerfall = nur 3 Pixel** hinter der Mauer an den Gegner geben (aktuell
+      wird alles hinter der Mauer sofort rübergeschoben) — diese 3 Pixel sind
+      dann normal angreifbar.
+
+### Lobby-Defaults
+
+- [ ] **Öl spenden** in privaten Lobbys **standardmäßig AUS** (wie Gold-/Truppen-
+      spenden schon aus sind).
+
+### Bot-KI (Öl)
+
+- [ ] Bots ab **schwer**: Spawnpunkt etwas näher an Öl-Vorkommen. Schwer +
+      impossible: schnell Öl sichern. Bots prüfen laufend ihren Ölstand; zu wenig
+      Öl → neues Öl zu sichern wird **Ziel Nr. 1** (außer akuter Krieg).
+
+---
+
 ## 🆕 Sprachnachricht 5 (aktuellstes Feedback) — großes Paket
 
 Reihenfolge laut Nutzer: **erst die einfachen Sachen.** Alles hier gesammelt.
