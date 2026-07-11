@@ -16,4 +16,8 @@ export interface UIState {
   // warship selection box instead of panning, and pinch-zoom is disabled, so the
   // camera stays put while multi-selecting. Toggled by the on-screen button.
   mobileSelectMode: boolean;
+  // Wall drag-build: the first-clicked (or first-tapped) start tile of a wall
+  // line. While set, the next map click/confirm builds the whole line from here
+  // to the cursor. null when no wall drag is in progress.
+  wallDragStart: TileRef | null;
 }

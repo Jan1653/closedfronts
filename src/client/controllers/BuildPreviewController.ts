@@ -69,6 +69,39 @@ export function samThreatensNukePreview(
   );
 }
 
+/**
+ * Bresenham line of tiles from `a` to `b`, INCLUDING both endpoints. Must match
+ * the sim's WallLineExecution.lineTiles so the drag preview shows exactly what
+ * will be built.
+ */
+function wallLineTiles(game: GameView, a: TileRef, b: TileRef): TileRef[] {
+  const tiles: TileRef[] = [];
+  let x0 = game.x(a);
+  let y0 = game.y(a);
+  const x1 = game.x(b);
+  const y1 = game.y(b);
+  const dx = Math.abs(x1 - x0);
+  const dy = Math.abs(y1 - y0);
+  const sx = x0 < x1 ? 1 : -1;
+  const sy = y0 < y1 ? 1 : -1;
+  let err = dx - dy;
+  // Bound the work so a wild off-map cursor can't blow up (map diagonal is ample).
+  for (let guard = 0; guard < 4096; guard++) {
+    tiles.push(game.ref(x0, y0));
+    if (x0 === x1 && y0 === y1) break;
+    const e2 = 2 * err;
+    if (e2 > -dy) {
+      err -= dy;
+      x0 += sx;
+    }
+    if (e2 < dx) {
+      err += dx;
+      y0 += sy;
+    }
+  }
+  return tiles;
+}
+
 export class BuildPreviewController implements Controller {
   /** Current ghost (null when no build type is active). */
   private ghostUnit: { buildableUnit: BuildableUnit } | null = null;
@@ -106,7 +139,7 @@ export class BuildPreviewController implements Controller {
 
   init() {
     this.eventBus.on(MouseMoveEvent, (e) => this.moveGhost(e));
-    this.eventBus.on(MouseUpEvent, (e) => this.requestConfirmStructure(e));
+    this.eventBus.on(MouseUpEvent, (e) => this.onMapClick(e));
     this.eventBus.on(ConfirmGhostStructureEvent, () =>
       this.requestConfirmStructure(
         new MouseUpEvent(this.mousePos.x, this.mousePos.y),
@@ -302,6 +335,25 @@ export class BuildPreviewController implements Controller {
       this.lastGhostData = data;
     }
     this.updateNukeTrajectoryPreview(tileRef);
+    this.updateWallDragPreview(tileRef);
+  }
+
+  /**
+   * While a wall drag is in progress (uiState.wallDragStart set), preview the
+   * whole line of walls from the start tile to the cursor. Pushed to the
+   * WallPass as translucent instances; cleared when no drag is active.
+   */
+  private updateWallDragPreview(endTile: TileRef | undefined): void {
+    const start = this.uiState.wallDragStart;
+    if (start === null) {
+      this.view.updateWallPreview(null);
+      return;
+    }
+    if (endTile === undefined) return; // keep the last line when off-map
+    this.view.updateWallPreview({
+      tiles: wallLineTiles(this.game, start, endTile),
+      ownerID: this.game.myPlayer()?.smallID() ?? 0,
+    });
   }
 
   /**
@@ -518,6 +570,17 @@ export class BuildPreviewController implements Controller {
     return bu.canBuild !== false || bu.canUpgrade !== false;
   }
 
+  // Desktop map click (mouse up). Walls use a two-click drag tool; everything
+  // else confirms a placement immediately. The mobile Build button and Enter go
+  // through requestConfirmStructure directly (old single-tap wall path).
+  private onMapClick(e: MouseUpEvent): void {
+    if (this.uiState.ghostStructure === UnitType.Wall) {
+      this.handleWallDragClick(e);
+      return;
+    }
+    this.requestConfirmStructure(e);
+  }
+
   private requestConfirmStructure(e: MouseUpEvent): void {
     if (!this.ghostUnit && !this.uiState.ghostStructure) return;
     if (this.isGhostReadyForConfirm()) {
@@ -525,6 +588,39 @@ export class BuildPreviewController implements Controller {
     } else {
       this.pendingConfirm = e;
     }
+  }
+
+  /**
+   * Wall drag-build click handler. First map click on buildable land sets the
+   * line start; the second click emits a wall-line build intent from the start
+   * to the clicked tile and keeps the wall armed for another line.
+   */
+  private handleWallDragClick(e: MouseUpEvent): void {
+    const tile = this.transformHandler.screenToWorldCoordinates(e.x, e.y);
+    if (!this.game.isValidCoord(tile.x, tile.y)) return;
+    const tileRef = this.game.ref(tile.x, tile.y);
+
+    if (this.uiState.wallDragStart === null) {
+      // First click: anchor the start on placeable land (the sim validates each
+      // tile again; this just avoids starting a line out on water).
+      if (this.game.isLand(tileRef) && !this.game.isImpassable(tileRef)) {
+        this.uiState.wallDragStart = tileRef;
+      }
+      return;
+    }
+
+    // Second click: build the whole line from the start to here.
+    this.eventBus.emit(
+      new BuildUnitIntentEvent(
+        UnitType.Wall,
+        tileRef,
+        undefined,
+        undefined,
+        this.uiState.wallDragStart,
+      ),
+    );
+    this.uiState.wallDragStart = null;
+    this.view.updateWallPreview(null);
   }
 
   private createStructure(e: MouseUpEvent) {
@@ -608,7 +704,9 @@ export class BuildPreviewController implements Controller {
     this.ghostUnit = null;
     this.lastGhostData = null;
     this.uiState.mobilePlacementTile = null;
+    this.uiState.wallDragStart = null;
     this.view.updateGhostPreview(null);
+    this.view.updateWallPreview(null);
     this.clearNukeTrajectory();
   }
 

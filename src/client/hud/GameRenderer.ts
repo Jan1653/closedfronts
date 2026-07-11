@@ -65,6 +65,7 @@ export function createRenderer(
     buildQuantity: 1,
     mobilePlacementTile: null,
     mobileSelectMode: false,
+    wallDragStart: null,
   };
 
   //hide when the game renders

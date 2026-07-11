@@ -32,9 +32,14 @@ const BYTES_PER_INSTANCE = FLOATS_PER_INSTANCE * 4;
 
 export class WallPass {
   private program: WebGLProgram;
+  private quadBuf: WebGLBuffer;
   private vao: WebGLVertexArrayObject;
   private instanceBuf: DynamicInstanceBuffer;
   private instanceCount = 0;
+  // Translucent drag-build preview: the wall line the player is about to place.
+  private previewVao: WebGLVertexArrayObject;
+  private previewBuf: DynamicInstanceBuffer;
+  private previewCount = 0;
   private mapW: number;
 
   private uCamera: WebGLUniformLocation;
@@ -69,42 +74,81 @@ export class WallPass {
     gl.useProgram(this.program);
     gl.uniform1i(gl.getUniformLocation(this.program, "uPalette"), 0);
 
-    // --- Instance buffer ---
-    const instanceGlBuf = gl.createBuffer()!;
-    this.instanceBuf = new DynamicInstanceBuffer(
-      gl,
-      instanceGlBuf,
-      1024,
-      FLOATS_PER_INSTANCE,
-    );
-
-    // --- VAO ---
-    this.vao = gl.createVertexArray()!;
-    gl.bindVertexArray(this.vao);
-
-    // Attribute 0: unit quad [0,0]→[1,1]
-    const quadBuf = gl.createBuffer()!;
-    gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
+    // Shared unit quad [0,0]→[1,1] (attribute 0).
+    this.quadBuf = gl.createBuffer()!;
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.quadBuf);
     gl.bufferData(
       gl.ARRAY_BUFFER,
       new Float32Array([0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 0, 1]),
       gl.STATIC_DRAW,
     );
+
+    // Real walls and the drag preview each get their own instance buffer + VAO
+    // (identical layout), so they draw independently in one pass.
+    this.instanceBuf = new DynamicInstanceBuffer(
+      gl,
+      gl.createBuffer()!,
+      1024,
+      FLOATS_PER_INSTANCE,
+    );
+    this.vao = this.createInstanceVao(this.instanceBuf);
+
+    this.previewBuf = new DynamicInstanceBuffer(
+      gl,
+      gl.createBuffer()!,
+      256,
+      FLOATS_PER_INSTANCE,
+    );
+    this.previewVao = this.createInstanceVao(this.previewBuf);
+  }
+
+  // Build a VAO wiring the shared quad (attr 0) plus the per-instance attributes
+  // (attr 1 = x,y,ownerID,underConstruction; attr 2 = neighbour mask) sourced
+  // from `buf`.
+  private createInstanceVao(
+    buf: DynamicInstanceBuffer,
+  ): WebGLVertexArrayObject {
+    const gl = this.gl;
+    const vao = gl.createVertexArray()!;
+    gl.bindVertexArray(vao);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.quadBuf);
     gl.enableVertexAttribArray(0);
     gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
 
-    // Attribute 1: per-instance vec4 (x, y, ownerID, underConstruction)
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuf.buffer);
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf.buffer);
     gl.enableVertexAttribArray(1);
     gl.vertexAttribPointer(1, 4, gl.FLOAT, false, BYTES_PER_INSTANCE, 0);
     gl.vertexAttribDivisor(1, 1);
-
-    // Attribute 2: per-instance neighbour mask (float, offset 16 bytes)
     gl.enableVertexAttribArray(2);
     gl.vertexAttribPointer(2, 1, gl.FLOAT, false, BYTES_PER_INSTANCE, 16);
     gl.vertexAttribDivisor(2, 1);
 
     gl.bindVertexArray(null);
+    return vao;
+  }
+
+  // Neighbour bitmask for the wall at `pos`: bits 1/2/4/8 = orthogonal
+  // up/right/down/left, 16/32/64/128 = the four diagonals. A set bit means a
+  // wall is present there, so that side/corner drops its black outline.
+  private neighbourMask(pos: number, wallSet: Set<number>): number {
+    const mapW = this.mapW;
+    const x = pos % mapW;
+    const y = (pos - x) / mapW;
+    const up = pos - mapW;
+    const down = pos + mapW;
+    const hasLeft = x > 0;
+    const hasRight = x < mapW - 1;
+    let mask = 0;
+    if (y > 0 && wallSet.has(up)) mask |= 1; // up
+    if (hasRight && wallSet.has(pos + 1)) mask |= 2; // right
+    if (wallSet.has(down)) mask |= 4; // down
+    if (hasLeft && wallSet.has(pos - 1)) mask |= 8; // left
+    if (y > 0 && hasLeft && wallSet.has(up - 1)) mask |= 16; // up-left
+    if (y > 0 && hasRight && wallSet.has(up + 1)) mask |= 32; // up-right
+    if (hasRight && wallSet.has(down + 1)) mask |= 64; // down-right
+    if (hasLeft && wallSet.has(down - 1)) mask |= 128; // down-left
+    return mask;
   }
 
   updateStructures(units: Map<number, UnitState>): void {
@@ -126,29 +170,11 @@ export class WallPass {
       const off = count * FLOATS_PER_INSTANCE;
       const x = unit.pos % mapW;
       const y = (unit.pos - x) / mapW;
-      // Neighbour mask (bit set = wall on that side, so no outline there). Guard
-      // horizontal wrap-around at the map edges; out-of-range tiles simply
-      // aren't in wallSet.
-      let mask = 0;
-      const up = unit.pos - mapW;
-      const down = unit.pos + mapW;
-      const hasLeft = x > 0;
-      const hasRight = x < mapW - 1;
-      if (y > 0 && wallSet.has(up)) mask |= 1; // up
-      if (hasRight && wallSet.has(unit.pos + 1)) mask |= 2; // right
-      if (wallSet.has(down)) mask |= 4; // down
-      if (hasLeft && wallSet.has(unit.pos - 1)) mask |= 8; // left
-      // Diagonals (same wrap guards): drop the corner outline where a diagonal
-      // wall touches, so a Bresenham-stepped diagonal run reads as continuous.
-      if (y > 0 && hasLeft && wallSet.has(up - 1)) mask |= 16; // up-left
-      if (y > 0 && hasRight && wallSet.has(up + 1)) mask |= 32; // up-right
-      if (hasRight && wallSet.has(down + 1)) mask |= 64; // down-right
-      if (hasLeft && wallSet.has(down - 1)) mask |= 128; // down-left
       this.instanceBuf.float32[off + 0] = x;
       this.instanceBuf.float32[off + 1] = y;
       this.instanceBuf.float32[off + 2] = unit.ownerID;
       this.instanceBuf.float32[off + 3] = unit.underConstruction ? 1 : 0;
-      this.instanceBuf.float32[off + 4] = mask;
+      this.instanceBuf.float32[off + 4] = this.neighbourMask(unit.pos, wallSet);
       count++;
     }
 
@@ -166,8 +192,47 @@ export class WallPass {
     }
   }
 
+  /**
+   * Drag-build preview: the wall line the player is about to place, drawn
+   * translucent (reuses the under-construction alpha) in the owner's colour with
+   * the same fused outline. null/empty clears it.
+   */
+  updatePreview(
+    data: { tiles: readonly number[]; ownerID: number } | null,
+  ): void {
+    if (data === null || data.tiles.length === 0) {
+      this.previewCount = 0;
+      return;
+    }
+    const mapW = this.mapW;
+    const wallSet = new Set<number>(data.tiles);
+    let count = 0;
+    for (const pos of data.tiles) {
+      this.previewBuf.ensureCapacity(count + 1);
+      const off = count * FLOATS_PER_INSTANCE;
+      const x = pos % mapW;
+      const y = (pos - x) / mapW;
+      this.previewBuf.float32[off + 0] = x;
+      this.previewBuf.float32[off + 1] = y;
+      this.previewBuf.float32[off + 2] = data.ownerID;
+      this.previewBuf.float32[off + 3] = 1; // translucent, like under construction
+      this.previewBuf.float32[off + 4] = this.neighbourMask(pos, wallSet);
+      count++;
+    }
+    this.previewCount = count;
+    const gl = this.gl;
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.previewBuf.buffer);
+    gl.bufferSubData(
+      gl.ARRAY_BUFFER,
+      0,
+      this.previewBuf.float32,
+      0,
+      count * FLOATS_PER_INSTANCE,
+    );
+  }
+
   draw(cameraMatrix: Float32Array): void {
-    if (this.instanceCount === 0) return;
+    if (this.instanceCount === 0 && this.previewCount === 0) return;
     const gl = this.gl;
     const ws = this.settings.wall;
 
@@ -181,14 +246,29 @@ export class WallPass {
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.paletteTex);
 
-    gl.bindVertexArray(this.vao);
-    gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, this.instanceCount);
+    // Blend so the translucent preview (and under-construction walls) show
+    // through.
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+    if (this.instanceCount > 0) {
+      gl.bindVertexArray(this.vao);
+      gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, this.instanceCount);
+    }
+    if (this.previewCount > 0) {
+      gl.bindVertexArray(this.previewVao);
+      gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, this.previewCount);
+    }
+    gl.bindVertexArray(null);
   }
 
   dispose(): void {
     const gl = this.gl;
     gl.deleteProgram(this.program);
     this.instanceBuf.dispose();
+    this.previewBuf.dispose();
     gl.deleteVertexArray(this.vao);
+    gl.deleteVertexArray(this.previewVao);
+    gl.deleteBuffer(this.quadBuf);
   }
 }

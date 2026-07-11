@@ -91,6 +91,9 @@ export class BuildUnitIntentEvent implements GameEvent {
     public readonly rocketDirectionUp?: boolean,
     // Build the structure and level it up to this many (Tab+wheel quantity).
     public readonly count?: number,
+    // Wall drag-build: the drag start tile. When set (walls only), the sim
+    // builds a wall line from here (tile2) to `tile`.
+    public readonly tile2?: TileRef,
   ) {}
 }
 
@@ -604,6 +607,7 @@ export class Transport {
       tile: event.tile,
       rocketDirectionUp: event.rocketDirectionUp,
       count: event.count,
+      tile2: event.tile2,
     });
   }
 

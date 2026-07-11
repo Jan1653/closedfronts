@@ -1005,6 +1005,12 @@ export class GPURenderer {
     this.nukeTrajectoryPass.update(data);
   }
 
+  updateWallPreview(
+    data: { tiles: readonly number[]; ownerID: number } | null,
+  ): void {
+    this.wallPass.updatePreview(data);
+  }
+
   updateNukeTelegraphs(data: NukeTelegraphData[]): void {
     this.nukeTelegraphPass.update(data);
   }

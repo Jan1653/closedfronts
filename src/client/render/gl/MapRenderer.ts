@@ -228,6 +228,13 @@ export class MapRenderer {
     this.renderer?.updateGhostPreview(data);
   }
 
+  /** Wall drag-build preview: translucent line of walls. null = clear. */
+  updateWallPreview(
+    data: { tiles: readonly number[]; ownerID: number } | null,
+  ): void {
+    this.renderer?.updateWallPreview(data);
+  }
+
   // ---- Nuke UI ----
 
   /** Update nuke trajectory preview arc. null = hide. */

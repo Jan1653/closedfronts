@@ -68,10 +68,20 @@ Reihenfolge laut Nutzer: **erst die einfachen/kritischen Sachen.** Alles gesamme
 
 ### Mauern (Walls) — Bausystem-Umbau
 
-- [ ] **Neues Ziehen-Bausystem**: Mauer wählen → 1 Pixel am Cursor, 1. Klick
+- [~] **Neues Ziehen-Bausystem**: Mauer wählen → 1 Pixel am Cursor, 1. Klick
       setzt Start, dann zieht die Mauer mit dem Cursor mit, 2. Klick baut die
       Linie. **Handy:** Start antippen, Ziel antippen, **kein** Auto-Bau — extra
       **Bauen**-Button + **Abbrechen**-Button.
+  - [x] **Core**: `build_unit`-Intent bekam `tile2` (Start); `WallLineExecution`
+        baut die exakte Bresenham-Linie Start→Ende (Endpunkte bezahlt, Inneres
+        gratis, wie der alte Auto-Connect). Wegwerf-getestet.
+  - [x] **Desktop**: Zwei-Klick-Drag in `BuildPreviewController` (nur Maus,
+        `onMapClick`); halbtransparente Linien-Vorschau über den `WallPass`
+        (zweiter Instanz-Buffer). Rechtsklick/Escape bricht ab (= entwaffnen).
+        Mobile bleibt vorerst am alten Einzel-Tap-Pfad (unverändert).
+  - [ ] **Handy**: eigener Ziel-antippen + **Bauen**/**Abbrechen**-Flow.
+  - [ ] **Live per Screenshot verifizieren** (auf diesem Host war der In-Game-
+        Renderer via Browser-Pane zu langsam; vom User manuell zu testen).
 - [x] **Outline-Fix**: die 4-Bit-Nachbarmaske kannte nur orthogonale Nachbarn,
       also zeigten **diagonal** verbundene Mauern (die Auto-Connect-Bresenham-
       Linie schrittet diagonal) eine schwarze Naht an der Ecke. Maske um 4
