@@ -83,9 +83,13 @@ Reihenfolge laut Nutzer: **erst die einfachen/kritischen Sachen.** Alles gesamme
 
 ### Bot-KI (Öl)
 
-- [ ] Bots ab **schwer**: Spawnpunkt etwas näher an Öl-Vorkommen. Schwer +
-      impossible: schnell Öl sichern. Bots prüfen laufend ihren Ölstand; zu wenig
-      Öl → neues Öl zu sichern wird **Ziel Nr. 1** (außer akuter Krieg).
+- [x] **Öl als Ziel Nr. 1 bei Mangel** (Commit `5702e34`): sinkt das Öl unter
+      eine schwierigkeitsabhängige Schwelle (Easy 10% … Impossible 35% der
+      Kapazität), baut der Bot prioritär eine Pumpe auf ein eigenes Vorkommen
+      (oder stapelt eine) — vor dem größenbasierten Ziel. Schwer+ reagiert früher.
+- [ ] Bots ab **schwer**: Spawnpunkt etwas näher an Öl-Vorkommen. (Verschoben —
+      Bot-Spawn läuft über den geteilten `SpawnExecution`-Pfad; Öl-Bias dort ist
+      riskanter für marginalen Nutzen.)
 
 ---
 
