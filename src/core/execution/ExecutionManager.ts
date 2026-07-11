@@ -30,6 +30,7 @@ import { TransportShipExecution } from "./TransportShipExecution";
 import { TribeSpawner } from "./TribeSpawner";
 import { UpgradeStructureExecution } from "./UpgradeStructureExecution";
 import { PlayerSpawner } from "./utils/PlayerSpawner";
+import { WallLineExecution } from "./WallLineExecution";
 
 export class Executor {
   // private random = new PseudoRandom(999)
@@ -109,6 +110,12 @@ export class Executor {
           (intent.unit === UnitType.OilPump && this.mg.isWater(intent.tile));
         if (atSea) {
           return new SeaBuildExecution(player, intent.unit, intent.tile);
+        }
+        // Wall drag-build: tile2 = drag start, tile = drag end → build the whole
+        // line at once (endpoints charged, interior free). Non-drag wall builds
+        // (no tile2) fall through to the normal single-wall path.
+        if (intent.unit === UnitType.Wall && intent.tile2 !== undefined) {
+          return new WallLineExecution(player, intent.tile2, intent.tile);
         }
         return new ConstructionExecution(
           player,

@@ -85,6 +85,9 @@ Reihenfolge laut Nutzer: **erst die einfachen/kritischen Sachen.** Alles gesamme
 - [ ] **Mauerfall = nur 3 Pixel** hinter der Mauer an den Gegner geben (aktuell
       wird alles hinter der Mauer sofort rübergeschoben) — diese 3 Pixel sind
       dann normal angreifbar.
+      **Regel (entschieden):** 3-Kachel-**Brückenkopf** — der Angreifer bekommt
+      beim Durchbruch genau ~3 Kacheln direkt hinter der Bruchstelle; alles tiefer
+      dahinter bleibt weiter von der (übrigen) Mauer geschützt/deferiert.
 
 ### Lobby-Defaults
 

@@ -536,6 +536,10 @@ export const BuildUnitIntentSchema = z.object({
   // (Tab+wheel quantity). Absent/1 = a single level-1 build. Capped to match the
   // client's MAX_BUILD_QUANTITY. Non-upgradeable units ignore it.
   count: z.number().int().min(1).max(25).optional(),
+  // Wall drag-build: when set (walls only), build a wall LINE from tile2 (the
+  // drag start) to `tile` (the drag end). The two endpoints are charged, the
+  // interior is free filler. Ignored for non-wall units.
+  tile2: z.number().optional(),
 });
 
 export const UpgradeStructureIntentSchema = z.object({
