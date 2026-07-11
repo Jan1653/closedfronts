@@ -1007,6 +1007,9 @@
     "osm_done": "Generated — touch it up, then save",
     "osm_capped": "Area was large — generated its center. Touch up, then save",
     "osm_failed": "Could not load map data",
+    "osm_area": "Area",
+    "osm_area_wider": "Wider area",
+    "osm_area_tighter": "Tighter area",
     "osm_attribution": "Terrain © OpenStreetMap contributors",
     "canvas_hint": "Draw with the selected tile. Enable Fill for a bucket fill."
   },

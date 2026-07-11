@@ -67,6 +67,25 @@ export function clampBBox(
 }
 
 /**
+ * Scale a bbox's span around its center by `factor` (1 = unchanged, <1 = zoom in
+ * to a tighter area, >1 = widen). Latitude is clamped to the Mercator-safe range.
+ * Lets the importer tighten or widen the region around a geocoded place without
+ * re-geocoding.
+ */
+export function scaleBBox(bbox: GeoBBox, factor: number): GeoBBox {
+  const cLon = (bbox.minLon + bbox.maxLon) / 2;
+  const cLat = (bbox.minLat + bbox.maxLat) / 2;
+  const hLon = ((bbox.maxLon - bbox.minLon) / 2) * factor;
+  const hLat = ((bbox.maxLat - bbox.minLat) / 2) * factor;
+  return {
+    minLon: cLon - hLon,
+    maxLon: cLon + hLon,
+    minLat: Math.max(-85, cLat - hLat),
+    maxLat: Math.min(85, cLat + hLat),
+  };
+}
+
+/**
  * Grid dimensions for a bbox that preserve its on-screen (Mercator) aspect
  * ratio, with the longer side at `maxDim` and both sides clamped to
  * [minDim, maxDim]. Keeps generated maps within the editor's size limits (and

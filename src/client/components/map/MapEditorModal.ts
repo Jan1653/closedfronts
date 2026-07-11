@@ -5,6 +5,7 @@ import {
   isLandPaint,
   PaintTile,
 } from "../../../core/game/CustomMapBuilder";
+import type { GeoBBox } from "../../../core/game/OsmRaster";
 import {
   applyCoastlineSea,
   clampBBox,
@@ -12,6 +13,7 @@ import {
   gridSizeForBBox,
   rasterizeLinesInto,
   rasterizePolygonsInto,
+  scaleBBox,
 } from "../../../core/game/OsmRaster";
 import { publishCommunityMap } from "../../Api";
 import { getAuthHeader } from "../../Auth";
@@ -64,6 +66,10 @@ export class MapEditorModal extends BaseModal {
   @state() private noticeError = false;
   @state() private osmQuery = "";
   @state() private osmBusy = false;
+  // The last geocoded place bbox + a zoom level, so the +/- controls can re-crop
+  // the imported area around the same place without geocoding again.
+  @state() private osmFoundBBox: GeoBBox | null = null;
+  @state() private osmZoom = 0;
 
   // Not @state: painting mutates these directly and blits imperatively so
   // continuous strokes don't thrash Lit's render loop.
@@ -388,9 +394,45 @@ export class MapEditorModal extends BaseModal {
         this.showNotice(translateText("map_editor.osm_not_found"), true);
         return;
       }
-      // Broad queries (regions/countries) return a huge box — cap to a
-      // city-sized area so Overpass stays fast and the map stays detailed.
-      const { bbox, capped } = clampBBox(found, 1.5, 1.0);
+      this.osmFoundBBox = found;
+      this.osmZoom = 0;
+      await this.runOsmImport();
+    } catch (e) {
+      console.error("OSM import failed", e);
+      this.showNotice(translateText("map_editor.osm_failed"), true);
+    } finally {
+      this.osmBusy = false;
+    }
+  }
+
+  // Tighten (+) or widen (−) the imported area around the found place and
+  // re-import — no re-geocoding. Each step halves/doubles the span.
+  private async changeOsmZoom(delta: number) {
+    if (this.osmFoundBBox === null || this.osmBusy) return;
+    const next = Math.max(-2, Math.min(3, this.osmZoom + delta));
+    if (next === this.osmZoom) return;
+    this.osmZoom = next;
+    this.osmBusy = true;
+    try {
+      await this.runOsmImport();
+    } catch (e) {
+      console.error("OSM re-import failed", e);
+      this.showNotice(translateText("map_editor.osm_failed"), true);
+    } finally {
+      this.osmBusy = false;
+    }
+  }
+
+  // Fetch + rasterise the OSM layers for the found place at the current zoom.
+  // Caller sets osmFoundBBox and manages osmBusy.
+  private async runOsmImport() {
+    const found = this.osmFoundBBox;
+    if (found === null) return;
+    // Cap broad queries (regions/countries) to a city-sized area so Overpass
+    // stays fast, then apply the user's zoom crop around the center.
+    const { bbox: capBox, capped } = clampBBox(found, 1.5, 1.0);
+    const bbox = scaleBBox(capBox, Math.pow(2, -this.osmZoom));
+    {
       const { width, height } = gridSizeForBBox(bbox, MAX_SIZE);
       // Land-cover terrain first (forest → tan Highland, bare rock/glacier →
       // Mountain), painted onto a Plains base. Water is layered on top afterwards
@@ -436,7 +478,7 @@ export class MapEditorModal extends BaseModal {
         width >= 120 ? 1 : 0,
       );
       this.editingId = null;
-      this.name = query.slice(0, 40);
+      this.name = this.osmQuery.trim().slice(0, 40) || this.name;
       this.gridW = width;
       this.gridH = height;
       this.paint = clean;
@@ -446,11 +488,6 @@ export class MapEditorModal extends BaseModal {
         translateText(capped ? "map_editor.osm_capped" : "map_editor.osm_done"),
         false,
       );
-    } catch (e) {
-      console.error("OSM import failed", e);
-      this.showNotice(translateText("map_editor.osm_failed"), true);
-    } finally {
-      this.osmBusy = false;
     }
   }
 
@@ -643,9 +680,39 @@ export class MapEditorModal extends BaseModal {
             ? translateText("map_editor.osm_loading")
             : translateText("map_editor.osm_generate")}
         </button>
+        ${this.osmFoundBBox !== null ? this.renderOsmZoom() : ""}
         <p class="text-[10px] text-white/40 leading-tight">
           ${translateText("map_editor.osm_attribution")}
         </p>
+      </div>
+    `;
+  }
+
+  // Zoom the imported area tighter/wider around the found place (re-imports).
+  private renderOsmZoom(): TemplateResult {
+    return html`
+      <div class="flex items-center justify-between gap-2">
+        <span class="text-xs text-white/70"
+          >${translateText("map_editor.osm_area")}</span
+        >
+        <div class="flex items-center gap-1">
+          <button
+            title=${translateText("map_editor.osm_area_wider")}
+            @click=${() => this.changeOsmZoom(-1)}
+            ?disabled=${this.osmBusy || this.osmZoom <= -2}
+            class="w-8 h-8 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-40 text-lg leading-none"
+          >
+            −
+          </button>
+          <button
+            title=${translateText("map_editor.osm_area_tighter")}
+            @click=${() => this.changeOsmZoom(1)}
+            ?disabled=${this.osmBusy || this.osmZoom >= 3}
+            class="w-8 h-8 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-40 text-lg leading-none"
+          >
+            +
+          </button>
+        </div>
       </div>
     `;
   }

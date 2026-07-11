@@ -349,6 +349,9 @@
     "osm_done": "Generiert — nachbessern, dann speichern",
     "osm_capped": "Bereich war groß — Zentrum generiert. Nachbessern, dann speichern",
     "osm_failed": "Kartendaten konnten nicht geladen werden",
+    "osm_area": "Ausschnitt",
+    "osm_area_wider": "Größerer Ausschnitt",
+    "osm_area_tighter": "Engerer Ausschnitt",
     "osm_attribution": "Terrain © OpenStreetMap-Mitwirkende",
     "canvas_hint": "Male mit der gewählten Kachel. Für den Farbeimer „Füllen“ aktivieren."
   },
