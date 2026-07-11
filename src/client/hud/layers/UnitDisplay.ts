@@ -231,7 +231,7 @@ export class UnitDisplay extends LitElement implements Controller {
             this._oilStorage,
             UnitType.OilStorage,
             "oil_storage",
-            "",
+            "Alt 4",
           )}
           ${this.renderUnitItem(
             tollStationIcon,
