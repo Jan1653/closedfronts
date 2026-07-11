@@ -18,13 +18,13 @@ Reihenfolge laut Nutzer: **erst die einfachen/kritischen Sachen.** Alles gesamme
 
 ### Bau-Icons / Texturen / Hotkeys
 
-- [ ] **Öllager = gleiches Icon wie Ölpumpe** → eigenes Icon geben.
-- [ ] **Ölpumpen-Bau-Icon hässlich** (Kreis + kleines Dreieck oben). Das schöne
-      Öltropfen-Logo aus der Bar stattdessen als Bau-Icon nehmen.
-- [ ] **Öllager hat keine Hotkey-Kennzahl** (Alt+2 etc.) → Keybind geben.
-- [ ] **Öllager braucht die richtige Karten-Textur** (aktuell = Ölpumpe).
-- [ ] **Multi-Bau-Zahl anzeigen**: beim Halten von Tab + Hochscrollen (mehrere
-      bauen) muss rechts am Icon die Anzahl stehen, die man gerade baut.
+- [x] **Öllager-Hotkey** (Commit `3d624f1`): Alt+4 gebunden + Label „Alt 4".
+- [x] **Multi-Bau-Zahl** (Commit `0a40349`): Ghost-Kosten-Label zeigt jetzt
+      „<Kosten> xN" beim Tab+Scroll-Mehrfachbau. Live verifiziert.
+- [ ] **Karten-Texturen (WebGL-Atlas) — braucht Sprite-Art:** Ölpumpen-Karten-
+      Sprite ist „Kreis+Dreieck" (das Bau-/Bar-SVG ist bereits ein Öltropfen);
+      Öllager nutzt mangels eigenem Sprite die Pumpen-Textur (`StructurePass:166`).
+      Beide brauchen eigene Atlas-Sprites (Grafikarbeit, kein Code-Fix).
 
 ### Zollstation
 
@@ -59,7 +59,8 @@ Reihenfolge laut Nutzer: **erst die einfachen/kritischen Sachen.** Alles gesamme
 
 ### Handy-UX
 
-- [ ] **Preise auf dem Handy anzeigen** (aktuell nicht sichtbar).
+- [x] **Preise auf dem Handy** (Commit `c56109e`): Goldkosten unter jedem
+      Bau-Button. Live verifiziert (750K, 25M, 200K …).
 - [ ] **Multi-Bau-Auswahl auf dem Handy** (mehrere bauen) — fehlt noch.
 
 ### Mauern (Walls) — Bausystem-Umbau
