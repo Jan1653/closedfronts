@@ -38,9 +38,13 @@ import {
 import { UIState } from "../UIState";
 import { GameView } from "../view";
 
-/** True for nuke types (AtomBomb, HydrogenBomb): ghost is preserved after placement so user can place multiple or keep selection (Enter/key confirm). */
+/** True for nuke types (AtomBomb, HydrogenBomb, ElectricBomb): ghost is preserved after placement so user can place multiple or keep selection (Enter/key confirm). */
 export function shouldPreserveGhostAfterBuild(unitType: UnitType): boolean {
-  return unitType === UnitType.AtomBomb || unitType === UnitType.HydrogenBomb;
+  return (
+    unitType === UnitType.AtomBomb ||
+    unitType === UnitType.HydrogenBomb ||
+    unitType === UnitType.ElectricBomb
+  );
 }
 
 /**
@@ -219,7 +223,9 @@ export class BuildPreviewController implements Controller {
     if (
       tileRef &&
       myPlayer &&
-      (nukeType === UnitType.AtomBomb || nukeType === UnitType.HydrogenBomb)
+      (nukeType === UnitType.AtomBomb ||
+        nukeType === UnitType.HydrogenBomb ||
+        nukeType === UnitType.ElectricBomb)
     ) {
       this.connectedAllySmallIds.clear();
       const allies = myPlayer.allies();
@@ -310,7 +316,11 @@ export class BuildPreviewController implements Controller {
       return;
     }
     const type = this.ghostUnit.buildableUnit.type;
-    if (type !== UnitType.AtomBomb && type !== UnitType.HydrogenBomb) {
+    if (
+      type !== UnitType.AtomBomb &&
+      type !== UnitType.HydrogenBomb &&
+      type !== UnitType.ElectricBomb
+    ) {
       this.clearNukeTrajectory();
       return;
     }
@@ -443,6 +453,7 @@ export class BuildPreviewController implements Controller {
       }
       case UnitType.AtomBomb:
       case UnitType.HydrogenBomb:
+      case UnitType.ElectricBomb:
         rangeRadius = this.game.config().nukeMagnitudes(u.type).outer;
         break;
       case UnitType.Factory:
