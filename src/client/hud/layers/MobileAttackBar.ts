@@ -65,7 +65,8 @@ export class MobileAttackBar extends LitElement implements Controller {
         class="lg:hidden pointer-events-auto flex flex-col items-center gap-1 px-1.5 py-2 rounded-r-lg bg-gray-800/92 backdrop-blur-sm shadow-lg"
         translate="no"
       >
-        <span class="text-white text-sm font-bold tabular-nums leading-none"
+        <span
+          class="w-10 text-center text-white text-sm font-bold tabular-nums leading-none"
           >${this.percent}%</span
         >
         <input
@@ -86,7 +87,8 @@ export class MobileAttackBar extends LitElement implements Controller {
           height="14"
           style="filter: brightness(0) invert(1)"
         />
-        <span class="text-white text-[10px] font-bold tabular-nums leading-none"
+        <span
+          class="w-10 text-center truncate text-white text-[10px] font-bold tabular-nums leading-none"
           >${renderTroops(this.troops)}</span
         >
       </div>
