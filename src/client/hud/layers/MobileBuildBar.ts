@@ -48,9 +48,34 @@ export class MobileBuildBar extends LitElement implements Controller {
     }
   }
 
+  private cost(type: UnitType): bigint {
+    return this.playerBuildables?.find((u) => u.type === type)?.cost ?? 0n;
+  }
+
+  // Arming a build has no tile yet, so gate by affordability + prerequisites
+  // (mirrors the desktop <unit-display>) — NOT the sim's tile-dependent
+  // `canBuild`, which is always false without a tile and greyed everything out.
   private canBuild(type: UnitType): boolean {
-    const bu = this.playerBuildables?.find((u) => u.type === type);
-    return bu ? bu.canBuild !== false || bu.canUpgrade !== false : false;
+    if (this.game?.config().isUnitDisabled(type)) return false;
+    const player = this.game?.myPlayer();
+    const gold = player?.gold() ?? 0n;
+    switch (type) {
+      case UnitType.AtomBomb:
+      case UnitType.HydrogenBomb:
+      case UnitType.ElectricBomb:
+      case UnitType.MIRV:
+        return (
+          this.cost(type) <= gold &&
+          (player?.units(UnitType.MissileSilo).length ?? 0) > 0
+        );
+      case UnitType.Warship:
+        return (
+          this.cost(type) <= gold &&
+          (player?.units(UnitType.Port).length ?? 0) > 0
+        );
+      default:
+        return this.cost(type) <= gold;
+    }
   }
 
   private onTap(type: PlayerBuildableUnitType) {
