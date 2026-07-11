@@ -13,7 +13,6 @@ import {
   gridSizeForBBox,
   rasterizeLinesInto,
   rasterizePolygonsInto,
-  scaleBBox,
 } from "../../../core/game/OsmRaster";
 import { publishCommunityMap } from "../../Api";
 import { getAuthHeader } from "../../Auth";
@@ -36,6 +35,8 @@ import {
   serializeCustomMap,
 } from "./CustomMapStore";
 import "./CustomMapThumb";
+import "./OsmMapPicker";
+import type { OsmMapPicker } from "./OsmMapPicker";
 import { fetchOsmAll, geocodePlace } from "./OsmSource";
 import { playCustomMapSolo } from "./playCustomMap";
 
@@ -60,10 +61,6 @@ export class MapEditorModal extends BaseModal {
   @state() private noticeError = false;
   @state() private osmQuery = "";
   @state() private osmBusy = false;
-  // The last geocoded place bbox + a zoom level, so the +/- controls can re-crop
-  // the imported area around the same place without geocoding again.
-  @state() private osmFoundBBox: GeoBBox | null = null;
-  @state() private osmZoom = 0;
 
   // Not @state: painting mutates these directly and blits imperatively so
   // continuous strokes don't thrash Lit's render loop.
@@ -75,6 +72,7 @@ export class MapEditorModal extends BaseModal {
 
   @query("#map-editor-canvas") private canvasEl?: HTMLCanvasElement;
   @query("#map-import-input") private importInput?: HTMLInputElement;
+  @query("osm-map-picker") private mapPicker?: OsmMapPicker;
 
   constructor() {
     super();
@@ -375,7 +373,9 @@ export class MapEditorModal extends BaseModal {
 
   // ---- Import from a real map (OSM, Phase A: land + inland water) ----
 
-  private async importFromOsm() {
+  // Search box → move the map to the place (no import yet; the user frames it
+  // on the map and then hits Convert).
+  private async searchPlace() {
     const query = this.osmQuery.trim();
     if (!query) {
       this.showNotice(translateText("map_editor.osm_enter_place"), true);
@@ -388,9 +388,23 @@ export class MapEditorModal extends BaseModal {
         this.showNotice(translateText("map_editor.osm_not_found"), true);
         return;
       }
-      this.osmFoundBBox = found;
-      this.osmZoom = 0;
-      await this.runOsmImport();
+      await this.updateComplete;
+      this.mapPicker?.fitBBox(found);
+    } catch (e) {
+      console.error("Geocode failed", e);
+      this.showNotice(translateText("map_editor.osm_failed"), true);
+    } finally {
+      this.osmBusy = false;
+    }
+  }
+
+  // Convert whatever the map currently frames into a game map.
+  private async convertCurrentView() {
+    const bbox = this.mapPicker?.getViewportBBox();
+    if (!bbox) return;
+    this.osmBusy = true;
+    try {
+      await this.runOsmImport(bbox);
     } catch (e) {
       console.error("OSM import failed", e);
       this.showNotice(translateText("map_editor.osm_failed"), true);
@@ -399,33 +413,11 @@ export class MapEditorModal extends BaseModal {
     }
   }
 
-  // Tighten (+) or widen (−) the imported area around the found place and
-  // re-import — no re-geocoding. Each step halves/doubles the span.
-  private async changeOsmZoom(delta: number) {
-    if (this.osmFoundBBox === null || this.osmBusy) return;
-    const next = Math.max(-2, Math.min(3, this.osmZoom + delta));
-    if (next === this.osmZoom) return;
-    this.osmZoom = next;
-    this.osmBusy = true;
-    try {
-      await this.runOsmImport();
-    } catch (e) {
-      console.error("OSM re-import failed", e);
-      this.showNotice(translateText("map_editor.osm_failed"), true);
-    } finally {
-      this.osmBusy = false;
-    }
-  }
-
-  // Fetch + rasterise the OSM layers for the found place at the current zoom.
-  // Caller sets osmFoundBBox and manages osmBusy.
-  private async runOsmImport() {
-    const found = this.osmFoundBBox;
-    if (found === null) return;
-    // Cap broad queries (regions/countries) to a city-sized area so Overpass
-    // stays fast, then apply the user's zoom crop around the center.
-    const { bbox: capBox, capped } = clampBBox(found, 1.5, 1.0);
-    const bbox = scaleBBox(capBox, Math.pow(2, -this.osmZoom));
+  // Fetch + rasterise the OSM layers for `found` into the editor grid.
+  private async runOsmImport(found: GeoBBox) {
+    // Cap an over-wide view (e.g. whole-continent zoom-out) to a workable area so
+    // Overpass stays fast and the map stays detailed.
+    const { bbox, capped } = clampBBox(found, 1.5, 1.0);
     const { width, height } = gridSizeForBBox(bbox, MAX_SIZE);
     // All layers come from ONE Overpass request — the public endpoint rate-limits
     // (HTTP 429), so we must not fire a query per layer.
@@ -663,61 +655,42 @@ export class MapEditorModal extends BaseModal {
         <label class="text-xs text-white/70">
           ${translateText("map_editor.osm_title")}
         </label>
-        <input
-          type="text"
-          .value=${this.osmQuery}
-          @input=${(e: Event) =>
-            (this.osmQuery = (e.target as HTMLInputElement).value)}
-          @keydown=${(e: KeyboardEvent) => {
-            if (e.key === "Enter" && !this.osmBusy) void this.importFromOsm();
-          }}
-          placeholder=${translateText("map_editor.osm_placeholder")}
-          maxlength="80"
-          ?disabled=${this.osmBusy}
-          class="w-full rounded-md bg-black/40 border border-white/10 px-3 py-2 text-white text-sm"
-        />
+        <div class="flex gap-2">
+          <input
+            type="text"
+            .value=${this.osmQuery}
+            @input=${(e: Event) =>
+              (this.osmQuery = (e.target as HTMLInputElement).value)}
+            @keydown=${(e: KeyboardEvent) => {
+              if (e.key === "Enter" && !this.osmBusy) void this.searchPlace();
+            }}
+            placeholder=${translateText("map_editor.osm_placeholder")}
+            maxlength="80"
+            ?disabled=${this.osmBusy}
+            class="flex-1 min-w-0 rounded-md bg-black/40 border border-white/10 px-3 py-2 text-white text-sm"
+          />
+          <button
+            @click=${() => this.searchPlace()}
+            ?disabled=${this.osmBusy}
+            title=${translateText("map_editor.osm_search")}
+            class="shrink-0 rounded-lg px-3 py-2 text-sm font-semibold bg-white/10 hover:bg-white/20 transition-colors disabled:opacity-50"
+          >
+            ${translateText("map_editor.osm_search")}
+          </button>
+        </div>
+        <osm-map-picker></osm-map-picker>
         <button
-          @click=${() => this.importFromOsm()}
+          @click=${() => this.convertCurrentView()}
           ?disabled=${this.osmBusy}
           class="rounded-lg px-3 py-2 text-sm font-semibold bg-malibu-blue hover:bg-aquarius transition-colors disabled:opacity-50"
         >
           ${this.osmBusy
             ? translateText("map_editor.osm_loading")
-            : translateText("map_editor.osm_generate")}
+            : translateText("map_editor.osm_convert")}
         </button>
-        ${this.osmFoundBBox !== null ? this.renderOsmZoom() : ""}
         <p class="text-[10px] text-white/40 leading-tight">
           ${translateText("map_editor.osm_attribution")}
         </p>
-      </div>
-    `;
-  }
-
-  // Zoom the imported area tighter/wider around the found place (re-imports).
-  private renderOsmZoom(): TemplateResult {
-    return html`
-      <div class="flex items-center justify-between gap-2">
-        <span class="text-xs text-white/70"
-          >${translateText("map_editor.osm_area")}</span
-        >
-        <div class="flex items-center gap-1">
-          <button
-            title=${translateText("map_editor.osm_area_wider")}
-            @click=${() => this.changeOsmZoom(-1)}
-            ?disabled=${this.osmBusy || this.osmZoom <= -2}
-            class="w-8 h-8 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-40 text-lg leading-none"
-          >
-            −
-          </button>
-          <button
-            title=${translateText("map_editor.osm_area_tighter")}
-            @click=${() => this.changeOsmZoom(1)}
-            ?disabled=${this.osmBusy || this.osmZoom >= 3}
-            class="w-8 h-8 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-40 text-lg leading-none"
-          >
-            +
-          </button>
-        </div>
       </div>
     `;
   }
