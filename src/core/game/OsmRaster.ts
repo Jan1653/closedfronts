@@ -183,11 +183,14 @@ export function applyCoastlineSea(
   height: number,
   coastlines: ReadonlyArray<Ring>,
   sea: PaintTile,
+  barrierRadius = 0,
 ): { applied: boolean } {
   if (coastlines.length === 0) return { applied: false };
   const n = width * height;
 
-  // Coast cells act as the flood-fill barrier (and stay land = shoreline).
+  // Coast cells act as the flood-fill barrier (and stay land = shoreline). A
+  // thicker barrier closes gaps between separate coastline ways so the sea fill
+  // can't leak into the land on a coarse (large-area) grid.
   const barrier = new Uint8Array(n);
   rasterizeLinesInto(
     barrier,
@@ -196,12 +199,12 @@ export function applyCoastlineSea(
     height,
     coastlines,
     1 as PaintTile,
-    0,
+    barrierRadius,
   );
 
   const inBounds = (x: number, y: number) =>
     x >= 0 && y >= 0 && x < width && y < height;
-  const OFF = 2; // cells to step off the coast onto each side
+  const OFF = barrierRadius + 2; // cells to step off the coast onto each side
   const seaSeeds: number[] = [];
   const landSeeds: number[] = [];
   const seed = (arr: number[], x: number, y: number) => {

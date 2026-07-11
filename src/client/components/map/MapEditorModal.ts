@@ -44,11 +44,11 @@ const MAX_SIZE = 240;
 const DEFAULT_W = 120;
 const DEFAULT_H = 80;
 
-// Largest area the OSM import will convert (degrees). Bigger than this and the
-// grid is too coarse and coastlines leak — the user is asked to zoom in. Roughly
-// a large region / metro area, which is what plays well at 240 cells.
-const MAX_IMPORT_LON_SPAN = 2.2;
-const MAX_IMPORT_LAT_SPAN = 1.6;
+// Largest area the OSM import will convert (degrees). Generous — you can grab a
+// whole large region / small country. Only truly continental views (where the
+// grid gets hopelessly coarse) are refused with a zoom-in hint.
+const MAX_IMPORT_LON_SPAN = 8;
+const MAX_IMPORT_LAT_SPAN = 6;
 
 const clamp = (v: number, lo: number, hi: number) =>
   Math.max(lo, Math.min(hi, v));
@@ -464,7 +464,11 @@ export class MapEditorModal extends BaseModal {
       PaintTile.Water,
     );
     // Coastline → sea (guarded: leaves the map as land if the coast doesn't
-    // cleanly separate the area, so a coastal bbox never floods to all-water).
+    // cleanly separate the area, so a coastal bbox never floods to all-water). On
+    // a coarser (larger-area) grid, use a thicker coast barrier so gaps between
+    // coastline ways don't let the fill leak inland.
+    const lonSpan = bbox.maxLon - bbox.minLon;
+    const coastBarrier = lonSpan > 3 ? 2 : lonSpan > 1 ? 1 : 0;
     applyCoastlineSea(
       paint,
       bbox,
@@ -472,11 +476,13 @@ export class MapEditorModal extends BaseModal {
       height,
       layers.coastlines,
       PaintTile.Water,
+      coastBarrier,
     );
     // Clean speckles into solid areas before drawing thin rivers on top.
     const clean = denoisePaint(paint, width, height);
-    // Waterway centre-lines (rivers/streams) as continuous strokes so narrow
-    // rivers appear and never break into dots.
+    // Waterway centre-lines (rivers/streams) as continuous 1-cell strokes — thin
+    // so they read as rivers, not fat bands (wide rivers already come through as
+    // riverbank water areas).
     rasterizeLinesInto(
       clean,
       bbox,
@@ -484,7 +490,7 @@ export class MapEditorModal extends BaseModal {
       height,
       layers.waterways,
       PaintTile.Water,
-      width >= 120 ? 1 : 0,
+      0,
     );
     this.editingId = null;
     this.name = this.osmQuery.trim().slice(0, 40) || this.name;
