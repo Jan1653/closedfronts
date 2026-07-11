@@ -583,6 +583,22 @@ export class BuildPreviewController implements Controller {
 
   private requestConfirmStructure(e: MouseUpEvent): void {
     if (!this.ghostUnit && !this.uiState.ghostStructure) return;
+    // Mobile wall drag: the bottom-centre "Build" button confirms a line once
+    // both a start (first tap) and end (second tap) are set.
+    if (this.uiState.ghostStructure === UnitType.Wall) {
+      if (
+        this.uiState.wallDragStart !== null &&
+        this.uiState.mobilePlacementTile !== null
+      ) {
+        this.emitWallLine(
+          this.uiState.wallDragStart,
+          this.uiState.mobilePlacementTile,
+        );
+        this.resetWallDrag();
+        this.uiState.mobilePlacementTile = null;
+      }
+      return;
+    }
     if (this.isGhostReadyForConfirm()) {
       this.createStructure(e);
     } else {
@@ -591,8 +607,8 @@ export class BuildPreviewController implements Controller {
   }
 
   /**
-   * Wall drag-build click handler. First map click on buildable land sets the
-   * line start; the second click emits a wall-line build intent from the start
+   * Wall drag-build click handler (desktop). First map click on buildable land
+   * sets the line start; the second click builds the whole line from the start
    * to the clicked tile and keeps the wall armed for another line.
    */
   private handleWallDragClick(e: MouseUpEvent): void {
@@ -610,15 +626,25 @@ export class BuildPreviewController implements Controller {
     }
 
     // Second click: build the whole line from the start to here.
+    this.emitWallLine(this.uiState.wallDragStart, tileRef);
+    this.resetWallDrag();
+  }
+
+  private emitWallLine(startTile: TileRef, endTile: TileRef): void {
     this.eventBus.emit(
       new BuildUnitIntentEvent(
         UnitType.Wall,
-        tileRef,
+        endTile,
         undefined,
         undefined,
-        this.uiState.wallDragStart,
+        startTile,
       ),
     );
+  }
+
+  // Clear the in-progress wall drag and its preview, keeping the wall armed so
+  // another line can be drawn.
+  private resetWallDrag(): void {
     this.uiState.wallDragStart = null;
     this.view.updateWallPreview(null);
   }
@@ -674,13 +700,35 @@ export class BuildPreviewController implements Controller {
 
   // Mobile tap: move the ghost to the tapped tile and remember it so the
   // bottom-centre "Build" button knows a placement target exists. No confirm.
+  //
+  // Walls use a two-tap drag: the first tap sets the line start, the second sets
+  // the end (which enables the Build button). Re-tapping moves the end. The line
+  // preview follows via the ghost render loop (which reads the last tap pos).
   private onMobilePlacementTap(e: MobilePlacementTapEvent) {
     this.mousePos.x = e.x;
     this.mousePos.y = e.y;
     const tile = this.transformHandler.screenToWorldCoordinates(e.x, e.y);
-    this.uiState.mobilePlacementTile = this.game.isValidCoord(tile.x, tile.y)
+    const tileRef = this.game.isValidCoord(tile.x, tile.y)
       ? this.game.ref(tile.x, tile.y)
       : null;
+
+    if (this.uiState.ghostStructure === UnitType.Wall) {
+      if (tileRef === null) return;
+      if (this.uiState.wallDragStart === null) {
+        // First tap: anchor the start on placeable land; no end yet, so Build
+        // stays disabled until the second tap.
+        if (this.game.isLand(tileRef) && !this.game.isImpassable(tileRef)) {
+          this.uiState.wallDragStart = tileRef;
+          this.uiState.mobilePlacementTile = null;
+        }
+      } else {
+        // Second (or later) tap: set/move the line end.
+        this.uiState.mobilePlacementTile = tileRef;
+      }
+      return;
+    }
+
+    this.uiState.mobilePlacementTile = tileRef;
   }
 
   private createGhostStructure(type: PlayerBuildableUnitType | null) {

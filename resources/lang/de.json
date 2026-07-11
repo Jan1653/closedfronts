@@ -1753,7 +1753,9 @@
     "teams_title": "Teams"
   },
   "mobile_build": {
-    "build": "Bauen"
+    "build": "Bauen",
+    "wall_tap_end": "Ziel antippen",
+    "wall_tap_start": "Start antippen"
   },
   "mobile_select": {
     "select": "Auswählen"

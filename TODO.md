@@ -79,7 +79,10 @@ Reihenfolge laut Nutzer: **erst die einfachen/kritischen Sachen.** Alles gesamme
         `onMapClick`); halbtransparente Linien-Vorschau über den `WallPass`
         (zweiter Instanz-Buffer). Rechtsklick/Escape bricht ab (= entwaffnen).
         Mobile bleibt vorerst am alten Einzel-Tap-Pfad (unverändert).
-  - [ ] **Handy**: eigener Ziel-antippen + **Bauen**/**Abbrechen**-Flow.
+  - [x] **Handy**: Zwei-Tap-Flow (Start antippen → Ziel antippen → **Bauen**),
+        `MobileBuildControls` mit Wand-Hinweis + schlauem **Abbrechen** (bricht nur
+        die Linie ab, Werkzeug bleibt aktiv). Wand nicht mehr „×N"-zählbar.
+        DE/EN-Keys `mobile_build.wall_tap_start/end`.
   - [ ] **Live per Screenshot verifizieren** (auf diesem Host war der In-Game-
         Renderer via Browser-Pane zu langsam; vom User manuell zu testen).
 - [x] **Outline-Fix**: die 4-Bit-Nachbarmaske kannte nur orthogonale Nachbarn,

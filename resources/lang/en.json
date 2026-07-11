@@ -1187,7 +1187,9 @@
     "teams_title": "Teams"
   },
   "mobile_build": {
-    "build": "Build"
+    "build": "Build",
+    "wall_tap_end": "Tap the end",
+    "wall_tap_start": "Tap the start"
   },
   "mobile_select": {
     "select": "Select"
