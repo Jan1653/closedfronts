@@ -149,11 +149,12 @@ export class OsmMapPicker extends LitElement {
     );
     const n = Math.pow(2, z);
     const tiles: TemplateResult[] = [];
-    for (let ty = y0; ty <= y1; ty++) {
+    // Render one extra ring of tiles beyond the viewport (clipped by overflow)
+    // so the view is always fully covered — no dark gap stripes if the tile
+    // range is off by one. +1px size closes sub-pixel seams.
+    for (let ty = y0 - 1; ty <= y1 + 1; ty++) {
       if (ty < 0 || ty >= n) continue; // no tiles past the poles
-      for (let tx = x0; tx <= x1; tx++) {
-        // Round to whole pixels + add 1px of overlap so no dark seams/stripes
-        // show between tiles from sub-pixel positioning.
+      for (let tx = x0 - 1; tx <= x1 + 1; tx++) {
         const px = Math.round(offsetX + (tx - x0) * TILE_SIZE);
         const py = Math.round(offsetY + (ty - y0) * TILE_SIZE);
         const url = `${OSM_TILE}/${z}/${wrapTileX(tx, z)}/${ty}.png`;
@@ -161,6 +162,8 @@ export class OsmMapPicker extends LitElement {
           <img
             src=${url}
             draggable="false"
+            @error=${(e: Event) =>
+              ((e.target as HTMLElement).style.visibility = "hidden")}
             style="position:absolute; left:${px}px; top:${py}px; width:${TILE_SIZE +
             1}px; height:${TILE_SIZE +
             1}px; pointer-events:none; user-select:none;"
@@ -175,7 +178,7 @@ export class OsmMapPicker extends LitElement {
     return html`
       <div class="flex flex-col gap-2">
         <div
-          class="osm-map-view relative w-full h-56 overflow-hidden rounded-md bg-slate-800 border border-white/10 cursor-grab active:cursor-grabbing touch-none"
+          class="osm-map-view relative w-full h-56 overflow-hidden rounded-md bg-[#dfe3e8] border border-white/10 cursor-grab active:cursor-grabbing touch-none"
           @pointerdown=${this.onPointerDown}
           @pointermove=${this.onPointerMove}
           @pointerup=${this.onPointerUp}
