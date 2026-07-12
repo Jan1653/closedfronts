@@ -137,8 +137,8 @@ export class OsmMapPicker extends LitElement {
     this.zoomBy(e.deltaY < 0 ? 1 : -1);
   };
 
-  private renderTiles(): TemplateResult[] {
-    if (this.viewW === 0 || this.viewH === 0) return [];
+  private renderTiles(): TemplateResult {
+    if (this.viewW === 0 || this.viewH === 0) return html``;
     const z = this.zoom;
     const { x0, y0, x1, y1, offsetX, offsetY } = tilesForViewport(
       this.centerLon,
@@ -148,30 +148,33 @@ export class OsmMapPicker extends LitElement {
       this.viewH,
     );
     const n = Math.pow(2, z);
-    const tiles: TemplateResult[] = [];
-    // Render one extra ring of tiles beyond the viewport (clipped by overflow)
-    // so the view is always fully covered — no dark gap stripes if the tile
-    // range is off by one. +1px size closes sub-pixel seams.
+    const imgs: TemplateResult[] = [];
+    // One extra ring beyond the viewport so it's always fully covered. Tiles sit
+    // at EXACT integer multiples of TILE_SIZE inside a single pane; the fractional
+    // scroll offset is applied once as a transform on the pane. That way tiles
+    // abut pixel-perfectly (no gap stripes) — the standard slippy-map technique.
     for (let ty = y0 - 1; ty <= y1 + 1; ty++) {
       if (ty < 0 || ty >= n) continue; // no tiles past the poles
       for (let tx = x0 - 1; tx <= x1 + 1; tx++) {
-        const px = Math.round(offsetX + (tx - x0) * TILE_SIZE);
-        const py = Math.round(offsetY + (ty - y0) * TILE_SIZE);
+        const lx = (tx - x0) * TILE_SIZE;
+        const ly = (ty - y0) * TILE_SIZE;
         const url = `${OSM_TILE}/${z}/${wrapTileX(tx, z)}/${ty}.png`;
-        tiles.push(html`
+        imgs.push(html`
           <img
             src=${url}
             draggable="false"
             @error=${(e: Event) =>
               ((e.target as HTMLElement).style.visibility = "hidden")}
-            style="position:absolute; left:${px}px; top:${py}px; width:${TILE_SIZE +
-            1}px; height:${TILE_SIZE +
-            1}px; pointer-events:none; user-select:none;"
+            style="position:absolute; left:${lx}px; top:${ly}px; width:${TILE_SIZE}px; height:${TILE_SIZE}px; max-width:none; max-height:none; pointer-events:none; user-select:none;"
           />
         `);
       }
     }
-    return tiles;
+    return html`<div
+      style="position:absolute; left:0; top:0; transform: translate(${offsetX}px, ${offsetY}px);"
+    >
+      ${imgs}
+    </div>`;
   }
 
   render(): TemplateResult {
