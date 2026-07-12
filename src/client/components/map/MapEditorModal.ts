@@ -9,6 +9,7 @@ import type { GeoBBox } from "../../../core/game/OsmRaster";
 import {
   applyCoastlineSea,
   applyElevation,
+  applySeaFromElevation,
   denoisePaint,
   gridSizeForBBox,
   rasterizeLinesInto,
@@ -441,8 +442,11 @@ export class MapEditorModal extends BaseModal {
     const paint = new Uint8Array(width * height).fill(PaintTile.Plains);
     if (dem) {
       // Genuine height variation from the terrain: Plains→Highland→Mountain by
-      // locally-normalised elevation (+ Peak on real alpine ground).
+      // locally-normalised elevation.
       applyElevation(paint, dem);
+      // Sea straight from the elevation (≤ 0 m) — robust where the coastline
+      // flood-fill leaks (river mouths, harbours, open bbox edges).
+      applySeaFromElevation(paint, dem, PaintTile.Water);
     } else {
       // No DEM available → fall back to land-cover as a rough height proxy
       // (forest → Highland, bare rock/glacier → Mountain).
@@ -483,23 +487,22 @@ export class MapEditorModal extends BaseModal {
       layers.water,
       PaintTile.Water,
     );
-    // Coastline → sea (guarded: leaves the map as land if the coast doesn't
-    // cleanly separate the area, so a coastal bbox never floods to all-water). On
-    // a coarser (larger-area) grid, use a thicker coast barrier so gaps between
-    // coastline ways don't let the fill leak inland.
-    const lonSpan = bbox.maxLon - bbox.minLon;
-    // Thicken only slightly on large (coarse) grids — a too-thick barrier seals
-    // off narrow straits/bays (e.g. Gibraltar) and leaves no sea to fill.
-    const coastBarrier = lonSpan > 2 ? 1 : 0;
-    applyCoastlineSea(
-      paint,
-      bbox,
-      width,
-      height,
-      layers.coastlines,
-      PaintTile.Water,
-      coastBarrier,
-    );
+    // Only when there's no DEM: fall back to the coastline flood-fill for sea
+    // (guarded — leaves the map as land if the coast doesn't cleanly separate the
+    // area). With a DEM, applySeaFromElevation above already did the sea robustly.
+    if (!dem) {
+      const lonSpan = bbox.maxLon - bbox.minLon;
+      const coastBarrier = lonSpan > 2 ? 1 : 0;
+      applyCoastlineSea(
+        paint,
+        bbox,
+        width,
+        height,
+        layers.coastlines,
+        PaintTile.Water,
+        coastBarrier,
+      );
+    }
     // Clean speckles into solid areas before drawing thin rivers on top.
     const clean = denoisePaint(paint, width, height);
     // Waterway centre-lines (rivers/streams) as continuous 1-cell strokes — thin

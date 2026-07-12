@@ -365,6 +365,25 @@ export function applyElevation(
   }
 }
 
+/**
+ * Mark sea from the DEM: any cell at or below `seaLevel` metres becomes water.
+ * Far more robust than flood-filling from coastline ways (which leak through the
+ * gaps real coasts have at river mouths, harbours and the bbox edge). Terrarium
+ * encodes open water as 0 m and land rises above it, so a 0 m threshold cleanly
+ * separates the two. NaN (no-data) cells are left as-is. Mutates `paint`.
+ */
+export function applySeaFromElevation(
+  paint: Uint8Array,
+  elevation: Float32Array,
+  sea: PaintTile,
+  seaLevel = 0,
+): void {
+  for (let i = 0; i < paint.length; i++) {
+    const e = elevation[i];
+    if (!Number.isNaN(e) && e <= seaLevel) paint[i] = sea;
+  }
+}
+
 /** Longitude/latitude → fractional grid cell (x right, y down = south). */
 export function lonLatToCell(
   bbox: GeoBBox,
