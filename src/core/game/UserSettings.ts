@@ -20,6 +20,9 @@ export function getDefaultKeybinds(isMac: boolean): Record<string, string> {
     buildAtomBomb: "Digit8",
     buildHydrogenBomb: "Digit9",
     buildMIRV: "Digit0",
+    // The number row (1..0) is full, so the fourth bomb lands on a nearby free
+    // letter key. Rebindable in settings like the others.
+    buildElectricBomb: "KeyI",
     attackRatioDown: "KeyT",
     attackRatioUp: "KeyY",
     boatAttack: "KeyB",

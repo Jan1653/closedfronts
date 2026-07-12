@@ -1,5 +1,6 @@
 import { html, LitElement } from "lit";
 import { customElement, state } from "lit/decorators.js";
+import { assetUrl } from "../../../core/AssetUrls";
 import { EventBus } from "../../../core/EventBus";
 import {
   BuildableUnit,
@@ -13,8 +14,10 @@ import { renderNumber, translateText } from "../../Utils";
 import { GameView } from "../../view";
 import { flattenedBuildTable } from "./BuildMenu";
 
-// The four bombs collapse into one "Bombs" button + fly-out (same order and
-// remembered selection as the desktop unit-display).
+const goldCoinIcon = assetUrl("images/GoldCoinIcon.svg");
+
+// The four bombs collapse into one "Bombs" button + centred picker (same order
+// and remembered selection as the desktop unit-display).
 const BOMB_ORDER: PlayerBuildableUnitType[] = [
   UnitType.ElectricBomb,
   UnitType.AtomBomb,
@@ -26,8 +29,9 @@ const SELECTED_BOMB_KEY = "unitDisplay.selectedBomb";
 
 /**
  * Mobile-only vertical build bar pinned to the right edge. Tapping an item arms
- * a build (uiState.ghostStructure); the player then taps the map to position
- * the ghost and confirms with the bottom-centre <mobile-build-controls>. Hidden
+ * a build (uiState.ghostStructure); the ghost then anchors to the screen centre
+ * and the player pans the map under it to aim, confirming with the bottom-centre
+ * <mobile-build-controls>. The four bombs open a centred picker instead. Hidden
  * on desktop (the wider unit-display bar handles that).
  */
 @customElement("mobile-build-bar")
@@ -206,7 +210,7 @@ export class MobileBuildBar extends LitElement implements Controller {
 
     return html`
       <div
-        class="lg:hidden flex flex-col gap-1 max-h-[70vh] overflow-y-auto p-1 rounded-l-lg bg-gray-800/92 backdrop-blur-sm shadow-lg pointer-events-auto"
+        class="lg:hidden flex flex-col gap-1 max-h-[80vh] overflow-y-auto overflow-x-hidden p-1 rounded-l-lg bg-gray-800/92 backdrop-blur-sm shadow-lg pointer-events-auto"
       >
         ${items.map((item) =>
           this.renderTile(
@@ -219,6 +223,9 @@ export class MobileBuildBar extends LitElement implements Controller {
         )}
         ${bombItems.length > 0 ? this.renderBombButton(bombItems) : null}
       </div>
+      ${this.bombMenuOpen && bombItems.length > 0
+        ? this.renderBombPicker(bombItems)
+        : null}
     `;
   }
 
@@ -230,40 +237,92 @@ export class MobileBuildBar extends LitElement implements Controller {
     }[],
   ) {
     const armed = this.isBombArmed();
+    // Bombs need a finished missile silo; grey the whole button out until then
+    // so it's clear (rather than "nothing happens") the bombs aren't unlocked.
+    const unlocked = bombItems.some((b) => this.canBuild(b.unitType));
     const sel =
       bombItems.find((b) => b.unitType === this.selectedBomb) ?? bombItems[0];
     return html`
-      <div class="relative shrink-0">
-        <button
-          class="relative w-11 h-11 flex items-center justify-center rounded-md border transition-colors ${armed ||
-          this.bombMenuOpen
-            ? "border-sky-300 bg-sky-400/20 ring-1 ring-sky-300"
-            : "border-slate-500"}"
-          title=${translateText("unit_type.bombs")}
-          @click=${() => this.toggleBombMenu()}
+      <button
+        class="relative w-11 h-11 shrink-0 flex items-center justify-center rounded-md border transition-colors ${armed ||
+        this.bombMenuOpen
+          ? "border-sky-300 bg-sky-400/20 ring-1 ring-sky-300"
+          : "border-slate-500"} ${unlocked ? "" : "opacity-40"}"
+        title=${translateText("unit_type.bombs")}
+        @click=${() => {
+          if (unlocked) this.toggleBombMenu();
+        }}
+      >
+        <img src=${sel.icon} width="24" height="24" class="-mt-1" />
+        <span
+          class="absolute bottom-0 inset-x-0 text-[8px] leading-none text-center font-bold text-white bg-black/55 rounded-b-md py-px truncate"
+          >${translateText("unit_type.bombs")}</span
         >
-          <img src=${sel.icon} width="24" height="24" class="-mt-1" />
-          <span
-            class="absolute bottom-0 inset-x-0 text-[8px] leading-none text-center font-bold text-white bg-black/55 rounded-b-md py-px truncate"
-            >${translateText("unit_type.bombs")}</span
-          >
-        </button>
-        ${this.bombMenuOpen
-          ? html`<div
-              class="absolute right-full top-0 mr-1 flex flex-col gap-1 p-1 rounded-md bg-gray-800/95 backdrop-blur-sm shadow-lg"
-            >
-              ${bombItems.map((b) =>
-                this.renderTile(
-                  b.unitType,
-                  b.icon,
-                  b.key,
-                  this.selectedBomb === b.unitType,
-                  () => this.selectBomb(b.unitType),
-                ),
-              )}
-            </div>`
-          : null}
+      </button>
+    `;
+  }
+
+  // Centred bomb chooser (opened by the "Bombs" button). A full-screen overlay
+  // instead of a cramped side fly-out — each bomb shows its name + price, greyed
+  // when it can't be built. Tapping one arms it (then pan-to-place + Build).
+  private renderBombPicker(
+    bombItems: {
+      unitType: PlayerBuildableUnitType;
+      icon: string;
+      key?: string;
+    }[],
+  ) {
+    return html`
+      <div
+        class="lg:hidden fixed inset-0 z-[300] flex items-center justify-center bg-black/50 pointer-events-auto"
+        @click=${(e: MouseEvent) => {
+          if (e.target === e.currentTarget) {
+            this.bombMenuOpen = false;
+            this.requestUpdate();
+          }
+        }}
+      >
+        <div
+          class="flex flex-col gap-2 p-3 rounded-xl bg-gray-800/95 backdrop-blur-sm shadow-2xl max-w-[92vw]"
+        >
+          <div class="text-white font-bold text-center text-sm">
+            ${translateText("build_menu.select_bomb")}
+          </div>
+          <div class="flex flex-wrap justify-center gap-2">
+            ${bombItems.map((b) => this.renderBombCard(b))}
+          </div>
+        </div>
       </div>
+    `;
+  }
+
+  private renderBombCard(b: {
+    unitType: PlayerBuildableUnitType;
+    icon: string;
+    key?: string;
+  }) {
+    const enabled = this.canBuild(b.unitType);
+    const active = this.selectedBomb === b.unitType;
+    return html`
+      <button
+        class="relative w-24 flex flex-col items-center gap-1 p-2 rounded-lg border transition-colors ${active
+          ? "border-sky-300 bg-sky-400/20"
+          : "border-slate-500 bg-slate-700/40"} ${enabled ? "" : "opacity-40"}"
+        @click=${() => this.selectBomb(b.unitType)}
+      >
+        <img src=${b.icon} width="34" height="34" />
+        <span
+          class="text-white text-xs font-semibold text-center leading-tight"
+          >${b.key ? translateText(b.key) : ""}</span
+        >
+        <span
+          class="flex items-center gap-1 text-yellow-300 text-xs font-bold tabular-nums"
+        >
+          <img src=${goldCoinIcon} width="11" height="11" />${renderNumber(
+            this.cost(b.unitType),
+          )}
+        </span>
+      </button>
     `;
   }
 }

@@ -27,6 +27,7 @@ import {
   MouseMoveEvent,
   MouseUpEvent,
 } from "../InputHandler";
+import { Platform } from "../Platform";
 import { MapRenderer, buildNukeTrajectory } from "../render/gl";
 import type { SAMInfo } from "../render/gl/utils/NukeTrajectory";
 import type { GhostPreviewData } from "../render/types";
@@ -158,6 +159,9 @@ export class BuildPreviewController implements Controller {
     // integer tile coord centers on that tile), so we subtract 0.5 here to
     // place the icon exactly under the cursor.
     const cursorLoop = () => {
+      // Mobile: keep the ghost pinned to the screen centre so panning the map
+      // aims it (done every frame so it tracks smoothly, not just per tick).
+      this.updateMobileCenterAnchor();
       const ghost = this.lastGhostData;
       const traj = this.nukeTrajectoryStatic;
       if (ghost !== null || traj !== null) {
@@ -205,10 +209,52 @@ export class BuildPreviewController implements Controller {
   }
 
   tick() {
+    // Keep the mobile centre-anchor's placement tile current before the ghost
+    // is validated/rendered this tick.
+    this.updateMobileCenterAnchor();
     // Re-query buildables periodically (world state can change — tiles may
     // become buildable as troops/territory move).
     this.syncGhostState();
     this.renderGhost();
+  }
+
+  /**
+   * Mobile build placement: instead of tapping a tile, the ghost is anchored to
+   * the centre of the screen and the player pans the map under it to aim (there
+   * is no hover on touch). Each frame we point our virtual cursor at the viewport
+   * centre and remember the tile there as the placement target, so the bottom
+   * "Build" button confirms at the centre. Walls keep their own two-tap line
+   * flow; desktop (mouse) keeps click-to-place.
+   */
+  private updateMobileCenterAnchor(): void {
+    if (!this.isTouchPlacement()) return;
+    const type = this.uiState.ghostStructure;
+    if (type === null || type === UnitType.Wall) return;
+    const rect = this.transformHandler.boundingRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    this.mousePos.x = cx;
+    this.mousePos.y = cy;
+    const tile = this.transformHandler.screenToWorldCoordinates(cx, cy);
+    if (
+      this.game.isValidCoord(tile.x, tile.y) &&
+      !this.game.isImpassable(this.game.ref(tile.x, tile.y))
+    ) {
+      this.uiState.mobilePlacementTile = this.game.ref(tile.x, tile.y);
+    } else {
+      // Off-map / impassable under the centre — no valid target, so the Build
+      // button greys out until the player pans onto solid ground.
+      this.uiState.mobilePlacementTile = null;
+    }
+  }
+
+  // Touch placement flow applies on phones/tablets (not a narrow desktop window
+  // with a mouse, which keeps click-to-place).
+  private isTouchPlacement(): boolean {
+    return (
+      !Platform.isDesktopWidth &&
+      (navigator.maxTouchPoints > 0 || "ontouchstart" in window)
+    );
   }
 
   /**
@@ -727,6 +773,11 @@ export class BuildPreviewController implements Controller {
       }
       return;
     }
+
+    // Non-wall on touch: the ghost is anchored to the screen centre and aimed by
+    // panning, so a map tap must not move it (updateMobileCenterAnchor owns the
+    // placement tile). Only the fallback (mouse) path positions by tap.
+    if (this.isTouchPlacement()) return;
 
     this.uiState.mobilePlacementTile = tileRef;
   }

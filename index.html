@@ -350,9 +350,11 @@
     </div>
 
     <!-- Mobile build: item bar (right edge) + placement controls (bottom center).
-         Both render nothing on desktop / out of game. -->
+         Both render nothing on desktop / out of game. Uses a full-height flex
+         column (NOT translate-y) so the bar's centred bomb-picker overlay can be
+         position:fixed to the viewport — a transformed ancestor would trap it. -->
     <div
-      class="fixed right-0 top-1/2 -translate-y-1/2 z-[210] pointer-events-none"
+      class="fixed right-0 inset-y-0 z-[210] pointer-events-none flex flex-col justify-center"
       style="padding-right: env(safe-area-inset-right)"
     >
       <mobile-build-bar></mobile-build-bar>

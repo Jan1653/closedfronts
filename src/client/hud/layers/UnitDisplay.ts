@@ -33,12 +33,44 @@ const oilPumpIcon = assetUrl("images/OilPumpIconWhite.svg");
 const tollStationIcon = assetUrl("images/TollStationIconWhite.svg");
 
 // The four bombs collapse into one "Bombs" button with a sub-menu. Order per
-// design: Electric, Atom, Hydrogen, MIRV.
-const BOMBS: { type: PlayerBuildableUnitType; icon: string; key: string }[] = [
-  { type: UnitType.ElectricBomb, icon: electricBombIcon, key: "electric_bomb" },
-  { type: UnitType.AtomBomb, icon: atomBombIcon, key: "atom_bomb" },
-  { type: UnitType.HydrogenBomb, icon: hydrogenBombIcon, key: "hydrogen_bomb" },
-  { type: UnitType.MIRV, icon: mirvIcon, key: "mirv" },
+// design: Electric, Atom, Hydrogen, MIRV. Each carries its build-keybind action
+// + default key so the sub-menu can show the hotkey (they'd otherwise be
+// invisible, hidden behind the "Bombs" button).
+const BOMBS: {
+  type: PlayerBuildableUnitType;
+  icon: string;
+  key: string;
+  keybind: string;
+  defaultKey: string;
+}[] = [
+  {
+    type: UnitType.ElectricBomb,
+    icon: electricBombIcon,
+    key: "electric_bomb",
+    keybind: "buildElectricBomb",
+    defaultKey: "I",
+  },
+  {
+    type: UnitType.AtomBomb,
+    icon: atomBombIcon,
+    key: "atom_bomb",
+    keybind: "buildAtomBomb",
+    defaultKey: "8",
+  },
+  {
+    type: UnitType.HydrogenBomb,
+    icon: hydrogenBombIcon,
+    key: "hydrogen_bomb",
+    keybind: "buildHydrogenBomb",
+    defaultKey: "9",
+  },
+  {
+    type: UnitType.MIRV,
+    icon: mirvIcon,
+    key: "mirv",
+    keybind: "buildMIRV",
+    defaultKey: "0",
+  },
 ];
 const BOMB_TYPES: ReadonlySet<PlayerBuildableUnitType> = new Set(
   BOMBS.map((b) => b.type),
@@ -70,6 +102,7 @@ export class UnitDisplay extends LitElement implements Controller {
   private _waterTollStation = 0;
   private allDisabled = false;
   private _hoveredUnit: PlayerBuildableUnitType | null = null;
+  private _hoveredBomb: PlayerBuildableUnitType | null = null;
   private bombMenuOpen = false;
   private selectedBomb: PlayerBuildableUnitType = loadSelectedBomb();
 
@@ -401,17 +434,57 @@ export class UnitDisplay extends LitElement implements Controller {
               ${bombs.map((b) => {
                 const enabled = this.canBuild(b.type);
                 const active = this.selectedBomb === b.type;
-                return html`<button
-                  class="w-9 h-9 flex items-center justify-center rounded border transition-colors ${active
-                    ? "border-sky-300 bg-sky-400/20"
-                    : "border-slate-500 hover:bg-gray-700"} ${enabled
-                    ? ""
-                    : "opacity-40"}"
-                  title=${translateText("unit_type." + b.key)}
-                  @click=${() => this.selectBomb(b.type)}
+                const hovered = this._hoveredBomb === b.type;
+                const hotkey = (this.keybinds[b.keybind]?.key ?? b.defaultKey)
+                  .replace("Digit", "")
+                  .replace("Key", "")
+                  .toUpperCase();
+                return html`<div
+                  class="relative flex"
+                  @mouseenter=${() => {
+                    this._hoveredBomb = b.type;
+                    this.requestUpdate();
+                  }}
+                  @mouseleave=${() => {
+                    this._hoveredBomb = null;
+                    this.requestUpdate();
+                  }}
                 >
-                  <img src=${b.icon} class="size-5" />
-                </button>`;
+                  ${hovered
+                    ? html`<div
+                        class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 text-gray-200 text-center w-max text-xs bg-gray-800/95 backdrop-blur-xs rounded-sm p-1 z-[120] shadow-lg pointer-events-none"
+                      >
+                        <div class="font-bold text-sm mb-1">
+                          ${translateText("unit_type." + b.key)}${hotkey
+                            ? ` [${hotkey}]`
+                            : ""}
+                        </div>
+                        <div class="flex items-center justify-center gap-1">
+                          <img src=${goldCoinIcon} width="13" height="13" />
+                          <span class="text-yellow-300"
+                            >${renderNumber(this.cost(b.type))}</span
+                          >
+                        </div>
+                      </div>`
+                    : null}
+                  <button
+                    class="relative w-9 h-9 flex items-center justify-center rounded border transition-colors ${active
+                      ? "border-sky-300 bg-sky-400/20"
+                      : "border-slate-500 hover:bg-gray-700"} ${enabled
+                      ? ""
+                      : "opacity-40"}"
+                    title=${translateText("unit_type." + b.key)}
+                    @click=${() => this.selectBomb(b.type)}
+                  >
+                    <img src=${b.icon} class="size-5" />
+                    ${hotkey
+                      ? html`<span
+                          class="absolute top-0 left-0.5 text-[9px] leading-none text-gray-400 pointer-events-none"
+                          >${hotkey}</span
+                        >`
+                      : null}
+                  </button>
+                </div>`;
               })}
             </div>`
           : null}

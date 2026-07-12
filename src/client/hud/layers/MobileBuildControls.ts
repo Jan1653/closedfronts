@@ -24,8 +24,8 @@ const SINGLE_ONLY: ReadonlySet<UnitType> = new Set<UnitType>([
 /**
  * Mobile-only bottom-centre controls shown while a build is armed
  * (uiState.ghostStructure). Lets the player pick a quantity, then confirm
- * ("Build") placement at the tapped tile or cancel. Hidden on desktop, where a
- * click places directly.
+ * ("Build") placement at the screen-centre tile (aimed by panning the map) or
+ * cancel. Hidden on desktop, where a click places directly.
  */
 @customElement("mobile-build-controls")
 export class MobileBuildControls extends LitElement implements Controller {

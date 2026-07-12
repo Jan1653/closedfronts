@@ -519,6 +519,16 @@ export class UserSettingModal extends BaseModal {
       ></setting-keybind>
 
       <setting-keybind
+        action="buildElectricBomb"
+        label=${translateText("user_setting.build_electric_bomb")}
+        description=${translateText("user_setting.build_electric_bomb_desc")}
+        defaultKey=${this.defaultKeybinds.buildElectricBomb}
+        .value=${this.getKeyValue("buildElectricBomb")}
+        .display=${this.getKeyChar("buildElectricBomb")}
+        @change=${this.handleKeybindChange}
+      ></setting-keybind>
+
+      <setting-keybind
         action="buildMIRV"
         label=${translateText("user_setting.build_mirv")}
         description=${translateText("user_setting.build_mirv_desc")}

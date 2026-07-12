@@ -1602,6 +1602,8 @@
     "build_controls": "Build Controls",
     "build_defense_post": "Build Defense Post",
     "build_defense_post_desc": "Build a Defense Post under your cursor.",
+    "build_electric_bomb": "Build Electric Bomb",
+    "build_electric_bomb_desc": "Build an Electric Bomb under your cursor.",
     "build_factory": "Build Factory",
     "build_factory_desc": "Build a Factory under your cursor.",
     "build_hydrogen_bomb": "Build Hydrogen Bomb",

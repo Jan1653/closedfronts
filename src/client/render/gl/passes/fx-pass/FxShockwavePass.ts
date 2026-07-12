@@ -217,6 +217,54 @@ export class FxShockwavePass {
     });
   }
 
+  /**
+   * Electric-bomb detonation: no fireball. A crackling EMP shockwave (the
+   * "Druckwelle") plus a burst of electric-blue sparks (the "Blitzchen") riding
+   * outward with the front. Hardcoded electric palette — this is the bomb's own
+   * signature look, not a firing-player cosmetic.
+   */
+  pushElectricShockwave(x: number, y: number, nukeRadius: number): void {
+    const fx = this.settings.fx;
+    const now = this.timeFn();
+    const maxRadius = nukeRadius * fx.nukeShockwaveRadiusFactor;
+
+    // Electric palette: cyan → electric blue → near-white flare.
+    const CYAN: RGB = [0.35, 0.85, 1.0];
+    const BLUE: RGB = [0.45, 0.6, 1.0];
+    const FLASH: RGB = [0.9, 0.97, 1.0];
+
+    // Crackling EMP ring (style 1) — the shockwave itself, with lightning arcs.
+    this.active.push({
+      x,
+      y,
+      startMs: now,
+      durationMs: fx.nukeShockwaveDurationMs,
+      maxRadius,
+      style: 1,
+      colors: [CYAN, BLUE, FLASH],
+      speed: 1.4, // a touch faster than a nuke ring — reads as a snap of energy
+      transitionSpeed: 3, // cycle through the palette so it shimmers
+      thickness: Math.max(3, maxRadius * 0.07),
+      cell: 0,
+    });
+
+    // Spark burst (style 2) — glints scatter outward like arcing electricity.
+    const density = 110;
+    this.active.push({
+      x,
+      y,
+      startMs: now,
+      durationMs: fx.nukeShockwaveDurationMs * 1.1,
+      maxRadius: maxRadius * 0.85,
+      style: 2,
+      colors: [CYAN, FLASH],
+      speed: 1.8,
+      transitionSpeed: 0,
+      thickness: Math.max(1.5, maxRadius * 0.03),
+      cell: Math.sqrt((2 * Math.PI) / 3 / density),
+    });
+  }
+
   // -------------------------------------------------------------------------
   // Tick
   // -------------------------------------------------------------------------

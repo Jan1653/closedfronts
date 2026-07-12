@@ -15,10 +15,21 @@ import type {
   DeadUnitFx,
   RendererConfig,
 } from "../../../types";
+import { UT_ELECTRIC_BOMB } from "../../../types";
 import type { RenderSettings } from "../../RenderSettings";
 import { FxAttackRingPass } from "./FxAttackRingPass";
 import { FxShockwavePass } from "./FxShockwavePass";
-import { FxSpritePass, NUKE_EXPLOSION_RADII } from "./FxSpritePass";
+import {
+  FX_SAM_EXPLOSION,
+  FxSpritePass,
+  NUKE_EXPLOSION_RADII,
+} from "./FxSpritePass";
+
+// Electric bomb's visual blast size (world tiles) — matches the atom bomb's
+// scatter radius (their gameplay footprints are the same). Not in
+// NUKE_EXPLOSION_RADII because the electric bomb spawns its own EMP look
+// instead of the fireball + fire/smoke debris the entries there drive.
+const ELECTRIC_EXPLOSION_RADIUS = 70;
 
 export type { AttackRingInput } from "../../../types";
 
@@ -57,6 +68,18 @@ export class FxPass {
     const typeName = unit.unitType;
     const x = unit.pos % this.mapW;
     const y = (unit.pos - x) / this.mapW;
+
+    // Electric bomb: an electric burst (EMP shockwave + sparks), no fireball.
+    if (typeName === UT_ELECTRIC_BOMB) {
+      if (unit.reachedTarget) {
+        this.shockwavePass.pushElectricShockwave(x, y, ELECTRIC_EXPLOSION_RADIUS);
+      } else {
+        // Intercepted mid-flight: same as the other nukes (SAM burst + ring).
+        this.spritePass.pushFx(x, y, FX_SAM_EXPLOSION, now);
+        this.shockwavePass.pushSAMShockwave(x, y);
+      }
+      return;
+    }
 
     const nukeRadius = NUKE_EXPLOSION_RADII[typeName];
     if (nukeRadius !== undefined) {

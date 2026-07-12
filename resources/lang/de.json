@@ -985,6 +985,8 @@
     "build_factory_desc": "Baue eine Fabrik unter deinem Cursor.",
     "build_defense_post": "Verteidigungsposten bauen",
     "build_defense_post_desc": "Baue einen Verteidigungsposten unter deinem Cursor.",
+    "build_electric_bomb": "Elektrobombe bauen",
+    "build_electric_bomb_desc": "Baue eine Elektrobombe unter deinem Cursor.",
     "build_port": "Hafen bauen",
     "build_port_desc": "Baue einen Hafen unter deinem Cursor.",
     "build_warship": "Kriegsschiff bauen",
