@@ -752,6 +752,16 @@ export class GameImpl implements Game {
       previousOwner._tiles.delete(tile);
       previousOwner._borderTiles.delete(tile);
     }
+    // Oil billing (see PlayerImpl.updateOil): taking a player's tile costs
+    // more fuel than rolling over wilderness. Re-conquering a tile you
+    // already own is not expansion and is not billed.
+    if (previousOwner !== owner) {
+      if (previousOwner.isPlayer()) {
+        owner._conqueredFromPlayers++;
+      } else {
+        owner._conqueredWilderness++;
+      }
+    }
     this._map.setOwnerID(tile, owner.smallID());
     owner._tiles.add(tile);
     owner._lastTileChange = this._ticks;

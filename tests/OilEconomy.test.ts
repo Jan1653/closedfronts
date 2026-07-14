@@ -200,10 +200,11 @@ describe("Oil economy", () => {
     expect(gained).toBeGreaterThan(0);
     player.updateOil();
 
-    // No pump: oil dropped by (at least) the expansion cost of the new tiles.
+    // No pump: oil dropped by (at least) the expansion cost of the new tiles
+    // (all conquered from wilderness, so the cheap rate applies).
     expect(player.oil()).toBeLessThan(before);
     expect(before - player.oil()).toBeGreaterThanOrEqual(
-      gained * game.config().oilExpansionCostPerTile(),
+      gained * game.config().oilExpansionCostWilderness(),
     );
   });
 

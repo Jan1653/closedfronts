@@ -107,10 +107,14 @@ export class PlayerImpl implements Player {
   private _gold: bigint;
   private _troops: bigint;
   private _oil: number = 0;
-  // Tiles owned at the previous updateOil, to charge oil for expansion. -1 means
-  // "not yet baselined" (first update just records the count, no charge — so the
-  // spawn/setup territory isn't billed, only ongoing growth).
-  private _lastTilesOwned: number = -1;
+  // Tiles conquered since the last updateOil, split by what they were taken
+  // from (wilderness vs another player) because the two are billed at
+  // different oil rates. Incremented by GameImpl.conquer(), hence public.
+  public _conqueredWilderness: number = 0;
+  public _conqueredFromPlayers: number = 0;
+  // False until the first updateOil ran: the first update only clears the
+  // counters, so spawn/setup territory isn't billed — only ongoing growth.
+  private _oilExpansionBaselined = false;
 
   // Rücksender: captured bombs, keyed by nuke UnitType. Each entry lets the
   // player launch one bomb of that type for free (see buildUnit).
@@ -1268,14 +1272,21 @@ export class PlayerImpl implements Player {
     const production = pumpLevels * config.oilProductionPerPump(this);
     const consumption = config.oilConsumptionRate(this);
 
-    // Expanding burns fuel: charge oil for tiles gained since the last tick.
-    // The first update just records the baseline so spawn/setup land isn't
-    // billed — only ongoing conquest of wilderness/enemy tiles.
-    const tiles = this.numTilesOwned();
-    if (this._lastTilesOwned < 0) this._lastTilesOwned = tiles;
-    const gained = Math.max(0, tiles - this._lastTilesOwned);
-    this._lastTilesOwned = tiles;
-    const expansion = gained * config.oilExpansionCostPerTile();
+    // Expanding burns fuel: charge oil per tile conquered since the last
+    // update. Wilderness is cheap to roll over; land taken from another
+    // player costs double (see the Config rates). The first update only
+    // clears the counters so spawn/setup land isn't billed.
+    const wilderness = this._conqueredWilderness;
+    const fromPlayers = this._conqueredFromPlayers;
+    this._conqueredWilderness = 0;
+    this._conqueredFromPlayers = 0;
+    let expansion =
+      wilderness * config.oilExpansionCostWilderness() +
+      fromPlayers * config.oilExpansionCostConquest();
+    if (!this._oilExpansionBaselined) {
+      this._oilExpansionBaselined = true;
+      expansion = 0;
+    }
 
     const cap = config.maxOil(this);
     let next = this._oil + production - consumption - expansion;

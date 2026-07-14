@@ -1003,11 +1003,16 @@ export class Config {
     return n;
   }
 
-  // Oil burned per tile conquered (expansion into wilderness / enemy land).
-  // Makes actively growing cost fuel on top of the passive size upkeep, so a
-  // war machine has to keep pumping to keep advancing.
-  oilExpansionCostPerTile(): number {
-    return 10;
+  // Oil burned per tile conquered. Makes actively growing cost fuel on top of
+  // the passive size upkeep, so a war machine has to keep pumping to keep
+  // advancing. Rolling over unowned wilderness is cheap; taking land from
+  // another player (nation, bot or human) burns twice as much.
+  oilExpansionCostWilderness(): number {
+    return 2.5;
+  }
+
+  oilExpansionCostConquest(): number {
+    return 5;
   }
 
   // A little fuel is burned each time a ship (transport/warship/trade) is
