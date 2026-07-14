@@ -16,7 +16,7 @@ import type { Config } from "../../../../core/configuration/Config";
 import { UnitType } from "../../../../core/game/Game";
 import { maxHealthWithVeterancy } from "../../../../core/game/Veterancy";
 import type { RendererConfig, UnitState } from "../../types";
-import { UT_MISSILE_SILO, UT_SAM_LAUNCHER } from "../../types";
+import { UT_MISSILE_SILO, UT_SAM_LAUNCHER, UT_WALL } from "../../types";
 import type { RenderSettings } from "../RenderSettings";
 import { createProgram } from "../utils/GlUtils";
 
@@ -144,6 +144,11 @@ export class BarPass {
     // warship-only.
     for (const unit of mobileUnits.values()) {
       if (unit.health === null || unit.health <= 0) continue;
+      // Walls carry siege health too, but draw their own on-tile damage bar
+      // (WallPass). The warship-scaled bar here would read a full-health wall
+      // (100 vs the warship max of 1000) as a nearly-empty 11×3-tile bar
+      // hovering permanently over every wall — a black blob over wall lines.
+      if (unit.unitType === UT_WALL) continue;
       // Veteran warships have a higher effective max health, so a full veteran
       // ship reads as full. Shared with the engine's UnitImpl.maxHealth().
       const maxHealth = maxHealthWithVeterancy(
