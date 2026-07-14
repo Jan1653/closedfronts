@@ -196,8 +196,16 @@ async function doRefreshJwt(): Promise<void> {
       credentials: "include",
     });
     if (response.status !== 200) {
+      // A failed refresh just means there is no valid session — a guest with no
+      // session cookie (localapi returns 401 every time), or an expired one.
+      // Only drop the in-memory JWT here; do NOT call logOut(), which deletes
+      // the anonymous persistent ID from localStorage. Wiping it mints a brand
+      // new guest identity on every auth check, so a guest who hosts a private
+      // lobby creates it under one persistent ID and joins it under another —
+      // the server then never recognises them as the lobby creator and the
+      // Start button silently does nothing.
       console.error("Refresh failed", response);
-      logOut();
+      __jwt = null;
       return;
     }
     const json = await response.json();

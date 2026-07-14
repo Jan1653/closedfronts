@@ -193,7 +193,13 @@ export class HostLobbyModal extends BaseModal {
   }
 
   private async constructUrl(): Promise<string> {
-    this.lobbyUrlSuffix = this.getRandomString();
+    // Generate the share-link suffix once per lobby. putGameConfig() calls this
+    // on every config change and every Start press; regenerating it each time
+    // makes the copied share URL's ?s= churn — to the host it looks like the
+    // room code keeps changing whenever they press Start. Reset in onClose().
+    if (this.lobbyUrlSuffix === "") {
+      this.lobbyUrlSuffix = this.getRandomString();
+    }
     return await this.buildLobbyUrl();
   }
 
@@ -856,6 +862,7 @@ export class HostLobbyModal extends BaseModal {
     this.useRandomMap = false;
     this.disabledUnits = [];
     this.lobbyId = "";
+    this.lobbyUrlSuffix = "";
     this.clients = [];
     this.lobbyCreatorClientID = "";
     this.goldMultiplier = false;
