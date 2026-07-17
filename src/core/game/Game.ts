@@ -198,6 +198,26 @@ export enum UnitType {
   // Raises your oil storage capacity. Stack/upgrade for more; without any, your
   // tank is tiny and pumps quickly overflow (excess auto-sells for a pittance).
   OilStorage = "Oil Storage",
+  // Repairs disaster-disabled structures in its radius and slightly lowers the
+  // chance that a natural disaster strikes there; oil pumps in its radius
+  // don't blow up in heatwaves.
+  EmergencyStation = "Emergency Station",
+}
+
+// Natural disasters: announced ~1 minute ahead, then active for a while.
+// Each type can be disabled per game (GameConfig.disabledDisasters).
+export enum NaturalDisasterType {
+  // No new oil is produced for the whole (long) duration.
+  Drought = "Drought",
+  // A region floods: every structure in it is disabled until an Emergency
+  // Station repairs it.
+  Flood = "Flood",
+  // A slab of terrain slides: every structure on it is disabled until
+  // repaired.
+  Landslide = "Landslide",
+  // Every oil pump not covered by an Emergency Station has a 50% total chance
+  // to blow up over the heatwave's duration.
+  Heatwave = "Heatwave",
 }
 
 export enum TrainType {
@@ -232,6 +252,7 @@ export const Structures = unitTypeGroup([
   UnitType.Wall,
   UnitType.OilPump,
   UnitType.OilStorage,
+  UnitType.EmergencyStation,
 ] as const);
 
 export const BuildMenus = unitTypeGroup([
@@ -313,6 +334,8 @@ export interface UnitParamsMap {
   [UnitType.OilPump]: Record<string, never>;
 
   [UnitType.OilStorage]: Record<string, never>;
+
+  [UnitType.EmergencyStation]: Record<string, never>;
 
   [UnitType.MIRV]: {
     targetTile?: number;
@@ -553,6 +576,10 @@ export interface Unit {
   // the client for the capture bar.
   captureProgress(): number;
   setCaptureProgress(progress: number): void;
+
+  // Repair a disabled structure (EMP / disaster): clears the disable window so
+  // it works again. Used by the Emergency Station.
+  clearDisable(): void;
 
   // Electric-bomb deactivation: while disabled a structure does nothing (its
   // execution skips work) and renders greyed. disableUntil extends the window;
@@ -810,6 +837,9 @@ export interface Game extends GameMap {
   inSpawnPhase(): boolean;
   endSpawnPhase(): void;
   executeNextTick(): GameUpdates;
+  // Drought (natural disaster): while active, no new oil is produced.
+  isDroughtActive(): boolean;
+  setDroughtActive(active: boolean): void;
   drainPackedTileUpdates(): Uint32Array;
   recordMotionPlan(record: MotionPlanRecord): void;
   drainPackedMotionPlans(): Uint32Array | null;

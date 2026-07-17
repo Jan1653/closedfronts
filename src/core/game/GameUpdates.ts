@@ -97,6 +97,7 @@ export enum GameUpdateType {
   SpawnPhaseEnd,
   GamePaused,
   DonateEvent,
+  NaturalDisaster,
 }
 
 export type GameUpdate =
@@ -122,7 +123,24 @@ export type GameUpdate =
   | EmbargoUpdate
   | SpawnPhaseEndUpdate
   | GamePausedUpdate
-  | DonateEventUpdate;
+  | DonateEventUpdate
+  | NaturalDisasterUpdate;
+
+/**
+ * Natural-disaster lifecycle for the HUD banner + map overlay. Sent once per
+ * phase change; clients keep the latest and derive the progress bar from
+ * phaseStartTick/phaseEndTick vs. the current tick.
+ */
+export interface NaturalDisasterUpdate {
+  type: GameUpdateType.NaturalDisaster;
+  disaster: string; // NaturalDisasterType
+  phase: "warning" | "active" | "ended";
+  phaseStartTick: Tick;
+  phaseEndTick: Tick;
+  // Region for localized disasters (flood / landslide); absent for global ones.
+  center?: TileRef;
+  radius?: number;
+}
 
 export interface BonusEventUpdate {
   type: GameUpdateType.BonusEvent;

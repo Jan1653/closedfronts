@@ -81,6 +81,7 @@
       "city": "Increases max population",
       "defense_post": "Increases defenses of nearby borders",
       "electric_bomb": "Deactivates every structure in the blast — nothing destroyed",
+      "emergency_station": "Repairs disaster-disabled structures nearby and dampens natural disasters",
       "factory": "Creates railroads and spawns trains",
       "hydrogen_bomb": "Large explosion",
       "mirv": "Huge explosion, only targets selected player",
@@ -439,6 +440,14 @@
     "impossible": "Impossible",
     "medium": "Medium"
   },
+  "disaster": {
+    "active": "Active",
+    "drought": "Drought",
+    "flood": "Flood",
+    "heatwave": "Heatwave",
+    "incoming": "Incoming",
+    "landslide": "Landslide"
+  },
   "discord_user_header": {
     "avatar_alt": "Avatar"
   },
@@ -513,6 +522,14 @@
     "atom_bomb_detonated": "{name} - atom bomb detonated",
     "attack_cancelled_retreat": "Attack cancelled, {troops} soldiers killed during retreat",
     "attack_request": "{name} requests you attack {target}",
+    "disaster_active_drought": "Drought! No oil is produced until it ends",
+    "disaster_active_flood": "Flood! Structures in the flooded area are disabled until repaired",
+    "disaster_active_heatwave": "Heatwave! Unprotected oil pumps may explode",
+    "disaster_active_landslide": "Landslide! Structures on the slide are disabled until repaired",
+    "disaster_warning_drought": "A drought is coming — oil production will stop",
+    "disaster_warning_flood": "A flood is coming — move to safety",
+    "disaster_warning_heatwave": "A heatwave is coming — oil pumps are in danger",
+    "disaster_warning_landslide": "A landslide is coming",
     "betrayal_debuff_ends": "{time} seconds left until betrayal debuff ends",
     "betrayal_description": "You broke your alliance with {name}, making you a TRAITOR ({malusPercent}% defense debuff for {durationText})",
     "betrayed_you": "{name} broke their alliance with you",
@@ -810,6 +827,7 @@
     "name_taken": "Another player already has that name."
   },
   "host_modal": {
+    "alliance_duration": "Alliance duration (minutes)",
     "anonymous_players": "Anonymous players",
     "assigned_teams": "Assigned Teams",
     "auto_start_timer": "Time until the game starts automatically",
@@ -819,6 +837,10 @@
     "create_failed": "Could not create the lobby. Please try again.",
     "crowded": "Crowded modifier",
     "disable_alliances": "Disable alliances",
+    "disaster_drought": "Disaster: Drought",
+    "disaster_flood": "Disaster: Flood",
+    "disaster_heatwave": "Disaster: Heatwave",
+    "disaster_landslide": "Disaster: Landslide",
     "donate_gold": "Donate gold",
     "donate_oil": "Donate oil",
     "donate_troops": "Donate troops",
@@ -1428,11 +1450,16 @@
     "title_with_name": "Send Troops to {name}"
   },
   "single_modal": {
+    "alliance_duration": "Alliance duration (minutes)",
     "bots": "Tribes: ",
     "bots_disabled": "Disabled",
     "compact_map": "Compact Map",
     "custom_map_active": "Custom map “{name}” selected — the official map below is ignored.",
     "disable_alliances": "Disable alliances",
+    "disaster_drought": "Disaster: Drought",
+    "disaster_flood": "Disaster: Flood",
+    "disaster_heatwave": "Disaster: Heatwave",
+    "disaster_landslide": "Disaster: Landslide",
     "doomsday_clock": "Doomsday Clock",
     "enables_title": "Disable Units",
     "gold_multiplier": "Gold multiplier",
@@ -1561,6 +1588,7 @@
     "city": "City",
     "defense_post": "Defense Post",
     "electric_bomb": "Electric Bomb",
+    "emergency_station": "Emergency Station",
     "factory": "Factory",
     "hydrogen_bomb": "Hydrogen Bomb",
     "mirv": "MIRV",

@@ -11,6 +11,7 @@ import {
   GameMode,
   GameType,
   maps,
+  NaturalDisasterType,
   UnitType,
 } from "../core/game/Game";
 import { TeamCountConfig } from "../core/Schemas";
@@ -23,6 +24,7 @@ import "./components/GameConfigSettings";
 import { CustomMap, listCustomMaps } from "./components/map/CustomMapStore";
 import "./components/map/CustomMapThumb";
 import { MEDAL_ORDER, medalIcon } from "./components/map/Medals";
+import "./components/InputCard";
 import "./components/ToggleInputCard";
 import { modalHeader } from "./components/ui/ModalHeader";
 import { getPlayerCosmetics } from "./Cosmetics";
@@ -153,6 +155,10 @@ export class SinglePlayerModal extends BaseModal {
     ...DEFAULT_OPTIONS.disabledUnits,
   ];
   @state() private disableAlliances: boolean = DEFAULT_OPTIONS.disableAlliances;
+  // Natural disasters the player turned OFF (all enabled by default).
+  @state() private disabledDisasters: NaturalDisasterType[] = [];
+  // Alliance lifetime in minutes (default 5).
+  @state() private allianceDurationMinutes: number | undefined = 5;
   @state() private waterNukes: boolean = DEFAULT_OPTIONS.waterNukes;
   @state() private doomsdayClock: boolean = DEFAULT_OPTIONS.doomsdayClock;
   @state() private doomsdayClockSpeed: DoomsdayClockSpeed =
@@ -385,6 +391,19 @@ export class SinglePlayerModal extends BaseModal {
 
   protected renderBody() {
     const inputCards = [
+      html`<input-card
+        .labelKey=${"single_modal.alliance_duration"}
+        .inputId=${"alliance-duration-value"}
+        .inputMin=${1}
+        .inputMax=${120}
+        .inputStep=${"1"}
+        .inputValue=${this.allianceDurationMinutes}
+        .inputAriaLabel=${translateText("single_modal.alliance_duration")}
+        .inputPlaceholder=${"5"}
+        .defaultInputValue=${5}
+        .onChange=${this.handleAllianceDurationChanges}
+        .onKeyDown=${this.handleAllianceDurationKeyDown}
+      ></input-card>`,
       html`<toggle-input-card
         .labelKey=${"single_modal.max_timer"}
         .checked=${this.maxTimer}
@@ -511,6 +530,30 @@ export class SinglePlayerModal extends BaseModal {
                     checked: this.doomsdayClock,
                     doomsdayClockSpeed: this.doomsdayClockSpeed,
                   },
+                  {
+                    labelKey: "single_modal.disaster_drought",
+                    checked: !this.disabledDisasters.includes(
+                      NaturalDisasterType.Drought,
+                    ),
+                  },
+                  {
+                    labelKey: "single_modal.disaster_flood",
+                    checked: !this.disabledDisasters.includes(
+                      NaturalDisasterType.Flood,
+                    ),
+                  },
+                  {
+                    labelKey: "single_modal.disaster_landslide",
+                    checked: !this.disabledDisasters.includes(
+                      NaturalDisasterType.Landslide,
+                    ),
+                  },
+                  {
+                    labelKey: "single_modal.disaster_heatwave",
+                    checked: !this.disabledDisasters.includes(
+                      NaturalDisasterType.Heatwave,
+                    ),
+                  },
                 ],
                 inputCards,
               },
@@ -602,6 +645,8 @@ export class SinglePlayerModal extends BaseModal {
     this.startingGold = DEFAULT_OPTIONS.startingGold;
     this.startingGoldValue = DEFAULT_OPTIONS.startingGoldValue;
     this.disableAlliances = DEFAULT_OPTIONS.disableAlliances;
+    this.disabledDisasters = [];
+    this.allianceDurationMinutes = 5;
     this.waterNukes = DEFAULT_OPTIONS.waterNukes;
     this.doomsdayClock = DEFAULT_OPTIONS.doomsdayClock;
     this.doomsdayClockSpeed = DEFAULT_OPTIONS.doomsdayClockSpeed;
@@ -713,8 +758,41 @@ export class SinglePlayerModal extends BaseModal {
       case "single_modal.doomsday_clock":
         this.doomsdayClock = checked;
         break;
+      case "single_modal.disaster_drought":
+        this.setDisasterEnabled(NaturalDisasterType.Drought, checked);
+        break;
+      case "single_modal.disaster_flood":
+        this.setDisasterEnabled(NaturalDisasterType.Flood, checked);
+        break;
+      case "single_modal.disaster_landslide":
+        this.setDisasterEnabled(NaturalDisasterType.Landslide, checked);
+        break;
+      case "single_modal.disaster_heatwave":
+        this.setDisasterEnabled(NaturalDisasterType.Heatwave, checked);
+        break;
       default:
         break;
+    }
+  };
+
+  private setDisasterEnabled(type: NaturalDisasterType, enabled: boolean) {
+    this.disabledDisasters = enabled
+      ? this.disabledDisasters.filter((t) => t !== type)
+      : [...this.disabledDisasters.filter((t) => t !== type), type];
+  }
+
+  private handleAllianceDurationKeyDown = (e: KeyboardEvent) => {
+    preventDisallowedKeys(e, ["-", "+", "e", "E", "."]);
+  };
+
+  private handleAllianceDurationChanges = (e: Event) => {
+    const input = e.target as HTMLInputElement;
+    const value = parseBoundedIntegerFromInput(input, { min: 1, max: 120 });
+    if (value === undefined) {
+      this.allianceDurationMinutes = undefined;
+      input.value = "";
+    } else {
+      this.allianceDurationMinutes = value;
     }
   };
 
@@ -967,6 +1045,13 @@ export class SinglePlayerModal extends BaseModal {
                   }
                 : {}),
               ...(this.disableAlliances ? { disableAlliances: true } : {}),
+              ...(this.disabledDisasters.length > 0
+                ? { disabledDisasters: [...this.disabledDisasters] }
+                : {}),
+              ...(this.allianceDurationMinutes !== undefined &&
+              this.allianceDurationMinutes !== 5
+                ? { allianceDuration: this.allianceDurationMinutes }
+                : {}),
               ...(this.waterNukes ? { waterNukes: true } : {}),
               ...(this.doomsdayClock
                 ? {

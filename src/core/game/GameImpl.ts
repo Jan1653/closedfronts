@@ -477,6 +477,17 @@ export class GameImpl implements Game {
     return this._ticks;
   }
 
+  // Drought (natural disaster): while active, updateOil produces nothing.
+  private _droughtActive = false;
+
+  isDroughtActive(): boolean {
+    return this._droughtActive;
+  }
+
+  setDroughtActive(active: boolean): void {
+    this._droughtActive = active;
+  }
+
   executeNextTick(): GameUpdates {
     this.updates = createGameUpdatesMap();
     this.tileUpdatePairs.length = 0;

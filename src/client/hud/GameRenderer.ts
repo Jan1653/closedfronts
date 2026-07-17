@@ -29,6 +29,7 @@ import { GameRightSidebar } from "./layers/GameRightSidebar";
 import { GraphicsSettingsModal } from "./layers/GraphicsSettingsModal";
 import { HeadsUpMessage } from "./layers/HeadsUpMessage";
 import { ImmunityTimer } from "./layers/ImmunityTimer";
+import { NaturalDisasterDisplay } from "./layers/NaturalDisasterDisplay";
 import { InGamePromo } from "./layers/InGamePromo";
 import { Leaderboard } from "./layers/Leaderboard";
 import { MainRadialMenu } from "./layers/MainRadialMenu";
@@ -323,6 +324,14 @@ export function createRenderer(
   immunityTimer.game = game;
   immunityTimer.eventBus = eventBus;
 
+  const naturalDisasterDisplay = document.querySelector(
+    "natural-disaster-display",
+  ) as NaturalDisasterDisplay;
+  if (!(naturalDisasterDisplay instanceof NaturalDisasterDisplay)) {
+    console.error("natural disaster display not found");
+  }
+  naturalDisasterDisplay.game = game;
+
   const inGamePromo = document.querySelector("in-game-promo") as InGamePromo;
   if (!(inGamePromo instanceof InGamePromo)) {
     console.error("in-game promo not found");
@@ -361,6 +370,7 @@ export function createRenderer(
     ),
     spawnTimer,
     immunityTimer,
+    naturalDisasterDisplay,
     leaderboard,
     gameLeftSidebar,
     unitDisplay,

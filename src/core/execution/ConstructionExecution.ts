@@ -2,6 +2,7 @@ import { Execution, Game, Player, Tick, Unit, UnitType } from "../game/Game";
 import { TileRef } from "../game/GameMap";
 import { CityExecution } from "./CityExecution";
 import { DefensePostExecution } from "./DefensePostExecution";
+import { EmergencyStationExecution } from "./EmergencyStationExecution";
 import { FactoryExecution } from "./FactoryExecution";
 import { MirvExecution } from "./MIRVExecution";
 import { MissileSiloExecution } from "./MissileSiloExecution";
@@ -165,6 +166,9 @@ export class ConstructionExecution implements Execution {
       case UnitType.OilStorage:
         // Passive: just raises maxOil (read in PlayerImpl.updateOil). No exec.
         break;
+      case UnitType.EmergencyStation:
+        this.mg.addExecution(new EmergencyStationExecution(this.structure!));
+        break;
       default:
         console.warn(
           `unit type ${this.constructionType} cannot be constructed`,
@@ -195,6 +199,7 @@ export class ConstructionExecution implements Execution {
       case UnitType.Wall:
       case UnitType.OilPump:
       case UnitType.OilStorage:
+      case UnitType.EmergencyStation:
         return true;
       default:
         return false;

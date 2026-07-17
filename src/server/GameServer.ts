@@ -282,6 +282,13 @@ export class GameServer {
       this.gameConfig.disableAlliances =
         gameConfig.disableAlliances ?? undefined;
     }
+    if (gameConfig.disabledDisasters !== undefined) {
+      this.gameConfig.disabledDisasters = gameConfig.disabledDisasters;
+    }
+    if (gameConfig.allianceDuration !== undefined) {
+      this.gameConfig.allianceDuration =
+        gameConfig.allianceDuration ?? undefined;
+    }
     if (gameConfig.allowedPublicIds !== undefined) {
       this.gameConfig.allowedPublicIds = gameConfig.allowedPublicIds;
       // A join whitelist and public listing are mutually exclusive: a listed

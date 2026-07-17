@@ -18,6 +18,7 @@ import type { GhostPreviewData, RendererConfig, UnitState } from "../../types";
 import {
   UT_CITY,
   UT_DEFENSE_POST,
+  UT_EMERGENCY_STATION,
   UT_FACTORY,
   UT_MISSILE_SILO,
   UT_OIL_PUMP,
@@ -59,11 +60,13 @@ const STRUCTURE_ORDER = [
   UT_MISSILE_SILO,
   // ClosedFronts structures get their own atlas columns (see
   // scripts/gen-icon-atlas.mjs). Order here must match the column order the
-  // generator writes: Oil Pump, Wall, Water Toll Station, Oil Storage.
+  // generator writes: Oil Pump, Wall, Water Toll Station, Oil Storage,
+  // Emergency Station.
   UT_OIL_PUMP,
   UT_WALL,
   UT_WATER_TOLL_STATION,
   UT_OIL_STORAGE,
+  UT_EMERGENCY_STATION,
 ] as const;
 
 const ATLAS_COLS = STRUCTURE_ORDER.length;

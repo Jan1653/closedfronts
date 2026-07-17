@@ -16,6 +16,7 @@ import {
   GameMode,
   GameType,
   HumansVsNations,
+  NaturalDisasterType,
   Quads,
   RankedType,
   Trios,
@@ -379,6 +380,10 @@ export const GameConfigSchema = z.object({
   allowedPublicIds: z.array(z.string()).max(200).optional(),
   maxTimerValue: z.number().int().min(1).max(120).nullable().optional(), // In minutes
   startDelay: z.number().int().min(0).max(600).nullable().optional(), // In seconds
+  // How long an alliance lasts before it must be extended. In minutes.
+  allianceDuration: z.number().int().min(1).max(120).nullable().optional(),
+  // Natural disasters the host turned off (all are on by default).
+  disabledDisasters: z.enum(NaturalDisasterType).array().optional(),
   spawnImmunityDuration: z.number().int().min(0).nullable().optional(), // In ticks
   disabledUnits: z.enum(UnitType).array().optional(),
   playerTeams: TeamCountConfigSchema.optional(),

@@ -31,6 +31,7 @@ const defensePostIcon = assetUrl("images/ShieldIconWhite.svg");
 const wallIcon = assetUrl("images/WallIconWhite.svg");
 const oilPumpIcon = assetUrl("images/OilPumpIconWhite.svg");
 const tollStationIcon = assetUrl("images/TollStationIconWhite.svg");
+const emergencyStationIcon = assetUrl("images/EmergencyStationIconWhite.svg");
 
 // The four bombs collapse into one "Bombs" button with a sub-menu. Order per
 // design: Electric, Atom, Hydrogen, MIRV. Each carries its build-keybind action
@@ -100,6 +101,7 @@ export class UnitDisplay extends LitElement implements Controller {
   private _oilPump = 0;
   private _oilStorage = 0;
   private _waterTollStation = 0;
+  private _emergencyStation = 0;
   private allDisabled = false;
   private _hoveredUnit: PlayerBuildableUnitType | null = null;
   private _hoveredBomb: PlayerBuildableUnitType | null = null;
@@ -176,6 +178,7 @@ export class UnitDisplay extends LitElement implements Controller {
     this._oilPump = player.totalUnitLevels(UnitType.OilPump);
     this._oilStorage = player.totalUnitLevels(UnitType.OilStorage);
     this._waterTollStation = player.totalUnitLevels(UnitType.WaterTollStation);
+    this._emergencyStation = player.totalUnitLevels(UnitType.EmergencyStation);
     // Close the bomb fly-out once a non-bomb structure gets armed elsewhere.
     const g = this.uiState.ghostStructure;
     if (this.bombMenuOpen && g !== null && !BOMB_TYPES.has(g)) {
@@ -278,6 +281,13 @@ export class UnitDisplay extends LitElement implements Controller {
             UnitType.WaterTollStation,
             "water_toll_station",
             "Alt 3",
+          )}
+          ${this.renderUnitItem(
+            emergencyStationIcon,
+            this._emergencyStation,
+            UnitType.EmergencyStation,
+            "emergency_station",
+            "Alt 5",
           )}
         </div>
       </div>

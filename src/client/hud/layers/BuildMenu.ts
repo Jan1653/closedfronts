@@ -42,6 +42,7 @@ const tollStationIcon = assetUrl("images/TollStationIconWhite.svg");
 const wallIcon = assetUrl("images/WallIconWhite.svg");
 const oilPumpIcon = assetUrl("images/OilPumpIconWhite.svg");
 const oilStorageIcon = assetUrl("images/OilStorageIconWhite.svg");
+const emergencyStationIcon = assetUrl("images/EmergencyStationIconWhite.svg");
 
 export interface BuildItemDisplay {
   unitType: PlayerBuildableUnitType;
@@ -158,6 +159,13 @@ export const buildTable: BuildItemDisplay[][] = [
       icon: oilStorageIcon,
       description: "build_menu.desc.oil_storage",
       key: "unit_type.oil_storage",
+      countable: true,
+    },
+    {
+      unitType: UnitType.EmergencyStation,
+      icon: emergencyStationIcon,
+      description: "build_menu.desc.emergency_station",
+      key: "unit_type.emergency_station",
       countable: true,
     },
   ],

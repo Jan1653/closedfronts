@@ -471,6 +471,13 @@ export class UnitImpl implements Unit {
     }
   }
 
+  clearDisable(): void {
+    if (this._disabledUntilTick > this.mg.ticks()) {
+      this._disabledUntilTick = 0;
+      this.mg.addUpdate(this.toUpdate());
+    }
+  }
+
   isUnderConstruction(): boolean {
     return this._underConstruction;
   }

@@ -124,6 +124,10 @@ const unitOptions: { type: UnitType; translationKey: string }[] = [
     type: UnitType.WaterTollStation,
     translationKey: "unit_type.water_toll_station",
   },
+  {
+    type: UnitType.EmergencyStation,
+    translationKey: "unit_type.emergency_station",
+  },
 ];
 
 const MAP_ICON = svg`<path

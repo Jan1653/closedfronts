@@ -1269,7 +1269,11 @@ export class PlayerImpl implements Player {
         pumpLevels += p.level();
       }
     }
-    const production = pumpLevels * config.oilProductionPerPump(this);
+    // A drought (natural disaster) halts ALL oil production for its duration —
+    // players who banked oil in storage ride it out.
+    const production = this.mg.isDroughtActive()
+      ? 0
+      : pumpLevels * config.oilProductionPerPump(this);
     const consumption = config.oilConsumptionRate(this);
 
     // Expanding burns fuel: charge oil per tile conquered since the last
@@ -1569,6 +1573,7 @@ export class PlayerImpl implements Player {
       case UnitType.OilPump:
         return this.oilPumpSpawn(targetTile);
       case UnitType.OilStorage:
+      case UnitType.EmergencyStation:
         return this.landBasedStructureSpawn(targetTile, validTiles);
       default:
         assertNever(unitType);

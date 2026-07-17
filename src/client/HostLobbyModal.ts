@@ -17,6 +17,7 @@ import {
   GameMapSize,
   GameMapType,
   GameMode,
+  NaturalDisasterType,
   UnitType,
 } from "../core/game/Game";
 import { UserSettings } from "../core/game/UserSettings";
@@ -94,6 +95,10 @@ export class HostLobbyModal extends BaseModal {
   @state() private startingGold: boolean = false;
   @state() private startingGoldValue: number | undefined = undefined;
   @state() private disableAlliances: boolean = false;
+  // Natural disasters the host turned OFF (all enabled by default).
+  @state() private disabledDisasters: NaturalDisasterType[] = [];
+  // Alliance lifetime in minutes (default 5).
+  @state() private allianceDurationMinutes: number | undefined = 5;
   @state() private doomsdayClock: boolean = false;
   @state() private doomsdayClockSpeed: DoomsdayClockSpeed = "normal";
   @state() private anonymizeNames: boolean = false;
@@ -389,6 +394,19 @@ export class HostLobbyModal extends BaseModal {
           });
 
     const inputCards = [
+      html`<input-card
+        .labelKey=${"host_modal.alliance_duration"}
+        .inputId=${"alliance-duration-value"}
+        .inputMin=${1}
+        .inputMax=${120}
+        .inputStep=${"1"}
+        .inputValue=${this.allianceDurationMinutes}
+        .inputAriaLabel=${translateText("host_modal.alliance_duration")}
+        .inputPlaceholder=${"5"}
+        .defaultInputValue=${5}
+        .onChange=${this.handleAllianceDurationChanges}
+        .onKeyDown=${this.handleAllianceDurationKeyDown}
+      ></input-card>`,
       html`<toggle-input-card
         .labelKey=${"host_modal.max_timer"}
         .checked=${this.maxTimer}
@@ -615,6 +633,30 @@ export class HostLobbyModal extends BaseModal {
                     labelKey: "host_modal.doomsday_clock",
                     checked: this.doomsdayClock,
                     doomsdayClockSpeed: this.doomsdayClockSpeed,
+                  },
+                  {
+                    labelKey: "host_modal.disaster_drought",
+                    checked: !this.disabledDisasters.includes(
+                      NaturalDisasterType.Drought,
+                    ),
+                  },
+                  {
+                    labelKey: "host_modal.disaster_flood",
+                    checked: !this.disabledDisasters.includes(
+                      NaturalDisasterType.Flood,
+                    ),
+                  },
+                  {
+                    labelKey: "host_modal.disaster_landslide",
+                    checked: !this.disabledDisasters.includes(
+                      NaturalDisasterType.Landslide,
+                    ),
+                  },
+                  {
+                    labelKey: "host_modal.disaster_heatwave",
+                    checked: !this.disabledDisasters.includes(
+                      NaturalDisasterType.Heatwave,
+                    ),
                   },
                   // Host cheats and public listing are mutually exclusive
                   // (the server rejects both combinations), so the controls
@@ -875,6 +917,8 @@ export class HostLobbyModal extends BaseModal {
     this.startingGold = false;
     this.startingGoldValue = undefined;
     this.disableAlliances = false;
+    this.disabledDisasters = [];
+    this.allianceDurationMinutes = 5;
     this.doomsdayClock = false;
     this.doomsdayClockSpeed = "normal";
     this.anonymizeNames = false;
@@ -1005,6 +1049,18 @@ export class HostLobbyModal extends BaseModal {
       case "host_modal.doomsday_clock":
         this.doomsdayClock = checked;
         this.putGameConfig();
+        break;
+      case "host_modal.disaster_drought":
+        this.setDisasterEnabled(NaturalDisasterType.Drought, checked);
+        break;
+      case "host_modal.disaster_flood":
+        this.setDisasterEnabled(NaturalDisasterType.Flood, checked);
+        break;
+      case "host_modal.disaster_landslide":
+        this.setDisasterEnabled(NaturalDisasterType.Landslide, checked);
+        break;
+      case "host_modal.disaster_heatwave":
+        this.setDisasterEnabled(NaturalDisasterType.Heatwave, checked);
         break;
       case "host_modal.host_cheats":
         this.hostCheatsEnabled = checked;
@@ -1372,6 +1428,29 @@ export class HostLobbyModal extends BaseModal {
     this.putGameConfig();
   };
 
+  private setDisasterEnabled(type: NaturalDisasterType, enabled: boolean) {
+    this.disabledDisasters = enabled
+      ? this.disabledDisasters.filter((t) => t !== type)
+      : [...this.disabledDisasters.filter((t) => t !== type), type];
+    this.putGameConfig();
+  }
+
+  private handleAllianceDurationKeyDown = (e: KeyboardEvent) => {
+    preventDisallowedKeys(e, ["-", "+", "e", "E", "."]);
+  };
+
+  private handleAllianceDurationChanges = (e: Event) => {
+    const input = e.target as HTMLInputElement;
+    const value = parseBoundedIntegerFromInput(input, { min: 1, max: 120 });
+    if (value === undefined) {
+      this.allianceDurationMinutes = undefined;
+      input.value = "";
+    } else {
+      this.allianceDurationMinutes = value;
+    }
+    this.putGameConfig();
+  };
+
   // Comma/space/newline-separated publicIds, capped at the 200 the schema
   // allows so a large paste can't make the config update fail validation.
   // Undefined when empty (no allowlist).
@@ -1442,6 +1521,10 @@ export class HostLobbyModal extends BaseModal {
                 ? Math.round(this.startingGoldValue * 1_000_000)
                 : null,
             disableAlliances: this.disableAlliances || null,
+            // Always sent (never undefined): JSON.stringify drops undefined,
+            // and the server merge would keep a stale value otherwise.
+            disabledDisasters: [...this.disabledDisasters],
+            allianceDuration: this.allianceDurationMinutes ?? null,
             // Send {enabled:false} (not undefined) when off: undefined is dropped
             // by JSON.stringify, so the server's "!== undefined" merge would keep a
             // previously-enabled config and the toggle could never turn off.

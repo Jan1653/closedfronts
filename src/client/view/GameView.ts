@@ -14,6 +14,7 @@ import { GameMap, TileRef } from "../../core/game/GameMap";
 import {
   GameUpdateType,
   GameUpdateViewData,
+  NaturalDisasterUpdate,
   SpawnPhaseEndUpdate,
 } from "../../core/game/GameUpdates";
 import { ATTACK_DELTA_OUTGOING } from "../../core/game/GameUpdateUtils";
@@ -64,6 +65,8 @@ type TrainPlanState = {
 export class GameView implements GameMap {
   private lastUpdate: GameUpdateViewData | null;
   private startTick: Tick | null = null;
+  // Latest natural-disaster lifecycle update (null = none running).
+  private _naturalDisaster: NaturalDisasterUpdate | null = null;
   private smallIDToID = new Map<number, PlayerID>();
   private _players = new Map<PlayerID, PlayerView>();
   private _units = new Map<number, UnitView>();
@@ -312,6 +315,14 @@ export class GameView implements GameMap {
       | undefined;
     if (spawnPhaseEndUpdate) {
       this.startTick = spawnPhaseEndUpdate.startTick;
+    }
+
+    // Natural-disaster lifecycle: keep the latest update for the HUD banner
+    // and the map region overlay ("ended" clears it).
+    for (const du of gu.updates[GameUpdateType.NaturalDisaster] ?? []) {
+      const disasterUpdate = du as NaturalDisasterUpdate;
+      this._naturalDisaster =
+        disasterUpdate.phase === "ended" ? null : disasterUpdate;
     }
 
     const myDisplayName = formatPlayerDisplayName(
@@ -607,6 +618,23 @@ export class GameView implements GameMap {
       f.relationMatrix,
       f.relationSize,
     );
+    // Localized natural disaster (flood / landslide): draw its struck region
+    // as a red target circle so everyone sees where it will hit / is hitting.
+    const disaster = this._naturalDisaster;
+    if (
+      disaster !== null &&
+      disaster.center !== undefined &&
+      disaster.radius !== undefined
+    ) {
+      const w = this._map.width();
+      f.nukeTelegraphs.push({
+        x: disaster.center % w,
+        y: (disaster.center - (disaster.center % w)) / w,
+        innerRadius: Math.max(1, Math.floor(disaster.radius / 3)),
+        outerRadius: disaster.radius,
+        relation: 2, // enemy-red — danger for everyone
+      });
+    }
     f.attackRings = this._myPlayer
       ? extractAttackRings(
           this._unitStates,
@@ -1037,6 +1065,11 @@ export class GameView implements GameMap {
   ticks(): Tick {
     if (this.lastUpdate === null) return 0;
     return this.lastUpdate.tick;
+  }
+
+  /** Current natural-disaster lifecycle state (null = none running). */
+  naturalDisaster(): NaturalDisasterUpdate | null {
+    return this._naturalDisaster;
   }
   inSpawnPhase(): boolean {
     return this.startTick === null;

@@ -8,6 +8,7 @@ import {
   GameMode,
   GameType,
   Gold,
+  NaturalDisasterType,
   Player,
   PlayerInfo,
   PlayerType,
@@ -563,6 +564,15 @@ export class Config {
           upgradable: true,
         };
         break;
+      case UnitType.EmergencyStation:
+        info = {
+          cost: this.costWrapper(
+            (numUnits: number) => Math.min(2_000_000, (numUnits + 1) * 400_000),
+            UnitType.EmergencyStation,
+          ),
+          constructionDuration: this.instantBuild() ? 0 : 3 * 10,
+        };
+        break;
       default:
         assertNever(type);
     }
@@ -698,7 +708,8 @@ export class Config {
     return 30 * 10;
   }
   allianceDuration(): Tick {
-    return 300 * 10; // 5 minutes.
+    // Host-configurable per game (minutes); default 5 minutes.
+    return (this._gameConfig.allianceDuration ?? 5) * 60 * 10;
   }
   temporaryEmbargoDuration(): Tick {
     return 300 * 10; // 5 minutes.
@@ -979,6 +990,75 @@ export class Config {
       default:
         assertNever(this._gameConfig.difficulty);
     }
+  }
+
+  // ── Natural disasters ────────────────────────────────────────────────────
+
+  // Disaster types allowed in this game (host can disable each one).
+  enabledNaturalDisasters(): NaturalDisasterType[] {
+    const disabled = this._gameConfig.disabledDisasters ?? [];
+    return Object.values(NaturalDisasterType).filter(
+      (t) => !disabled.includes(t),
+    );
+  }
+
+  // Lead time between the announcement and the disaster striking (~1 minute).
+  disasterWarningDurationTicks(): Tick {
+    return 600;
+  }
+
+  // Average pause between one disaster ending and the next being announced.
+  disasterIntervalTicks(): Tick {
+    return 2700; // ~4.5 minutes
+  }
+
+  disasterDurationTicks(type: NaturalDisasterType): Tick {
+    switch (type) {
+      case NaturalDisasterType.Drought:
+        return 1800; // 3 minutes — long, so saved-up oil matters
+      case NaturalDisasterType.Flood:
+        return 900;
+      case NaturalDisasterType.Landslide:
+        return 450;
+      case NaturalDisasterType.Heatwave:
+        return 900;
+    }
+  }
+
+  disasterFloodRadius(): number {
+    return 30;
+  }
+
+  disasterLandslideRadius(): number {
+    return 18;
+  }
+
+  // Percent chance (0-100) that an Emergency Station covering the struck
+  // region averts a localized disaster entirely — dampens, never immunizes.
+  emergencyStationAvertPercent(): number {
+    return 35;
+  }
+
+  // Percent chance (0-100) that a localized disaster is aimed at the largest
+  // player instead of a random spot — the strong feel disasters slightly more
+  // often, giving smaller players room.
+  disasterBigPlayerBiasPercent(): number {
+    return 25;
+  }
+
+  // Total chance (0-100) that an unprotected oil pump blows up over the FULL
+  // duration of a heatwave.
+  heatwavePumpExplosionTotalPercent(): number {
+    return 50;
+  }
+
+  emergencyStationRadius(): number {
+    return 35;
+  }
+
+  // One disabled structure is repaired per this many ticks by each station.
+  emergencyStationRepairIntervalTicks(): Tick {
+    return 40;
   }
 
   // ── Oil economy ──────────────────────────────────────────────────────────

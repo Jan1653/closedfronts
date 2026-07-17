@@ -232,6 +232,15 @@ function drawOilStorage() {
   rect(c, 5, 13.4, 14, 1.2, false); // lower band separator (hole)
   return c;
 }
+// A first-aid cross (mirrors resources/images/EmergencyStationIconWhite.svg):
+// filled rounded square with a dark plus punched through.
+function drawEmergencyStation() {
+  const c = cell();
+  rect(c, 4, 4, 16, 16, true); // square body
+  rect(c, 10.5, 6.5, 3, 11, false); // vertical bar of the plus (hole)
+  rect(c, 6.5, 10.5, 11, 3, false); // horizontal bar of the plus (hole)
+  return c;
+}
 
 function asciiPreview(img, cols) {
   const step = 4; // downsample 64 -> 16
@@ -257,7 +266,13 @@ function asciiPreview(img, cols) {
 const BASE_COLS = 6;
 const old = decodePng(fs.readFileSync(ATLAS));
 // order must match STRUCTURE_ORDER in StructurePass.ts
-const glyphs = [drawOilPump(), drawWall(), drawToll(), drawOilStorage()];
+const glyphs = [
+  drawOilPump(),
+  drawWall(),
+  drawToll(),
+  drawOilStorage(),
+  drawEmergencyStation(),
+];
 const newCols = BASE_COLS + glyphs.length;
 const W = newCols * CELL,
   H = CELL;

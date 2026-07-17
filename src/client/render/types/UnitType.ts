@@ -34,6 +34,7 @@ export const UT_WATER_TOLL_STATION = "Water Toll Station" as const;
 export const UT_WALL = "Wall" as const;
 export const UT_OIL_PUMP = "Oil Pump" as const;
 export const UT_OIL_STORAGE = "Oil Storage" as const;
+export const UT_EMERGENCY_STATION = "Emergency Station" as const;
 
 // ---------------------------------------------------------------------------
 // Derived sets
@@ -50,6 +51,7 @@ export const STRUCTURE_TYPES: ReadonlySet<string> = new Set([
   UT_WALL,
   UT_OIL_PUMP,
   UT_OIL_STORAGE,
+  UT_EMERGENCY_STATION,
 ]);
 
 export const NUKE_TYPES: ReadonlySet<string> = new Set([
@@ -105,4 +107,5 @@ export const ALL_UNIT_TYPES = [
   UT_WALL,
   UT_OIL_PUMP,
   UT_OIL_STORAGE,
+  UT_EMERGENCY_STATION,
 ] as const;

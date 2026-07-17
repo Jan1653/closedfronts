@@ -1108,6 +1108,8 @@ export class InputHandler {
           return UnitType.WaterTollStation;
         case "4":
           return UnitType.OilStorage;
+        case "5":
+          return UnitType.EmergencyStation;
         default:
           return null;
       }
