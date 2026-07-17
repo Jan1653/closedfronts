@@ -193,6 +193,7 @@ export interface UnitUpdate {
   trainType?: TrainType; // Only for trains
   loaded?: boolean; // Only for trains
   disabled?: boolean; // Electric-bomb deactivation (structure greyed + inert)
+  captureProgress?: number; // Warship capture bar on water structures (0..1)
 }
 
 export interface AttackUpdate {

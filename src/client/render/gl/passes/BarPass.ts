@@ -311,6 +311,12 @@ export class BarPass {
       );
     }
 
+    // Warship capture in progress (toll station / sea oil pump being seized)
+    const captureProgress = unit.captureProgress ?? 0;
+    if (captureProgress > 0) {
+      return Math.min(1, captureProgress);
+    }
+
     // Construction progress
     if (unit.underConstruction && unit.constructionStartTick !== null) {
       const duration =

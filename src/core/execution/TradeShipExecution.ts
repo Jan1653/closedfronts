@@ -8,6 +8,10 @@ import {
   UnitType,
 } from "../game/Game";
 import { TileRef } from "../game/GameMap";
+import {
+  TOLL_GATE_RADIUS,
+  TOLL_INCOME_SHARE_PERCENT,
+} from "../game/TollStationUtils";
 import { WaterPathFinder } from "../pathfinding/PathFinder";
 import { PathStatus } from "../pathfinding/types";
 import { findClosestBy } from "../Util";
@@ -23,6 +27,12 @@ export class TradeShipExecution implements Execution {
   private motionPlanDst: TileRef | null = null;
   private ticksPerMove = 1;
   private lastMove = 0;
+
+  // Toll claims accrued along the route: each distinct enemy/neutral toll
+  // station owner is recorded ONCE (with the station tile for the payout
+  // popup), no matter how many of their stations the route crosses. Settled
+  // out of the arrival gold in complete() — never from anyone's treasury.
+  private readonly tollClaims = new Map<Player, TileRef>();
 
   private static _staggerCounter = 0;
 
@@ -179,6 +189,7 @@ export class TradeShipExecution implements Execution {
           this.tradeShip.setSafeFromPirates();
         }
         this.tradeShip.move(result.node);
+        this.recordTollPassage(result.node);
         this.tilesTraveled++;
         break;
       case PathStatus.COMPLETE:
@@ -192,6 +203,47 @@ export class TradeShipExecution implements Execution {
         this.active = false;
         return;
     }
+  }
+
+  // Record which enemy/neutral toll-station owners this ship sails past. Each
+  // owner is charged for at most ONE station per route (stacking stations of
+  // the same owner never multiplies the toll).
+  private recordTollPassage(tile: TileRef): void {
+    const shipOwner = this.tradeShip!.owner();
+    for (const { unit } of this.mg.nearbyUnits(
+      tile,
+      TOLL_GATE_RADIUS,
+      UnitType.WaterTollStation,
+    )) {
+      if (!unit.isActive() || unit.isUnderConstruction()) continue;
+      const stationOwner = unit.owner();
+      if (
+        stationOwner === shipOwner ||
+        stationOwner.isFriendly(shipOwner) ||
+        stationOwner.isOnSameTeam(shipOwner)
+      ) {
+        continue; // own & allied stations don't toll us
+      }
+      if (!this.tollClaims.has(stationOwner)) {
+        this.tollClaims.set(stationOwner, unit.tile());
+      }
+    }
+  }
+
+  // Pay each distinct toll owner their share out of the arrival gold. Returns
+  // what is left for the trader — at least 0, never negative.
+  private settleTolls(gold: bigint): bigint {
+    let remaining = gold;
+    const share = (gold * TOLL_INCOME_SHARE_PERCENT) / 100n;
+    for (const [tollOwner, stationTile] of this.tollClaims) {
+      if (remaining <= 0n) break;
+      if (!tollOwner.isAlive()) continue;
+      const cut = share < remaining ? share : remaining;
+      if (cut <= 0n) break;
+      tollOwner.addGold(cut, stationTile);
+      remaining -= cut;
+    }
+    return remaining;
   }
 
   private complete() {
@@ -218,7 +270,10 @@ export class TradeShipExecution implements Execution {
         .stats()
         .boatCapturedTrade(this.tradeShip!.owner(), this.origOwner, gold);
     } else {
-      this.srcPort.owner().addGold(gold, this.srcPort.tile());
+      // Tolls come out of the trader's arrival income (never their treasury);
+      // the destination port's side of the trade is untouched.
+      const traderGold = this.settleTolls(gold);
+      this.srcPort.owner().addGold(traderGold, this.srcPort.tile());
       this._dstPort.owner().addGold(gold, this._dstPort.tile());
       // Record stats
       this.mg

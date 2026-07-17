@@ -1119,7 +1119,9 @@ export class GPURenderer {
     let writeIdx = 0;
     for (let i = 0; i < this.selectedUnitIds.length; i++) {
       const id = this.selectedUnitIds[i];
-      const unit = this.lastUnits.get(id);
+      // Selected ids are usually warships (lastUnits), but the capture-hover
+      // glow also selects water structures (lastStructures).
+      const unit = this.lastUnits.get(id) ?? this.lastStructures.get(id);
       if (!unit || !unit.isActive) continue; // dead — drop
       this.selectedUnitIds[writeIdx++] = id;
 

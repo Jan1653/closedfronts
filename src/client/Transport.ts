@@ -180,6 +180,8 @@ export class MoveWarshipIntentEvent implements GameEvent {
   constructor(
     public readonly unitIds: number[],
     public readonly tile: number,
+    // Enemy water structure to capture (explicit warship capture order).
+    public readonly targetUnitId?: number,
   ) {}
 }
 
@@ -678,6 +680,7 @@ export class Transport {
       type: "move_warship",
       unitIds: event.unitIds,
       tile: event.tile,
+      targetUnitId: event.targetUnitId,
     });
   }
 

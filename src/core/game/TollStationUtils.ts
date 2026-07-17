@@ -6,6 +6,16 @@ import { GameMap, manhattanDistFN, TileRef } from "./GameMap";
 // placeable. The station draws its two road-like connections to them.
 export const WATER_TOLL_STATION_RADIUS = 18;
 
+// How close (manhattan distance) a boat must be to a station to count as
+// passing through its toll gate.
+export const TOLL_GATE_RADIUS = 2;
+
+// Share of a trade ship's arrival gold that each distinct toll-station owner
+// on the route claims (percent). Two or more different owners on one route
+// leave the trader with nothing — but never a negative balance, because the
+// toll is settled out of the arrival income, not the trader's treasury.
+export const TOLL_INCOME_SHARE_PERCENT = 50n;
+
 // The minimal map/unit surface tollStationConnections needs — satisfied by both
 // the server's Game and the client's GameView, so the client can compute a
 // station's connections for rendering without a Game instance.

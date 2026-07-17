@@ -562,6 +562,8 @@ export const MoveWarshipIntentSchema = z.object({
   type: z.literal("move_warship"),
   unitIds: z.array(z.number().int()).nonempty(),
   tile: z.number(),
+  // Enemy water structure to capture (explicit warship capture order).
+  targetUnitId: z.number().int().optional(),
 });
 
 export const DeleteUnitIntentSchema = z.object({

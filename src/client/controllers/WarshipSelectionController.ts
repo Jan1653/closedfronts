@@ -6,6 +6,7 @@ import { Controller } from "../Controller";
 import {
   CloseViewEvent,
   ContextMenuEvent,
+  MouseMoveEvent,
   MouseUpEvent,
   SelectAllWarshipsEvent,
   TouchEvent,
@@ -20,6 +21,9 @@ import { MoveWarshipIntentEvent } from "../Transport";
 import { GameView, UnitView } from "../view";
 
 const WARSHIP_SELECTION_RADIUS = 10;
+// How close (manhattan tiles) a click/hover must be to a capturable enemy
+// water structure to count as targeting it with the selected warships.
+const CAPTURE_TARGET_RADIUS = 3;
 
 /**
  * Controller for warship selection state + click handling.
@@ -39,6 +43,10 @@ export class WarshipSelectionController implements Controller {
   private selectedUnit: UnitView | null = null;
   // Currently multi-selected warships (shift+drag box select).
   private multiSelectedWarships: UnitView[] = [];
+
+  // Capturable enemy water structure currently hovered while warships are
+  // selected — glows (selection box) as a "click to capture" affordance.
+  private hoveredCaptureTarget: UnitView | null = null;
 
   // Drag rectangle (shift+drag warship selection box) — a screen-space DOM
   // overlay positioned via inline style.
@@ -79,6 +87,80 @@ export class WarshipSelectionController implements Controller {
       this.onSelectionBoxComplete(e),
     );
     this.eventBus.on(SelectAllWarshipsEvent, () => this.onSelectAllWarships());
+    this.eventBus.on(MouseMoveEvent, (e) => this.onMouseMove(e));
+  }
+
+  /**
+   * Hover glow: with warships selected, hovering a capturable enemy water
+   * structure (toll station / sea oil pump) highlights it so the player knows
+   * a click will order a capture.
+   */
+  private onMouseMove(event: MouseMoveEvent): void {
+    if (this.selectedUnit === null && this.multiSelectedWarships.length === 0) {
+      if (this.hoveredCaptureTarget !== null) {
+        this.hoveredCaptureTarget = null;
+        this.pushSelectionToView();
+      }
+      return;
+    }
+    const cell = this.transformHandler.screenToWorldCoordinates(
+      event.x,
+      event.y,
+    );
+    let hovered: UnitView | null = null;
+    if (this.game.isValidCoord(cell.x, cell.y)) {
+      hovered = this.findCapturableStructureNear(this.game.ref(cell.x, cell.y));
+    }
+    if (hovered !== this.hoveredCaptureTarget) {
+      this.hoveredCaptureTarget = hovered;
+      this.pushSelectionToView();
+    }
+  }
+
+  /**
+   * Nearest capturable enemy/neutral water structure within
+   * CAPTURE_TARGET_RADIUS of `ref` (toll stations and sea oil pumps; own,
+   * allied and under-construction ones excluded).
+   */
+  private findCapturableStructureNear(ref: TileRef): UnitView | null {
+    const myPlayer = this.game.myPlayer();
+    if (!myPlayer) return null;
+    let best: UnitView | null = null;
+    let bestDist = Infinity;
+    for (const unit of this.game.units(
+      UnitType.WaterTollStation,
+      UnitType.OilPump,
+    )) {
+      if (!unit.isActive() || unit.isUnderConstruction()) continue;
+      if (!this.game.isWater(unit.tile())) continue; // land pumps unreachable
+      const owner = unit.owner();
+      if (owner === myPlayer) continue;
+      if (owner.isFriendly(myPlayer) || myPlayer.isFriendly(owner)) continue;
+      const d = this.game.manhattanDist(unit.tile(), ref);
+      if (d <= CAPTURE_TARGET_RADIUS && d < bestDist) {
+        bestDist = d;
+        best = unit;
+      }
+    }
+    return best;
+  }
+
+  /** Re-push the current selection (plus hover glow target) to the renderer. */
+  private pushSelectionToView(): void {
+    const ids: number[] = [];
+    if (this.multiSelectedWarships.length > 0) {
+      for (const u of this.multiSelectedWarships) ids.push(u.id());
+    } else if (this.selectedUnit) {
+      ids.push(this.selectedUnit.id());
+    }
+    if (
+      this.hoveredCaptureTarget !== null &&
+      this.hoveredCaptureTarget.isActive() &&
+      ids.length > 0
+    ) {
+      ids.push(this.hoveredCaptureTarget.id());
+    }
+    this.view.setSelectedUnits(ids);
   }
 
   /**
@@ -180,6 +262,12 @@ export class WarshipSelectionController implements Controller {
     }
     if (!this.game.isWater(clickRef)) return;
 
+    // Clicking a capturable enemy water structure orders the selected
+    // warships to capture it (the structure's tile becomes the move target).
+    const captureTarget = this.findCapturableStructureNear(clickRef);
+    const moveTile = captureTarget !== null ? captureTarget.tile() : clickRef;
+    const captureId = captureTarget !== null ? captureTarget.id() : undefined;
+
     if (this.multiSelectedWarships.length > 0) {
       const myPlayer = this.game.myPlayer();
       const activeIds = this.multiSelectedWarships
@@ -187,7 +275,9 @@ export class WarshipSelectionController implements Controller {
         .map((u) => u.id());
 
       if (activeIds.length > 0) {
-        this.eventBus.emit(new MoveWarshipIntentEvent(activeIds, clickRef));
+        this.eventBus.emit(
+          new MoveWarshipIntentEvent(activeIds, moveTile, captureId),
+        );
       }
       this.eventBus.emit(new UnitSelectionEvent(null, false));
       return;
@@ -195,7 +285,7 @@ export class WarshipSelectionController implements Controller {
 
     if (this.selectedUnit) {
       this.eventBus.emit(
-        new MoveWarshipIntentEvent([this.selectedUnit.id()], clickRef),
+        new MoveWarshipIntentEvent([this.selectedUnit.id()], moveTile, captureId),
       );
       this.eventBus.emit(new UnitSelectionEvent(this.selectedUnit, false));
       return;
@@ -301,16 +391,16 @@ export class WarshipSelectionController implements Controller {
     this.selectedUnit = null;
 
     if (!event.isSelected) {
-      this.view.setSelectedUnits([]);
+      this.hoveredCaptureTarget = null;
+      this.pushSelectionToView();
       return;
     }
 
     if ((event.units ?? []).length > 0) {
       this.multiSelectedWarships = event.units;
-      this.view.setSelectedUnits(event.units.map((u) => u.id()));
     } else {
       this.selectedUnit = event.unit;
-      this.view.setSelectedUnits(event.unit ? [event.unit.id()] : []);
     }
+    this.pushSelectionToView();
   }
 }

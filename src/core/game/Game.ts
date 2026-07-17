@@ -32,6 +32,10 @@ export type WarshipState = {
   patrolTile?: TileRef;
   retreatPort?: TileRef;
   isInCombat?: boolean;
+  // Explicit player order: capture this structure (unit id). Lets a warship
+  // seize a neutral water structure on command — auto-capture only happens
+  // against owners the warship's owner is at war with.
+  captureTargetId?: number;
   lastCombatTick: number;
   // Veterancy level (0–max) plus a shared integer progress meter fed by
   // transport kills and trade captures (see UnitImpl.addVeterancyProgress).
@@ -544,6 +548,11 @@ export interface Unit {
   // Construction phase on structures
   isUnderConstruction(): boolean;
   setUnderConstruction(underConstruction: boolean): void;
+
+  // Warship-capture progress on capturable water structures (0..1), synced to
+  // the client for the capture bar.
+  captureProgress(): number;
+  setCaptureProgress(progress: number): void;
 
   // Electric-bomb deactivation: while disabled a structure does nothing (its
   // execution skips work) and renders greyed. disableUntil extends the window;

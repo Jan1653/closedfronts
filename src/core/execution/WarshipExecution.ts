@@ -3,6 +3,7 @@ import {
   Game,
   isUnit,
   OwnerComp,
+  Relation,
   Unit,
   UnitParams,
   UnitType,
@@ -116,18 +117,26 @@ export class WarshipExecution implements Execution {
       return;
     }
 
-    // Priority 3: Hunt trade ship only if not healing and no enemy warship
+    // Priority 3: An explicit capture order (player clicked an enemy water
+    // structure) — sail there and hold, don't get distracted by trade ships.
+    const orderedTarget = this.explicitCaptureTarget();
+    if (orderedTarget !== undefined) {
+      this.moveToCapture(orderedTarget);
+      return;
+    }
+
+    // Priority 4: Hunt trade ship only if not healing and no enemy warship
     if (this.warship.targetUnit()?.type() === UnitType.TradeShip) {
       this.huntDownTradeShip();
       return;
     }
 
-    // Priority 4: Sail to and hold next to a capturable enemy water structure
+    // Priority 5: Sail to and hold next to a capturable enemy water structure
     // (sea oil pump / toll station). The structure's own execution runs the
     // 60-tick capture timer once we're within CAPTURE_RANGE; wandering off on a
-    // random patrol would keep resetting it, so approach and then hold. This is
-    // what lets a player capture a water pump/toll by sending a warship at it,
-    // and lets warships auto-seize enemy water structures once at war.
+    // random patrol would keep resetting it, so approach and then hold. Only
+    // structures of owners we are AT WAR with are seized automatically —
+    // neutral ones need an explicit order (priority 3).
     const captureTarget = this.findCapturableStructure();
     if (captureTarget !== undefined) {
       this.moveToCapture(captureTarget);
@@ -135,6 +144,39 @@ export class WarshipExecution implements Execution {
     }
 
     this.patrol();
+  }
+
+  /**
+   * The structure this warship was explicitly ordered to capture, if it is
+   * still a valid target. Clears a stale order (target destroyed, captured, or
+   * became friendly) so the ship returns to normal duty.
+   */
+  private explicitCaptureTarget(): Unit | undefined {
+    const targetId = this.warship.warshipState().captureTargetId;
+    if (targetId === undefined) return undefined;
+    const unit = this.mg.unit(targetId);
+    const owner = this.warship.owner();
+    if (
+      unit === undefined ||
+      !unit.isActive() ||
+      unit.owner() === owner ||
+      unit.owner().isFriendly(owner) ||
+      unit.owner().isOnSameTeam(owner) ||
+      !this.mg.isWater(unit.tile())
+    ) {
+      this.warship.updateWarshipState({ captureTargetId: undefined });
+      return undefined;
+    }
+    // Skip structures on a disconnected body of water we can't sail to.
+    const warshipComponent = this.mg.getWaterComponent(this.warship.tile());
+    if (
+      warshipComponent !== null &&
+      !this.mg.hasWaterComponent(unit.tile(), warshipComponent)
+    ) {
+      this.warship.updateWarshipState({ captureTargetId: undefined });
+      return undefined;
+    }
+    return unit;
   }
 
   private healWarship(): void {
@@ -358,7 +400,10 @@ export class WarshipExecution implements Execution {
         !unit.isActive() ||
         unit.isUnderConstruction() ||
         unit.owner() === owner ||
-        !owner.canAttackPlayer(unit.owner(), true)
+        !owner.canAttackPlayer(unit.owner(), true) ||
+        // Auto-seizure only against owners we are at war with; neutral
+        // structures need an explicit capture order.
+        owner.relation(unit.owner()) !== Relation.Hostile
       ) {
         continue;
       }

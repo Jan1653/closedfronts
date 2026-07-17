@@ -105,6 +105,8 @@ export interface UnitState {
   trainType: number | null; // 0=Engine, 1=TailEngine, 2=Carriage
   loaded: boolean | null;
   constructionStartTick: number | null;
+  /** Warship capture bar on water structures (0..1, 0 = no capture running). */
+  captureProgress?: number;
 }
 
 /** Minimal dead-unit data needed by the FX pass. */

@@ -47,6 +47,8 @@ export class UnitImpl implements Unit {
   private _deletionAt: number | null = null;
   // Electric-bomb deactivation: disabled while ticks() < this tick (0 = never).
   private _disabledUntilTick: number = 0;
+  // Warship capture bar on capturable water structures (0..1).
+  private _captureProgress: number = 0;
 
   constructor(
     private _type: UnitType,
@@ -157,7 +159,21 @@ export class UnitImpl implements Unit {
       trainType: this._trainType,
       loaded: this._loaded,
       disabled: this.isDisabled(),
+      captureProgress:
+        this._captureProgress > 0 ? this._captureProgress : undefined,
     };
+  }
+
+  captureProgress(): number {
+    return this._captureProgress;
+  }
+
+  setCaptureProgress(progress: number): void {
+    const clamped = Math.max(0, Math.min(1, progress));
+    if (this._captureProgress !== clamped) {
+      this._captureProgress = clamped;
+      this.mg.addUpdate(this.toUpdate());
+    }
   }
 
   type(): UnitType {
@@ -379,13 +395,15 @@ export class UnitImpl implements Unit {
     if (
       merged.state === this._warshipState.state &&
       merged.patrolTile === this._warshipState.patrolTile &&
-      merged.retreatPort === this._warshipState.retreatPort
+      merged.retreatPort === this._warshipState.retreatPort &&
+      merged.captureTargetId === this._warshipState.captureTargetId
     )
       return;
     this._warshipState = {
       state: merged.state,
       patrolTile: merged.patrolTile,
       retreatPort: merged.retreatPort,
+      captureTargetId: merged.captureTargetId,
       lastCombatTick: this._warshipState.lastCombatTick,
       veterancy: this._warshipState.veterancy,
       veterancyProgress: this._warshipState.veterancyProgress,

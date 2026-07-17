@@ -7,6 +7,7 @@ import {
   Player,
   PlayerInfo,
   PlayerType,
+  Relation,
   UnitType,
 } from "../src/core/game/Game";
 import { TileRef } from "../src/core/game/GameMap";
@@ -170,13 +171,17 @@ describe("WaterTollStation", () => {
     expect(massA.has(b)).toBe(false);
   });
 
-  test("enemy warship captures the station after holding position", () => {
+  test("warship at war captures the station after holding position", () => {
     const strait = findStraitTile();
     expect(strait).not.toBeNull();
 
     const station = p1.buildUnit(UnitType.WaterTollStation, strait!, {});
     game.addExecution(new WaterTollStationExecution(station));
     expect(station.owner()).toBe(p1);
+
+    // Auto-capture only runs against owners the warship's owner is AT WAR
+    // with — start the war first.
+    p2.updateRelation(p1, -200);
 
     // Park an enemy warship right next to the station (no execution, so it
     // holds position) and let the capture timer run out.
@@ -191,36 +196,62 @@ describe("WaterTollStation", () => {
     expect(station.owner()).toBe(p2);
   });
 
-  test("credits the toll straight to the station owner", () => {
+  test("neutral warship does NOT auto-capture the station", () => {
     const strait = findStraitTile();
     expect(strait).not.toBeNull();
+
     const station = p1.buildUnit(UnitType.WaterTollStation, strait!, {});
     game.addExecution(new WaterTollStationExecution(station));
 
-    const gate = game.neighbors(strait!).find((n) => game.isWater(n));
-    expect(gate).toBeDefined();
-    p2.buildUnit(UnitType.TransportShip, gate!, {});
+    // p1 and p2 are neutral — parking a warship next to the station must not
+    // seize it anymore.
+    const waterNeighbor = game.neighbors(strait!).find((n) => game.isWater(n));
+    expect(waterNeighbor).toBeDefined();
+    p2.buildUnit(UnitType.Warship, waterNeighbor!, {
+      patrolTile: waterNeighbor!,
+    });
 
-    const p2Before = p2.gold();
-    const p1Before = p1.gold();
-    executeTicks(game, 5);
+    executeTicks(game, 80);
 
-    // p2 paid the toll and the owner (p1) receives it directly — no collection
-    // ship or port needed.
-    expect(p2.gold()).toBeLessThan(p2Before);
-    expect(p1.gold()).toBeGreaterThan(p1Before);
+    expect(station.owner()).toBe(p1);
   });
 
-  test("does not toll the station owner's own boats", () => {
+  test("explicit capture order lets a neutral warship take the station", () => {
+    const strait = findStraitTile();
+    expect(strait).not.toBeNull();
+
+    const station = p1.buildUnit(UnitType.WaterTollStation, strait!, {});
+    game.addExecution(new WaterTollStationExecution(station));
+
+    const waterNeighbor = game.neighbors(strait!).find((n) => game.isWater(n));
+    expect(waterNeighbor).toBeDefined();
+    const warship = p2.buildUnit(UnitType.Warship, waterNeighbor!, {
+      patrolTile: waterNeighbor!,
+    });
+    // The player clicked the station: explicit capture order.
+    warship.updateWarshipState({ captureTargetId: station.id() });
+
+    executeTicks(game, 80);
+
+    expect(station.owner()).toBe(p2);
+    // Completing the capture starts the war.
+    expect(p2.relation(p1)).toBe(Relation.Hostile);
+  });
+
+  test("transport ships pass toll gates without paying", () => {
     const strait = findStraitTile();
     const station = p1.buildUnit(UnitType.WaterTollStation, strait!, {});
     game.addExecution(new WaterTollStationExecution(station));
 
     const gate = game.neighbors(strait!).find((n) => game.isWater(n));
-    p1.buildUnit(UnitType.TransportShip, gate!, {});
+    p2.buildUnit(UnitType.TransportShip, gate!, {});
 
     const p1Before = p1.gold();
-    executeTicks(game, 1);
+    const p2Before = p2.gold();
+    executeTicks(game, 5);
+    // Tolls are only ever settled from trade income on arrival — no treasury
+    // deduction, and troop transports have no trade income.
+    expect(p2.gold()).toBe(p2Before);
     expect(p1.gold()).toBe(p1Before);
   });
 
