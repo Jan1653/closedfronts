@@ -779,6 +779,11 @@ export class HostLobbyModal extends BaseModal {
       .catch(() => {
         // Clear clipboard so the host doesn't accidentally share a dead link
         void navigator.clipboard.writeText("").catch(() => {});
+        // Tell the host instead of leaving a dead lobby UI: without a lobby id
+        // nothing they do (config, Start) can reach a server.
+        showToast(translateText("host_modal.create_failed"), "red", 5000);
+        this.leaveLobbyOnClose = false;
+        this.close();
       });
     // BaseModal.firstUpdated() owns modalEl.onClose so the o-modal close path
     // (backdrop / close button) runs confirmBeforeClose(). Don't override it
@@ -1383,8 +1388,13 @@ export class HostLobbyModal extends BaseModal {
     const spawnImmunityTicks = this.spawnImmunityDurationMinutes
       ? this.spawnImmunityDurationMinutes * 60 * 10
       : 0;
-    const url = await this.constructUrl();
-    this.updateLobbyHistory(url);
+    // Only touch the address bar once the lobby actually exists — otherwise a
+    // failed create would write a junk /game/ URL with a fresh random suffix
+    // on every config change / Start press ("the room code keeps changing").
+    if (this.lobbyId !== "") {
+      const url = await this.constructUrl();
+      this.updateLobbyHistory(url);
+    }
     this.dispatchEvent(
       new CustomEvent("update-game-config", {
         detail: {

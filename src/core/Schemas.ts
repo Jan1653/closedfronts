@@ -595,7 +595,9 @@ export const KickPlayerIntentSchema = z.object({
 
 export const RenamePlayerIntentSchema = z.object({
   type: z.literal("rename_player"),
-  targetClientID: ID,
+  // Omitted = rename yourself (any player may do that in the lobby); renaming
+  // someone else requires lobby-creator/admin authority.
+  targetClientID: ID.optional(),
   username: UsernameSchema,
 });
 

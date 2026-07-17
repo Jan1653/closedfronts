@@ -191,7 +191,8 @@ export class SendKickPlayerIntentEvent implements GameEvent {
 
 export class SendRenamePlayerIntentEvent implements GameEvent {
   constructor(
-    public readonly target: string,
+    // null = rename yourself (any player may, in the lobby).
+    public readonly target: string | null,
     public readonly username: string,
   ) {}
 }
@@ -701,7 +702,7 @@ export class Transport {
   private onSendRenamePlayerIntent(event: SendRenamePlayerIntentEvent) {
     this.sendIntent({
       type: "rename_player",
-      targetClientID: event.target,
+      targetClientID: event.target ?? undefined,
       username: event.username,
     });
   }

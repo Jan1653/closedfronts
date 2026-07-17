@@ -6,7 +6,6 @@ import {
   UserMeResponse,
   UserMeResponseSchema,
 } from "../core/ApiSchemas";
-import { GameEnv } from "../core/configuration/Config";
 import { PersistentIdSchema } from "../core/Schemas";
 import { ServerEnv } from "./ServerEnv";
 
@@ -22,14 +21,15 @@ export async function verifyClientToken(
   token: string,
 ): Promise<TokenVerificationResult> {
   if (PersistentIdSchema.safeParse(token).success) {
-    if (ServerEnv.env() === GameEnv.Dev) {
-      return { type: "success", persistentId: token, claims: null };
-    } else {
-      return {
-        type: "error",
-        message: "persistent ID not allowed in production",
-      };
-    }
+    // Guests (no account) authenticate with their anonymous persistent ID as
+    // the bearer token. The self-hosted localapi has no guest-JWT flow, so
+    // accept it in EVERY env — upstream restricted this to dev because its
+    // closed API mints guest JWTs, which does not apply here. Without this,
+    // a guest on the deployed server cannot create, join, or start any game
+    // (create_game 401s and the join socket is closed as unauthorized).
+    // The IDs are unguessable random UUIDs that are never shared with other
+    // clients, so impersonation would require leaking your own ID.
+    return { type: "success", persistentId: token, claims: null };
   }
   try {
     const issuer = ServerEnv.jwtIssuer();

@@ -1023,8 +1023,10 @@ class Client {
   }
 
   // Change the local player's name while sitting in a lobby (mobile + desktop).
-  // Re-joins with the new identity (the server updates it before game start and
-  // rebroadcasts the lobby) and persists the name for future games.
+  // Sends a self-rename intent over the LIVE socket (the server updates the
+  // name and rebroadcasts the lobby) and persists the name for future games.
+  // Never reconnects: a host socket closing in the lobby used to make the
+  // server close the whole lobby and kick every player.
   private handleLobbyRename(event: CustomEvent<{ name: string }>) {
     const name = (event.detail?.name ?? "").trim();
     if (name.length === 0 || this.lobbyHandle === null) return;
@@ -1034,7 +1036,11 @@ class Client {
     } catch {
       // ignore storage failures (private mode, etc.)
     }
+    // Cache the new identity for any future reconnect, then rename in place.
     this.lobbyHandle.updateIdentity(name, clanTag);
+    if (this.eventBus) {
+      this.eventBus.emit(new SendRenamePlayerIntentEvent(null, name));
+    }
   }
 
   private handleToggleGameStartTimer() {

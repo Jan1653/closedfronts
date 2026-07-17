@@ -156,6 +156,12 @@ export class GameServer {
 
   private lobbyInfoIntervalId: ReturnType<typeof setInterval> | null = null;
 
+  // Pending "host left, close the lobby" teardown. Armed when the host's
+  // socket closes pre-start; the teardown re-checks at fire time so a host
+  // that reconnected within the grace window keeps the lobby alive.
+  private hostLeftTimer: ReturnType<typeof setTimeout> | null = null;
+  private static readonly HOST_LEFT_GRACE_MS = 15_000;
+
   private visibleAt?: number;
 
   constructor(
@@ -377,7 +383,12 @@ export class GameServer {
       }
 
       case "rename_player": {
-        if (!actor.isLobbyCreator && !actor.isAdmin) {
+        // No target = rename yourself. Any player may do that in the lobby —
+        // this is how the in-lobby name editor works without reconnecting
+        // (the host reconnecting used to tear the whole lobby down).
+        const targetClientID = stamped.targetClientID ?? stamped.clientID;
+        const isSelfRename = targetClientID === stamped.clientID;
+        if (!isSelfRename && !actor.isLobbyCreator && !actor.isAdmin) {
           return {
             status: 403,
             error: "only the lobby creator or an admin can rename players",
@@ -385,7 +396,8 @@ export class GameServer {
         }
         // Same reasoning as kick: a listed lobby recruits strangers from the
         // public browser, so letting the host rename them is a griefing vector.
-        if (this.isListed() && !actor.isAdmin) {
+        // Renaming yourself stays allowed.
+        if (!isSelfRename && this.isListed() && !actor.isAdmin) {
           return {
             status: 403,
             error: "the host cannot rename players in a publicly listed lobby",
@@ -397,7 +409,7 @@ export class GameServer {
           return { status: 409, error: "game already started" };
         }
         const target = this.activeClients.find(
-          (c) => c.clientID === stamped.targetClientID,
+          (c) => c.clientID === targetClientID,
         );
         if (target === undefined) {
           return { status: 404, error: "no matching player to rename" };
@@ -832,14 +844,32 @@ export class GameServer {
     // never start, and a listed one would haunt the lobby browser and hold
     // the creator's one-listing quota. phase() reports Finished once ended,
     // so GameManager's next tick prunes it.
+    //
+    // With a GRACE PERIOD: a host socket can close transiently (network blip,
+    // page refresh, or an old client that reconnects to apply a rename).
+    // Tearing the lobby down instantly on that kicked every player with
+    // "host left" the moment the host renamed themselves. Only close if the
+    // host hasn't come back after the grace window.
     if (!this.isPublic() && client.persistentID === this.creatorPersistentID) {
-      this.log.info("Host left, closing lobby", {
-        gameID: this.id,
-      });
-      for (const c of [...this.activeClients]) {
-        this.kickClient(c.clientID, KICK_REASON_HOST_LEFT);
-      }
-      this._hasEnded = true;
+      this.hostLeftTimer ??= setTimeout(() => {
+        this.hostLeftTimer = null;
+        if (this.hasStarted() || this._hasEnded) {
+          return;
+        }
+        const hostIsBack = this.activeClients.some(
+          (c) => c.persistentID === this.creatorPersistentID,
+        );
+        if (hostIsBack) {
+          return;
+        }
+        this.log.info("Host left, closing lobby", {
+          gameID: this.id,
+        });
+        for (const c of [...this.activeClients]) {
+          this.kickClient(c.clientID, KICK_REASON_HOST_LEFT);
+        }
+        this._hasEnded = true;
+      }, GameServer.HOST_LEFT_GRACE_MS);
     }
   }
 

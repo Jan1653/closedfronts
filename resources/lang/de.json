@@ -825,6 +825,7 @@
   },
   "host_modal": {
     "title": "Private Lobby",
+    "create_failed": "Lobby konnte nicht erstellt werden. Bitte versuche es erneut.",
     "mode": "Modus",
     "team_count": "Teamanzahl",
     "options_title": "Optionen",

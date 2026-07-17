@@ -107,10 +107,10 @@ export interface JoinLobbyResult {
   stop: (force?: boolean) => boolean;
   prestart: Promise<void>;
   join: Promise<void>;
-  // Change the local player's name/clan tag while still in the lobby. Re-sends
-  // the join; the server treats a same-persistentID join as a reconnect and
-  // applies the new identity (only before the game starts), then rebroadcasts
-  // the lobby so every client sees the new name.
+  // Update the locally cached identity (used if the socket ever reconnects).
+  // The actual in-lobby rename is sent as a rename_player intent over the LIVE
+  // socket (Main.handleLobbyRename) — never by reconnecting: a host socket
+  // closing in the lobby tears the whole lobby down for everyone.
   updateIdentity: (playerName: string, playerClanTag: string | null) => void;
 }
 
@@ -267,13 +267,13 @@ export function joinLobby(
     prestart: prestartPromise,
     join: joinPromise,
     updateIdentity: (playerName: string, playerClanTag: string | null) => {
+      // Only update the cached identity for future (re)connects. Deliberately
+      // NO transport.reconnect() here: closing the host's socket makes the
+      // server treat the host as gone and close the lobby, kicking everyone
+      // ("Lobby Not Found"). The rename itself travels as a rename_player
+      // intent on the live socket.
       lobbyConfig.playerName = playerName;
       lobbyConfig.playerClanTag = playerClanTag;
-      // Reconnect so the join is re-sent on a fresh socket. The server then
-      // takes its reconnect path — censors the new name and applies it before
-      // the game starts, then rebroadcasts the lobby. (Re-sending "join" on the
-      // live in-game socket is rejected as an unknown message type.)
-      transport.reconnect();
     },
   };
 }
