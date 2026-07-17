@@ -39,7 +39,7 @@ export class WallExecution implements Execution {
     // how the damage bar "reverts" when the attacker is repelled/counterattacked.
     if (this.underSiege()) return;
     if (this.wall.health() < this.wall.maxHealth()) {
-      this.wall.modifyHealth(this.mg.config().wallRegenPerTick());
+      this.wall.modifyHealth(this.mg.config().wallRegenPerTick(this.wall.owner()));
     }
   }
 

@@ -303,7 +303,13 @@ describe("host-left lobby teardown", () => {
 
     hostWs.emit("close");
 
-    // Remaining players are kicked and the ghost leaves the listing...
+    // A grace window lets a transiently dropped host (network blip, rename)
+    // come back before the lobby is torn down.
+    expect(game.phase()).not.toBe(GamePhase.Finished);
+    vi.advanceTimersByTime(16_000);
+
+    // Host stayed gone: remaining players are kicked and the ghost leaves
+    // the listing...
     expect(guestWs.close).toHaveBeenCalled();
     expect(game.phase()).toBe(GamePhase.Finished);
     expect(gm.listedLobbies()).toEqual([]);
@@ -314,6 +320,30 @@ describe("host-left lobby teardown", () => {
     expect(gm.game("g-host-leaves")).toBeNull();
   });
 
+  it("survives the host reconnecting within the grace window", () => {
+    const gm = new GameManager(mockLogger);
+    const game = gm.createGame("g-host-blip", undefined, CREATOR)!;
+
+    const hostWs = fakeWs();
+    const guestWs = fakeWs();
+    expect(game.joinClient(makeClient("host", CREATOR, hostWs))).toBe("joined");
+    expect(game.joinClient(makeClient("guest", OTHER_CREATOR, guestWs))).toBe(
+      "joined",
+    );
+
+    hostWs.emit("close");
+    // Host comes right back (e.g. an old client applying a rename by
+    // reconnecting) before the grace window elapses.
+    const hostWs2 = fakeWs();
+    expect(game.joinClient(makeClient("host2", CREATOR, hostWs2))).toBe(
+      "joined",
+    );
+    vi.advanceTimersByTime(16_000);
+
+    expect(game.phase()).not.toBe(GamePhase.Finished);
+    expect(guestWs.close).not.toHaveBeenCalled();
+  });
+
   it("tears down even when the host socket was already dead on join", () => {
     const gm = new GameManager(mockLogger);
     const game = gm.createGame("g-dead-socket", undefined, CREATOR)!;
@@ -322,6 +352,7 @@ describe("host-left lobby teardown", () => {
     const hostWs = fakeWs();
     hostWs.readyState = WebSocket.CLOSED;
     game.joinClient(makeClient("host", CREATOR, hostWs));
+    vi.advanceTimersByTime(16_000);
 
     expect(game.phase()).toBe(GamePhase.Finished);
     expect(gm.listedLobbies()).toEqual([]);

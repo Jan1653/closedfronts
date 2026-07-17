@@ -220,17 +220,26 @@ export class Config {
   }
 
   // Health a wall regenerates per tick while it is NOT under active siege — this
-  // is how the damage "reverts" when the attacker is repelled.
-  wallRegenPerTick(): number {
-    return 2;
+  // is how the damage "reverts" when the attacker is repelled. A larger
+  // standing army garrisons its walls: regen grows (mildly) with the owner's
+  // troop count.
+  wallRegenPerTick(owner?: Player): number {
+    const troops = owner?.troops() ?? 0;
+    return Math.min(6, 2 + Math.floor(troops / 100_000));
   }
 
   // Health a besieging attacker strips from a wall each tick, scaled by the
   // attacking force so a bigger army breaks through faster (and a small one
-  // barely dents it — slower with fewer troops). Clamped to a sane band.
-  wallSiegeDamagePerTick(attackerTroops: number): number {
-    const dmg = Math.floor(attackerTroops / 1000);
-    return Math.max(2, Math.min(20, dmg));
+  // barely dents it — slower with fewer troops). The wall owner's standing
+  // army reinforces the wall: damage is divided by (1 + ownerTroops/50k), so
+  // a big nation attacking an equally big defender no longer melts walls in
+  // seconds, while walls of a small/abandoned player still fall fast.
+  // Clamped to a sane band (min 1 so every wall falls eventually).
+  wallSiegeDamagePerTick(attackerTroops: number, wallOwner?: Player): number {
+    const base = attackerTroops / 1000;
+    const defense = 1 + (wallOwner?.troops() ?? 0) / 50_000;
+    const dmg = Math.floor(base / defense);
+    return Math.max(1, Math.min(20, dmg));
   }
 
   // Walls can't be stacked/placed densely: a new wall must be at least this many
@@ -985,10 +994,15 @@ export class Config {
 
   oilConsumptionRate(player: Player | PlayerView): number {
     // The bigger you are, the more oil you burn each tick; cities also each burn
-    // a little (they run on fuel — see the troop-rate boost below). Kept high
-    // enough that passive upkeep noticeably eats into production.
+    // a little (they run on fuel — see the troop-rate boost below). Beyond
+    // ~15k tiles a steep size surcharge kicks in, so a sprawling late-game
+    // empire can no longer out-produce its own upkeep for free — storage and
+    // saved-up oil stay relevant all game.
+    const tiles = player.numTilesOwned();
+    const sizeSurcharge = Math.floor(Math.max(0, tiles - 15_000) / 60);
     return (
-      Math.floor(player.numTilesOwned() / 100) +
+      Math.floor(tiles / 100) +
+      sizeSurcharge +
       this.builtCityCount(player) * this.cityOilConsumption()
     );
   }
@@ -1005,14 +1019,21 @@ export class Config {
 
   // Oil burned per tile conquered. Makes actively growing cost fuel on top of
   // the passive size upkeep, so a war machine has to keep pumping to keep
-  // advancing. Rolling over unowned wilderness is cheap; taking land from
-  // another player (nation, bot or human) burns twice as much.
-  oilExpansionCostWilderness(): number {
-    return 2.5;
+  // advancing. Rolling over unowned wilderness is cheaper; taking land from
+  // another player (nation, bot or human) burns much more. Both rates grow
+  // with the conqueror's size (1 + tiles/25k), so a huge empire pays several
+  // times as much per tile as a fresh one — attacking late-game is thirsty.
+  oilExpansionCostWilderness(player?: Player): number {
+    return 4 * this.oilExpansionSizeFactor(player);
   }
 
-  oilExpansionCostConquest(): number {
-    return 5;
+  oilExpansionCostConquest(player?: Player): number {
+    return 10 * this.oilExpansionSizeFactor(player);
+  }
+
+  private oilExpansionSizeFactor(player?: Player): number {
+    if (player === undefined) return 1;
+    return 1 + player.numTilesOwned() / 25_000;
   }
 
   // A little fuel is burned each time a ship (transport/warship/trade) is

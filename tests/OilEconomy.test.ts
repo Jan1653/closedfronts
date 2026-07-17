@@ -333,11 +333,19 @@ describe("Oil economy", () => {
     g.addExecution(new OilPumpExecution(pump));
     expect(pump.owner()).toBe(p1);
 
-    // p2 (not yet at war) parks a warship next to the pump and holds position.
-    p2.buildUnit(UnitType.Warship, waterN!, { patrolTile: waterN! });
+    // p2 (not yet at war) parks a warship next to the pump. Without an
+    // explicit capture order a neutral structure is safe now.
+    const warship = p2.buildUnit(UnitType.Warship, waterN!, {
+      patrolTile: waterN!,
+    });
+    executeTicks(g, 80);
+    expect(pump.owner()).toBe(p1);
+
+    // With an explicit capture order (the player clicked the pump) the
+    // neutral warship seizes it — and completing the capture starts the war.
+    warship.updateWarshipState({ captureTargetId: pump.id() });
     executeTicks(g, 80);
 
-    // The pump changed hands, and capturing it started the war (both hostile).
     expect(pump.owner()).toBe(p2);
     expect(p1.relation(p2)).toBe(Relation.Hostile);
     expect(p2.relation(p1)).toBe(Relation.Hostile);

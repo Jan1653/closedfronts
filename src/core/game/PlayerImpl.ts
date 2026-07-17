@@ -1281,8 +1281,8 @@ export class PlayerImpl implements Player {
     this._conqueredWilderness = 0;
     this._conqueredFromPlayers = 0;
     let expansion =
-      wilderness * config.oilExpansionCostWilderness() +
-      fromPlayers * config.oilExpansionCostConquest();
+      wilderness * config.oilExpansionCostWilderness(this) +
+      fromPlayers * config.oilExpansionCostConquest(this);
     if (!this._oilExpansionBaselined) {
       this._oilExpansionBaselined = true;
       expansion = 0;

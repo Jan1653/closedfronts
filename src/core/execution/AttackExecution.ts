@@ -404,7 +404,9 @@ export class AttackExecution implements Execution {
     }
     if (this.siegedThisTick.has(tile)) return;
     this.siegedThisTick.add(tile);
-    const raw = this.mg.config().wallSiegeDamagePerTick(troopCount);
+    const raw = this.mg
+      .config()
+      .wallSiegeDamagePerTick(troopCount, wall.owner());
     const dmg = Math.min(raw, wall.health() - 1);
     if (dmg > 0) wall.modifyHealth(-dmg, this._owner);
   }

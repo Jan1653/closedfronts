@@ -127,8 +127,9 @@ const UNDER_ATTACK_THREAT_RATIO = 0.35;
  * Roughly how many owned tiles one oil pump should sustain. One pump covers a
  * lot of ground, so most nations end up wanting just one or two — enough to
  * keep the oil economy (expansion + upkeep) from grinding them to a halt.
+ * Deliberately high: nations should lean on oil visibly LESS than players.
  */
-const OIL_TILES_PER_PUMP = 30000;
+const OIL_TILES_PER_PUMP = 45000;
 
 /** How many territory tiles to sample when hunting for an oil deposit to build on. */
 const OIL_DEPOSIT_SAMPLE = 80;
@@ -140,10 +141,10 @@ const OIL_DEPOSIT_SAMPLE = 80;
  * react earlier — they rush oil.
  */
 const OIL_LOW_FRACTION_BY_DIFFICULTY: Record<Difficulty, number> = {
-  [Difficulty.Easy]: 0.1,
-  [Difficulty.Medium]: 0.15,
-  [Difficulty.Hard]: 0.25,
-  [Difficulty.Impossible]: 0.35,
+  [Difficulty.Easy]: 0.05,
+  [Difficulty.Medium]: 0.08,
+  [Difficulty.Hard]: 0.12,
+  [Difficulty.Impossible]: 0.18,
 };
 
 /**
