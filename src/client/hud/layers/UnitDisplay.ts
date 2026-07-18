@@ -7,6 +7,7 @@ import {
   BuildMenus,
   Gold,
   PlayerBuildableUnitType,
+  ShipClass,
   UnitType,
 } from "../../../core/game/Game";
 import { UserSettings } from "../../../core/game/UserSettings";
@@ -32,6 +33,11 @@ const wallIcon = assetUrl("images/WallIconWhite.svg");
 const oilPumpIcon = assetUrl("images/OilPumpIconWhite.svg");
 const tollStationIcon = assetUrl("images/TollStationIconWhite.svg");
 const emergencyStationIcon = assetUrl("images/EmergencyStationIconWhite.svg");
+const lighthouseIcon = assetUrl("images/LighthouseIconWhite.svg");
+const fishingBoatIcon = assetUrl("images/FishingBoatIconWhite.svg");
+const patrolBoatIcon = assetUrl("images/PatrolBoatIconWhite.svg");
+const submarineIcon = assetUrl("images/SubmarineIconWhite.svg");
+const atomicSubmarineIcon = assetUrl("images/AtomicSubmarineIconWhite.svg");
 
 // The four bombs collapse into one "Bombs" button with a sub-menu. Order per
 // design: Electric, Atom, Hydrogen, MIRV. Each carries its build-keybind action
@@ -78,6 +84,63 @@ const BOMB_TYPES: ReadonlySet<PlayerBuildableUnitType> = new Set(
 );
 const SELECTED_BOMB_KEY = "unitDisplay.selectedBomb";
 
+// The ships tab (like the bombs sub-menu): every buyable ship in one place.
+// The three warship hull classes share UnitType.Warship and differ via
+// shipClass (sent with the build intent).
+export const SHIPS: {
+  type: PlayerBuildableUnitType;
+  shipClass: ShipClass | null;
+  icon: string;
+  key: string;
+}[] = [
+  {
+    type: UnitType.FishingBoat,
+    shipClass: null,
+    icon: fishingBoatIcon,
+    key: "fishing_boat",
+  },
+  {
+    type: UnitType.PatrolBoat,
+    shipClass: null,
+    icon: patrolBoatIcon,
+    key: "patrol_boat",
+  },
+  {
+    type: UnitType.Warship,
+    shipClass: "small",
+    icon: warshipIcon,
+    key: "warship_small",
+  },
+  {
+    type: UnitType.Warship,
+    shipClass: "large",
+    icon: warshipIcon,
+    key: "warship_large",
+  },
+  {
+    type: UnitType.Warship,
+    shipClass: "ultra",
+    icon: warshipIcon,
+    key: "warship_ultra",
+  },
+  {
+    type: UnitType.Submarine,
+    shipClass: null,
+    icon: submarineIcon,
+    key: "submarine",
+  },
+  {
+    type: UnitType.AtomicSubmarine,
+    shipClass: null,
+    icon: atomicSubmarineIcon,
+    key: "atomic_submarine",
+  },
+];
+const SHIP_TYPES: ReadonlySet<PlayerBuildableUnitType> = new Set(
+  SHIPS.map((s) => s.type),
+);
+const SELECTED_SHIP_KEY = "unitDisplay.selectedShip";
+
 function loadSelectedBomb(): PlayerBuildableUnitType {
   const saved = localStorage.getItem(SELECTED_BOMB_KEY);
   return BOMBS.find((b) => b.type === saved)?.type ?? UnitType.AtomBomb;
@@ -102,11 +165,20 @@ export class UnitDisplay extends LitElement implements Controller {
   private _oilStorage = 0;
   private _waterTollStation = 0;
   private _emergencyStation = 0;
+  private _lighthouse = 0;
   private allDisabled = false;
   private _hoveredUnit: PlayerBuildableUnitType | null = null;
   private _hoveredBomb: PlayerBuildableUnitType | null = null;
   private bombMenuOpen = false;
   private selectedBomb: PlayerBuildableUnitType = loadSelectedBomb();
+  private _hoveredShip: number | null = null;
+  private shipsMenuOpen = false;
+  private selectedShipIdx: number = (() => {
+    const saved = Number(localStorage.getItem(SELECTED_SHIP_KEY));
+    return Number.isInteger(saved) && saved >= 0 && saved < SHIPS.length
+      ? saved
+      : 0;
+  })();
 
   createRenderRoot() {
     return this;
@@ -148,9 +220,13 @@ export class UnitDisplay extends LitElement implements Controller {
             false)
         );
       case UnitType.Warship:
+      case UnitType.FishingBoat:
+      case UnitType.PatrolBoat:
+      case UnitType.Submarine:
+      case UnitType.AtomicSubmarine:
       case UnitType.WaterTollStation:
-        // Both need a FINISHED port (a toll station must be reachable by boat
-        // from one), so grey them out until a port is built — like the warship.
+        // All ships and the toll station need a FINISHED port (ships launch
+        // from one), so grey them out until a port is built.
         return (
           this.cost(item) <= (player?.gold() ?? 0n) &&
           (player?.units(UnitType.Port).some((u) => !u.isUnderConstruction()) ??
@@ -159,6 +235,25 @@ export class UnitDisplay extends LitElement implements Controller {
       default:
         return this.cost(item) <= (player?.gold() ?? 0n);
     }
+  }
+
+  // Full price of a ships-tab entry: warship hull classes have their own
+  // flat price; everything else uses the normal buildable cost.
+  private shipCost(entry: (typeof SHIPS)[number]): Gold {
+    if (entry.type === UnitType.Warship && entry.shipClass !== null) {
+      const player = this.game?.myPlayer();
+      if (player) {
+        return this.game.config().warshipClassCost(entry.shipClass, player);
+      }
+    }
+    return this.cost(entry.type);
+  }
+
+  private canBuildShip(entry: (typeof SHIPS)[number]): boolean {
+    const player = this.game?.myPlayer();
+    return (
+      this.canBuild(entry.type) && this.shipCost(entry) <= (player?.gold() ?? 0n)
+    );
   }
 
   tick() {
@@ -179,6 +274,7 @@ export class UnitDisplay extends LitElement implements Controller {
     this._oilStorage = player.totalUnitLevels(UnitType.OilStorage);
     this._waterTollStation = player.totalUnitLevels(UnitType.WaterTollStation);
     this._emergencyStation = player.totalUnitLevels(UnitType.EmergencyStation);
+    this._lighthouse = player.totalUnitLevels(UnitType.Lighthouse);
     // Close the bomb fly-out once a non-bomb structure gets armed elsewhere.
     const g = this.uiState.ghostStructure;
     if (this.bombMenuOpen && g !== null && !BOMB_TYPES.has(g)) {
@@ -246,14 +342,7 @@ export class UnitDisplay extends LitElement implements Controller {
             "sam_launcher",
             this.keybinds["buildSamLauncher"]?.key ?? "6",
           )}
-          ${this.renderUnitItem(
-            warshipIcon,
-            this._warships,
-            UnitType.Warship,
-            "warship",
-            this.keybinds["buildWarship"]?.key ?? "7",
-          )}
-          ${this.renderBombButton()}
+          ${this.renderShipsButton()} ${this.renderBombButton()}
           ${this.renderUnitItem(
             wallIcon,
             this._wall,
@@ -288,6 +377,13 @@ export class UnitDisplay extends LitElement implements Controller {
             UnitType.EmergencyStation,
             "emergency_station",
             "Alt 5",
+          )}
+          ${this.renderUnitItem(
+            lighthouseIcon,
+            this._lighthouse,
+            UnitType.Lighthouse,
+            "lighthouse",
+            "Alt 6",
           )}
         </div>
       </div>
@@ -413,6 +509,121 @@ export class UnitDisplay extends LitElement implements Controller {
   private toggleBombMenu() {
     this.bombMenuOpen = !this.bombMenuOpen;
     this.requestUpdate();
+  }
+
+  private isShipArmed(): boolean {
+    const g = this.uiState.ghostStructure;
+    return g !== null && SHIP_TYPES.has(g);
+  }
+
+  private selectShip(idx: number) {
+    this.selectedShipIdx = idx;
+    try {
+      localStorage.setItem(SELECTED_SHIP_KEY, String(idx));
+    } catch {
+      /* storage unavailable */
+    }
+    const entry = SHIPS[idx];
+    if (this.canBuildShip(entry)) {
+      this.uiState.ghostStructure = entry.type;
+      this.uiState.ghostShipClass = entry.shipClass;
+    }
+    this.shipsMenuOpen = false;
+    this.requestUpdate();
+  }
+
+  // Single "Ships" bar item that opens a sub-menu of every buyable ship
+  // (fishing boat, patrol boat, the three warship hulls, both submarines).
+  private renderShipsButton() {
+    const cfg = this.game.config();
+    const ships = SHIPS.map((s, i) => ({ ...s, idx: i })).filter(
+      (s) => !cfg.isUnitDisabled(s.type),
+    );
+    if (ships.length === 0) return html``;
+    const armed = this.isShipArmed();
+    const sel =
+      ships.find((s) => s.idx === this.selectedShipIdx) ?? ships[0];
+    return html`
+      <div class="flex flex-col items-center relative">
+        ${this.shipsMenuOpen
+          ? html`<div
+              class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 flex gap-0.5 p-0.5 bg-gray-800/95 backdrop-blur-sm rounded-md shadow-lg z-[110]"
+            >
+              ${ships.map((s) => {
+                const enabled = this.canBuildShip(s);
+                const active = this.selectedShipIdx === s.idx;
+                const hovered = this._hoveredShip === s.idx;
+                return html`<div
+                  class="relative flex"
+                  @mouseenter=${() => {
+                    this._hoveredShip = s.idx;
+                    this.requestUpdate();
+                  }}
+                  @mouseleave=${() => {
+                    this._hoveredShip = null;
+                    this.requestUpdate();
+                  }}
+                >
+                  ${hovered
+                    ? html`<div
+                        class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 text-gray-200 text-center w-max max-w-56 text-xs bg-gray-800/95 backdrop-blur-xs rounded-sm p-1 z-[120] shadow-lg pointer-events-none"
+                      >
+                        <div class="font-bold text-sm mb-1">
+                          ${translateText("unit_type." + s.key)}
+                        </div>
+                        <div class="px-1 pb-1">
+                          ${translateText("build_menu.desc." + s.key)}
+                        </div>
+                        <div class="flex items-center justify-center gap-1">
+                          <img src=${goldCoinIcon} width="13" height="13" />
+                          <span class="text-yellow-300"
+                            >${renderNumber(this.shipCost(s))}</span
+                          >
+                        </div>
+                      </div>`
+                    : null}
+                  <button
+                    class="relative w-9 h-9 flex items-center justify-center rounded border transition-colors ${active
+                      ? "border-sky-300 bg-sky-400/20"
+                      : "border-slate-500 hover:bg-gray-700"} ${enabled
+                      ? ""
+                      : "opacity-40"}"
+                    title=${translateText("unit_type." + s.key)}
+                    @click=${() => this.selectShip(s.idx)}
+                  >
+                    <img src=${s.icon} class="size-5" />
+                    ${s.shipClass !== null
+                      ? html`<span
+                          class="absolute bottom-0 right-0.5 text-[9px] leading-none text-gray-300 pointer-events-none uppercase"
+                          >${s.shipClass === "small"
+                            ? "S"
+                            : s.shipClass === "large"
+                              ? "L"
+                              : "XL"}</span
+                        >`
+                      : null}
+                  </button>
+                </div>`;
+              })}
+            </div>`
+          : null}
+        <div
+          class="border border-slate-500 rounded-sm px-0.5 pb-0.5 flex items-center gap-0.5 cursor-pointer hover:bg-gray-800 text-white ${armed
+            ? "bg-slate-400/20"
+            : ""}"
+          title=${translateText("unit_type.ships")}
+          @click=${() => {
+            this.shipsMenuOpen = !this.shipsMenuOpen;
+            this.requestUpdate();
+          }}
+        >
+          <div class="ml-0.5"></div>
+          <div class="flex items-center gap-0.5 pt-0.5">
+            <img src=${sel.icon} alt="ships" class="align-middle size-5" />
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   private selectBomb(type: PlayerBuildableUnitType) {

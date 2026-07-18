@@ -64,6 +64,7 @@ describe("InputHandler AutoUpgrade", () => {
       {
         attackRatio: 20,
         ghostStructure: null,
+        ghostShipClass: null,
         rocketDirectionUp: true,
         buildQuantity: 1,
         mobilePlacementTile: null,

@@ -107,6 +107,12 @@ export interface UnitState {
   constructionStartTick: number | null;
   /** Warship capture bar on water structures (0..1, 0 = no capture running). */
   captureProgress?: number;
+  /** Warship hull class ("small" | "normal" | "large" | "ultra"). */
+  shipClass?: string;
+  /** True for enemy submarines the local player hasn't spotted — the renderer
+   *  (units, health bars) skips them entirely. Recomputed per tick in
+   *  GameView.updateSubmarineVisibility. */
+  hidden?: boolean;
 }
 
 /** Minimal dead-unit data needed by the FX pass. */

@@ -17,6 +17,9 @@ export class ShellExecution implements Execution {
     private _owner: Player,
     private ownerUnit: Unit,
     private target: Unit,
+    // Percent-style damage scale (1 = normal). Used by warship hull classes
+    // and submarine torpedoes; applied as integer percent math.
+    private damageScale: number = 1,
   ) {}
 
   init(mg: Game, ticks: number): void {
@@ -91,7 +94,10 @@ export class ShellExecution implements Execution {
       );
     }
 
-    return Math.round((baseDamage / 250) * damageMultiplier);
+    const rolled = Math.round((baseDamage / 250) * damageMultiplier);
+    // Hull-class / torpedo scale, as integer percent so core stays float-safe.
+    const scalePercent = Math.round(this.damageScale * 100);
+    return Math.floor((rolled * scalePercent) / 100);
   }
 
   public getEffectOnTargetForTesting(): number {

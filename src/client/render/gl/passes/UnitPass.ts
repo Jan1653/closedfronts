@@ -39,12 +39,16 @@ import {
   SMOOTHED_NUKE_TYPES,
   TrainType,
   UT_ATOM_BOMB,
+  UT_ATOMIC_SUBMARINE,
   UT_ELECTRIC_BOMB,
+  UT_FISHING_BOAT,
   UT_HYDROGEN_BOMB,
   UT_MIRV,
   UT_MIRV_WARHEAD,
+  UT_PATROL_BOAT,
   UT_SAM_MISSILE,
   UT_SHELL,
+  UT_SUBMARINE,
   UT_TRADE_SHIP,
   UT_TRAIN,
   UT_TRANSPORT,
@@ -81,12 +85,27 @@ const UNIT_ORDER = [
   "TrainEngine",
   "TrainCarriage",
   "TrainCarriageLoaded",
+  // ClosedFronts ship overhaul (columns appended by scripts/gen-unit-atlas.mjs;
+  // order here must match the generator). WarshipSmall/Large/Ultra are
+  // synthetic — resolved from UnitState.shipClass, like the trains.
+  UT_FISHING_BOAT,
+  UT_PATROL_BOAT,
+  UT_SUBMARINE,
+  UT_ATOMIC_SUBMARINE,
+  "WarshipSmall",
+  "WarshipLarge",
+  "WarshipUltra",
 ] as const;
 
 const ATLAS_COLS = UNIT_ORDER.length;
 
 /** Atlas column of the hydrogen bomb — drives the GPU glow halo. */
 const HYDROGEN_BOMB_COL = UNIT_ORDER.indexOf(UT_HYDROGEN_BOMB);
+
+/** Warship hull-class sprite columns (resolved from UnitState.shipClass). */
+const WARSHIP_SMALL_COL = UNIT_ORDER.indexOf("WarshipSmall");
+const WARSHIP_LARGE_COL = UNIT_ORDER.indexOf("WarshipLarge");
+const WARSHIP_ULTRA_COL = UNIT_ORDER.indexOf("WarshipUltra");
 
 // ---------------------------------------------------------------------------
 // Instance data layout
@@ -424,6 +443,8 @@ export class UnitPass {
 
     for (const unit of units.values()) {
       if (!unit.isActive) continue;
+      // Unspotted enemy submarines are invisible to this viewer.
+      if (unit.hidden) continue;
 
       let atlasIdx = this.typeToAtlasCol.get(unit.unitType);
 
@@ -438,6 +459,13 @@ export class UnitPass {
             ? TRAIN_CARRIAGE_LOADED_COL
             : TRAIN_CARRIAGE_COL;
         }
+      }
+
+      // Warship hull classes get their own sprites (small/large/ultra).
+      if (unit.unitType === UT_WARSHIP) {
+        if (unit.shipClass === "small") atlasIdx = WARSHIP_SMALL_COL;
+        else if (unit.shipClass === "large") atlasIdx = WARSHIP_LARGE_COL;
+        else if (unit.shipClass === "ultra") atlasIdx = WARSHIP_ULTRA_COL;
       }
 
       if (atlasIdx === undefined) continue;

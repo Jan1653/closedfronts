@@ -12,6 +12,7 @@ import {
   Player,
   PlayerInfo,
   PlayerType,
+  ShipClass,
   TerrainType,
   TerraNullius,
   Tick,
@@ -398,6 +399,40 @@ export class Config {
             (numUnits: number) => Math.min(1_000_000, (numUnits + 1) * 250_000),
             UnitType.Warship,
           ),
+          maxHealth: 1000,
+        };
+        break;
+      case UnitType.FishingBoat:
+        info = {
+          cost: this.costWrapper(() => 100_000, UnitType.FishingBoat),
+          maxHealth: 120,
+        };
+        break;
+      case UnitType.PatrolBoat:
+        info = {
+          cost: this.costWrapper(() => 200_000, UnitType.PatrolBoat),
+          maxHealth: 300,
+        };
+        break;
+      case UnitType.Submarine:
+        info = {
+          cost: this.costWrapper(() => 1_500_000, UnitType.Submarine),
+          maxHealth: 800,
+        };
+        break;
+      case UnitType.AtomicSubmarine:
+        info = {
+          cost: this.costWrapper(() => 12_000_000, UnitType.AtomicSubmarine),
+          maxHealth: 2200,
+        };
+        break;
+      case UnitType.Lighthouse:
+        info = {
+          cost: this.costWrapper(
+            (numUnits: number) => Math.min(1_500_000, (numUnits + 1) * 400_000),
+            UnitType.Lighthouse,
+          ),
+          constructionDuration: this.instantBuild() ? 0 : 5 * 10,
           maxHealth: 1000,
         };
         break;
@@ -990,6 +1025,88 @@ export class Config {
       default:
         assertNever(this._gameConfig.difficulty);
     }
+  }
+
+  // ── Ships (overhaul) ─────────────────────────────────────────────────────
+
+  // Full price per warship hull class. "normal" keeps the dynamic base price;
+  // the others are flat. buildUnit charges the base warship cost, the class
+  // surcharge is collected on launch (WarshipExecution).
+  warshipClassCost(shipClass: ShipClass, player: Player | PlayerView): Gold {
+    // Mirror costWrapper: infinite-gold games make every hull free.
+    if (
+      player.type() === PlayerType.Human &&
+      this.hasInfiniteGoldFor(player as Player)
+    ) {
+      return 0n;
+    }
+    switch (shipClass) {
+      case "small":
+        return 150_000n;
+      case "normal":
+        // costWrapper ignores the Game argument; PlayerView carries the unit
+        // counters the wrapper reads, so the client can price this too.
+        return this.unitInfo(UnitType.Warship).cost(
+          undefined as unknown as Game,
+          player as Player,
+        );
+      case "large":
+        return 750_000n;
+      case "ultra":
+        return 5_000_000n;
+    }
+  }
+
+  // Gold a fishing boat earns each payout, and how often (ticks).
+  fishingBoatIncome(): Gold {
+    return 15_000n;
+  }
+
+  fishingBoatIncomeIntervalTicks(): Tick {
+    return 100;
+  }
+
+  // Scan radius of a patrol boat; enemy submarines inside become spotted.
+  patrolBoatScanRange(): number {
+    return 60;
+  }
+
+  // How long (ticks) a spotted submarine stays visible/targetable (~1 min).
+  submarineSpottedDurationTicks(): Tick {
+    return 600;
+  }
+
+  // Patrol boats can only be shot from very close range, so submarines can't
+  // snipe the one thing that reveals them from across the map.
+  patrolBoatMaxTargetRange(): number {
+    return 12;
+  }
+
+  // Submarine torpedo tuning: fire cadence and hit chances (percent).
+  submarineAttackRate(): Tick {
+    return 25;
+  }
+
+  submarineHitPercentVsWarship(): number {
+    return 55;
+  }
+
+  submarineHitPercent(): number {
+    return 90;
+  }
+
+  // Lighthouse: huge scan/support radius reaching well into the sea, and slow
+  // healing for own/team boats inside it.
+  lighthouseRadius(): number {
+    return 90;
+  }
+
+  lighthouseHealPerInterval(): number {
+    return 5;
+  }
+
+  lighthouseHealIntervalTicks(): Tick {
+    return 10;
   }
 
   // ── Natural disasters ────────────────────────────────────────────────────

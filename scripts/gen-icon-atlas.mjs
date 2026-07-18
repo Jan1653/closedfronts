@@ -241,6 +241,23 @@ function drawEmergencyStation() {
   rect(c, 6.5, 10.5, 11, 3, false); // horizontal bar of the plus (hole)
   return c;
 }
+// A lighthouse: tapered tower with stripe cuts, lamp on top, base bar.
+function drawLighthouse() {
+  const c = cell();
+  // Tapered tower: widens toward the base.
+  for (let sy = 8; sy <= 20; sy++) {
+    const halfW = 2 + ((sy - 8) / 12) * 2.2;
+    rect(c, 12 - halfW, sy, halfW * 2, 1, true);
+  }
+  rect(c, 9.5, 5.5, 5, 2.5, true); // lamp house
+  rect(c, 7, 20.5, 10, 1.5, true); // base bar
+  rect(c, 8.6, 12, 6.8, 1.2, false); // stripe (hole)
+  rect(c, 8.2, 16, 7.6, 1.2, false); // stripe (hole)
+  // Light rays left + right of the lamp.
+  rect(c, 4.5, 6, 3.5, 1.2, true);
+  rect(c, 16, 6, 3.5, 1.2, true);
+  return c;
+}
 
 function asciiPreview(img, cols) {
   const step = 4; // downsample 64 -> 16
@@ -272,6 +289,7 @@ const glyphs = [
   drawToll(),
   drawOilStorage(),
   drawEmergencyStation(),
+  drawLighthouse(),
 ];
 const newCols = BASE_COLS + glyphs.length;
 const W = newCols * CELL,

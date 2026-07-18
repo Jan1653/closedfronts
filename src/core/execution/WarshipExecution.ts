@@ -4,6 +4,7 @@ import {
   isUnit,
   OwnerComp,
   Relation,
+  SHIP_CLASS_DAMAGE,
   Unit,
   UnitParams,
   UnitType,
@@ -15,6 +16,7 @@ import { PseudoRandom } from "../PseudoRandom";
 import { findMinimumBy } from "../Util";
 import { ShellExecution } from "./ShellExecution";
 import { CAPTURE_RANGE } from "./StructureCapture";
+import { seizeLandTile } from "./SubmarineExecution";
 
 export class WarshipExecution implements Execution {
   private random: PseudoRandom;
@@ -41,23 +43,33 @@ export class WarshipExecution implements Execution {
     if (isUnit(this.input)) {
       this.warship = this.input;
     } else {
-      const spawn = this.input.owner.canBuild(
-        UnitType.Warship,
-        this.input.patrolTile,
-      );
+      const owner = this.input.owner;
+      const shipClass = this.input.shipClass ?? "normal";
+      // The hull class has its own full price; buildUnit charges the base
+      // warship price, the difference is collected here. Refuse the build if
+      // the full class price isn't affordable.
+      const classCost = mg.config().warshipClassCost(shipClass, owner);
+      const baseCost = mg
+        .config()
+        .unitInfo(UnitType.Warship)
+        .cost(mg, owner);
+      if (owner.gold() < classCost) {
+        console.warn(`cannot afford ${shipClass} warship`);
+        return;
+      }
+      const spawn = owner.canBuild(UnitType.Warship, this.input.patrolTile);
       if (spawn === false) {
         console.warn(
-          `Failed to spawn warship for ${this.input.owner.name()} at ${this.input.patrolTile}`,
+          `Failed to spawn warship for ${owner.name()} at ${this.input.patrolTile}`,
         );
         return;
       }
-      this.warship = this.input.owner.buildUnit(
-        UnitType.Warship,
-        spawn,
-        this.input,
-      );
+      this.warship = owner.buildUnit(UnitType.Warship, spawn, this.input);
+      if (classCost > baseCost) {
+        owner.removeGold(classCost - baseCost);
+      }
       // Launching a warship burns a little fuel.
-      this.input.owner.useOil(mg.config().oilCostPerShipLaunch());
+      owner.useOil(mg.config().oilCostPerShipLaunch());
     }
     this.lastObservedPatrolTile = this.warship.warshipState().patrolTile;
   }
@@ -103,17 +115,19 @@ export class WarshipExecution implements Execution {
 
     this.warship.setTargetUnit(this.findTargetUnit());
 
-    // Priority 1: Shoot transport ship if in range
-    if (this.warship.targetUnit()?.type() === UnitType.TransportShip) {
+    // Priority 1+2: Shoot any shootable target in range (transports first,
+    // then warships/spotted submarines, then — at war — fishing/patrol
+    // boats; see findBestTarget's priorities). Trade ships are captured, not
+    // shot (below).
+    const targetType = this.warship.targetUnit()?.type();
+    if (targetType !== undefined && targetType !== UnitType.TradeShip) {
       this.shootTarget();
       this.patrol();
       return;
     }
 
-    // Priority 2: Fight enemy warship if in range
-    if (this.warship.targetUnit()?.type() === UnitType.Warship) {
-      this.shootTarget();
-      this.patrol();
+    // Priority 2.5: an ultra warship ordered ashore seizes its land tile.
+    if (this.handleLandCapture()) {
       return;
     }
 
@@ -144,6 +158,32 @@ export class WarshipExecution implements Execution {
     }
 
     this.patrol();
+  }
+
+  /**
+   * Ultra-class only: ordered ashore (landTargetTile), sail next to the tile
+   * and seize exactly that one tile. Returns true while the order is running.
+   */
+  private handleLandCapture(): boolean {
+    const state = this.warship.warshipState();
+    const landTile = state.landTargetTile;
+    if (landTile === undefined) return false;
+    if (state.shipClass !== "ultra" || !this.mg.isLand(landTile)) {
+      this.warship.updateWarshipState({ landTargetTile: undefined });
+      return false;
+    }
+    if (this.mg.manhattanDist(this.warship.tile(), landTile) <= 2) {
+      seizeLandTile(this.mg, this.warship.owner(), landTile);
+      this.warship.updateWarshipState({ landTargetTile: undefined });
+      return true;
+    }
+    const result = this.pathfinder.next(this.warship.tile(), landTile);
+    if (result.status === PathStatus.NOT_FOUND) {
+      this.warship.updateWarshipState({ landTargetTile: undefined });
+    } else {
+      this.moveWarship(result.node);
+    }
+    return true;
   }
 
   /**
@@ -279,7 +319,15 @@ export class WarshipExecution implements Execution {
 
   private findTargetUnit(): Unit | undefined {
     return this.findBestTarget(
-      [UnitType.TransportShip, UnitType.Warship, UnitType.TradeShip],
+      [
+        UnitType.TransportShip,
+        UnitType.Warship,
+        UnitType.Submarine,
+        UnitType.AtomicSubmarine,
+        UnitType.TradeShip,
+        UnitType.FishingBoat,
+        UnitType.PatrolBoat,
+      ],
       true,
     );
   }
@@ -330,6 +378,29 @@ export class WarshipExecution implements Execution {
 
       const type = unit.type();
 
+      // Submarines run silent: only shootable while spotted by a patrol
+      // boat / lighthouse ping.
+      if (
+        (type === UnitType.Submarine || type === UnitType.AtomicSubmarine) &&
+        !unit.isTargetable()
+      ) {
+        continue;
+      }
+      // Harmless boats are only attacked when actually at war — and patrol
+      // boats only from very close range (they're the submarine counter and
+      // must not be sniped from afar).
+      if (type === UnitType.FishingBoat || type === UnitType.PatrolBoat) {
+        if (owner.relation(unit.owner()) !== Relation.Hostile) {
+          continue;
+        }
+        if (
+          type === UnitType.PatrolBoat &&
+          distSquared > config.patrolBoatMaxTargetRange() ** 2
+        ) {
+          continue;
+        }
+      }
+
       if (includeTradeShips && type === UnitType.TradeShip) {
         if (hasPort === undefined) {
           hasPort = owner.unitCount(UnitType.Port) > 0;
@@ -362,7 +433,15 @@ export class WarshipExecution implements Execution {
       }
 
       const typePriority =
-        type === UnitType.TransportShip ? 0 : type === UnitType.Warship ? 1 : 2;
+        type === UnitType.TransportShip
+          ? 0
+          : type === UnitType.Warship ||
+              type === UnitType.Submarine ||
+              type === UnitType.AtomicSubmarine
+            ? 1
+            : type === UnitType.TradeShip
+              ? 2
+              : 3; // fishing / patrol boats last
 
       if (
         bestUnit === undefined ||
@@ -394,7 +473,7 @@ export class WarshipExecution implements Execution {
     for (const { unit, distSquared } of this.mg.nearbyUnits(
       this.warship.tile(),
       range,
-      [UnitType.OilPump, UnitType.WaterTollStation],
+      [UnitType.OilPump, UnitType.WaterTollStation, UnitType.Lighthouse],
     )) {
       if (
         !unit.isActive() ||
@@ -765,6 +844,9 @@ export class WarshipExecution implements Execution {
           this.warship.owner(),
           this.warship,
           this.warship.targetUnit()!,
+          SHIP_CLASS_DAMAGE[
+            this.warship.warshipState().shipClass ?? "normal"
+          ] ?? 1,
         ),
       );
       if (!this.warship.targetUnit()!.hasHealth()) {

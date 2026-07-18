@@ -1550,6 +1550,10 @@ export class PlayerImpl implements Player {
       case UnitType.Port:
         return this.portSpawn(targetTile, validTiles);
       case UnitType.Warship:
+      case UnitType.FishingBoat:
+      case UnitType.PatrolBoat:
+      case UnitType.Submarine:
+      case UnitType.AtomicSubmarine:
         return this.warshipSpawn(targetTile);
       case UnitType.Shell:
       case UnitType.SAMMissile:
@@ -1575,6 +1579,8 @@ export class PlayerImpl implements Player {
       case UnitType.OilStorage:
       case UnitType.EmergencyStation:
         return this.landBasedStructureSpawn(targetTile, validTiles);
+      case UnitType.Lighthouse:
+        return this.lighthouseSpawn(targetTile, validTiles);
       default:
         assertNever(unitType);
     }
@@ -1618,9 +1624,10 @@ export class PlayerImpl implements Player {
       }
     }
 
-    // only get missilesilos that are not on cooldown and not under construction
+    // Launch platforms: missile silos and atomic submarines (a mobile silo).
+    // Only ones that are not on cooldown and not under construction.
     const bestSilo = findClosestBy(
-      this.units(UnitType.MissileSilo),
+      this.units(UnitType.MissileSilo, UnitType.AtomicSubmarine),
       (silo) => mg.manhattanDist(silo.tile(), tile),
       (silo) =>
         silo.isActive() && !silo.isInCooldown() && !silo.isUnderConstruction(),
@@ -1730,6 +1737,51 @@ export class PlayerImpl implements Player {
       return tile; // sea deposit — placed via sea-build
     }
     return false;
+  }
+
+  // A lighthouse stands at the coast (own land near water) or out on the open
+  // water (near own territory; built by a sea-build ship and capturable there).
+  lighthouseSpawn(
+    tile: TileRef,
+    validTiles: TileRef[] | null = null,
+  ): TileRef | false {
+    const mg = this.mg;
+    if (!mg.isValidRef(tile) || mg.isImpassable(tile)) return false;
+    // No stacking: keep some distance from other lighthouses.
+    if (mg.nearbyUnits(tile, 10, [UnitType.Lighthouse]).length > 0) {
+      return false;
+    }
+    if (mg.isLand(tile)) {
+      // Own coastal land: water must be close, then normal structure placement.
+      let nearWater = false;
+      for (const t of mg.bfs(tile, manhattanDistFN(tile, 4))) {
+        if (mg.isWater(t)) {
+          nearWater = true;
+          break;
+        }
+      }
+      if (!nearWater) return false;
+      return this.landBasedStructureSpawn(tile, validTiles);
+    }
+    // Open water: needs own territory nearby and a reachable port for the
+    // builder ship (same rule as the toll station).
+    const tileComponent = mg.getWaterComponent(tile);
+    const hasReachablePort = this.units(UnitType.Port).some(
+      (port) =>
+        port.isActive() &&
+        !port.isUnderConstruction() &&
+        tileComponent !== null &&
+        mg.hasWaterComponent(port.tile(), tileComponent),
+    );
+    if (!hasReachablePort) return false;
+    let nearOwnLand = false;
+    for (const t of mg.bfs(tile, manhattanDistFN(tile, 12))) {
+      if (mg.isLand(t) && mg.owner(t) === this) {
+        nearOwnLand = true;
+        break;
+      }
+    }
+    return nearOwnLand ? tile : false;
   }
 
   landBasedUnitSpawn(tile: TileRef): TileRef | false {

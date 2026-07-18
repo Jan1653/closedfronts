@@ -728,8 +728,20 @@ export class BuildPreviewController implements Controller {
       // Tab+wheel can raise the build quantity: build the structure and level it
       // straight up to that count (one intent — the sim does the stacking).
       const count = this.multiPlaceCount(unitType);
+      // Warship hull class armed via the ships tab travels with the intent.
+      const shipClass =
+        unitType === UnitType.Warship
+          ? (this.uiState.ghostShipClass ?? undefined)
+          : undefined;
       this.eventBus.emit(
-        new BuildUnitIntentEvent(unitType, tileRef, rocketDirectionUp, count),
+        new BuildUnitIntentEvent(
+          unitType,
+          tileRef,
+          rocketDirectionUp,
+          count,
+          undefined,
+          shipClass,
+        ),
       );
       if (!shouldPreserveGhostAfterBuild(unitType)) {
         this.removeGhostStructure();
@@ -812,6 +824,7 @@ export class BuildPreviewController implements Controller {
   private removeGhostStructure() {
     this.clearGhostStructure();
     this.uiState.ghostStructure = null;
+    this.uiState.ghostShipClass = null;
     this.uiState.buildQuantity = 1;
   }
 

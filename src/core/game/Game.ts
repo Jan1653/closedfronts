@@ -36,6 +36,12 @@ export type WarshipState = {
   // seize a neutral water structure on command — auto-capture only happens
   // against owners the warship's owner is at war with.
   captureTargetId?: number;
+  // Warship hull class (small/normal/large/ultra); fixed at build time.
+  // Undefined = normal. Shared by every ship that carries warshipState.
+  shipClass?: ShipClass;
+  // Ultra warship / atomic submarine: ordered ashore to seize exactly this
+  // land tile (cleared once taken or unreachable).
+  landTargetTile?: TileRef;
   lastCombatTick: number;
   // Veterancy level (0–max) plus a shared integer progress meter fed by
   // transport kills and trade captures (see UnitImpl.addVeterancyProgress).
@@ -174,6 +180,19 @@ function unitTypeGroup<T extends readonly UnitType[]>(types: T) {
 export enum UnitType {
   TransportShip = "Transport",
   Warship = "Warship",
+  // Cheap harmless boat: wanders its patrol area and earns a trickle of gold
+  // from fishing. Not attacked outside of war.
+  FishingBoat = "Fishing Boat",
+  // Unarmed scout: reveals enemy submarines in its scan radius. Only
+  // attackable from very close range, and not attacked outside of war.
+  PatrolBoat = "Patrol Boat",
+  // Hidden hunter: invisible to enemies unless scanned by a patrol boat or
+  // lighthouse. Fires torpedoes; warships are harder for it to hit.
+  Submarine = "Submarine",
+  // The most expensive ship: a hidden missile platform (nukes can launch from
+  // it), tougher torpedoes, and it can seize a single land tile like the
+  // ultra warship.
+  AtomicSubmarine = "Atomic Submarine",
   Shell = "Shell",
   SAMMissile = "SAMMissile",
   Port = "Port",
@@ -202,7 +221,33 @@ export enum UnitType {
   // chance that a natural disaster strikes there; oil pumps in its radius
   // don't blow up in heatwaves.
   EmergencyStation = "Emergency Station",
+  // Coastal/offshore structure with a huge scan radius: reveals enemy
+  // submarines like a patrol boat and slowly heals own boats in range. Built
+  // on water it can be captured by warships like oil pumps / toll stations.
+  Lighthouse = "Lighthouse",
 }
+
+// Warship hull classes: one UnitType, different size/strength/price. The class
+// is fixed at build time (warshipState.shipClass).
+export type ShipClass = "small" | "normal" | "large" | "ultra";
+
+// Effective-max-health multiplier per hull class (also used by the client's
+// health bars). The ultra is a floating fortress — and the only surface ship
+// that can seize a land tile.
+export const SHIP_CLASS_HEALTH: Record<ShipClass, number> = {
+  small: 0.7,
+  normal: 1,
+  large: 1.6,
+  ultra: 4,
+};
+
+// Shell-damage multiplier per hull class.
+export const SHIP_CLASS_DAMAGE: Record<ShipClass, number> = {
+  small: 0.7,
+  normal: 1,
+  large: 1.4,
+  ultra: 2.5,
+};
 
 // Natural disasters: announced ~1 minute ahead, then active for a while.
 // Each type can be disabled per game (GameConfig.disabledDisasters).
@@ -241,6 +286,15 @@ export const BuildableAttacks = unitTypeGroup([
   UnitType.Warship,
 ] as const);
 
+// Buyable ships (the "Ships" build tab). The plain Warship stays in
+// BuildableAttacks for compatibility; its hull class is chosen in the tab.
+export const BuildableShips = unitTypeGroup([
+  UnitType.FishingBoat,
+  UnitType.PatrolBoat,
+  UnitType.Submarine,
+  UnitType.AtomicSubmarine,
+] as const);
+
 export const Structures = unitTypeGroup([
   UnitType.City,
   UnitType.DefensePost,
@@ -253,11 +307,13 @@ export const Structures = unitTypeGroup([
   UnitType.OilPump,
   UnitType.OilStorage,
   UnitType.EmergencyStation,
+  UnitType.Lighthouse,
 ] as const);
 
 export const BuildMenus = unitTypeGroup([
   ...Structures.types,
   ...BuildableAttacks.types,
+  ...BuildableShips.types,
 ] as const);
 
 export const PlayerBuildable = unitTypeGroup([
@@ -282,6 +338,23 @@ export interface UnitParamsMap {
   };
 
   [UnitType.Warship]: {
+    patrolTile: TileRef;
+    shipClass?: ShipClass;
+  };
+
+  [UnitType.FishingBoat]: {
+    patrolTile: TileRef;
+  };
+
+  [UnitType.PatrolBoat]: {
+    patrolTile: TileRef;
+  };
+
+  [UnitType.Submarine]: {
+    patrolTile: TileRef;
+  };
+
+  [UnitType.AtomicSubmarine]: {
     patrolTile: TileRef;
   };
 
@@ -336,6 +409,8 @@ export interface UnitParamsMap {
   [UnitType.OilStorage]: Record<string, never>;
 
   [UnitType.EmergencyStation]: Record<string, never>;
+
+  [UnitType.Lighthouse]: Record<string, never>;
 
   [UnitType.MIRV]: {
     targetTile?: number;
@@ -580,6 +655,11 @@ export interface Unit {
   // Repair a disabled structure (EMP / disaster): clears the disable window so
   // it works again. Used by the Emergency Station.
   clearDisable(): void;
+
+  // Submarine spotting: a patrol boat / lighthouse ping makes the sub
+  // targetable until the given tick (its execution clears the flag after).
+  spot(untilTick: Tick): void;
+  spottedUntilTick(): Tick;
 
   // Electric-bomb deactivation: while disabled a structure does nothing (its
   // execution skips work) and renders greyed. disableUntil extends the window;

@@ -537,6 +537,8 @@ export const BuildUnitIntentSchema = z.object({
   unit: z.enum(UnitType),
   tile: z.number(),
   rocketDirectionUp: z.boolean().optional(),
+  // Warship hull class (small/normal/large/ultra) picked in the ships tab.
+  shipClass: z.enum(["small", "normal", "large", "ultra"]).optional(),
   // Mass placement: build this structure and immediately level it up to `count`
   // (Tab+wheel quantity). Absent/1 = a single level-1 build. Capped to match the
   // client's MAX_BUILD_QUANTITY. Non-upgradeable units ignore it.

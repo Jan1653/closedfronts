@@ -25,6 +25,24 @@ const WARSHIP_SELECTION_RADIUS = 10;
 // water structure to count as targeting it with the selected warships.
 const CAPTURE_TARGET_RADIUS = 3;
 
+// Every player-steerable ship (all carry warshipState and obey move orders).
+const MOVABLE_SHIP_TYPES = [
+  UnitType.Warship,
+  UnitType.FishingBoat,
+  UnitType.PatrolBoat,
+  UnitType.Submarine,
+  UnitType.AtomicSubmarine,
+] as const;
+
+/** Can this ship be ordered onto a LAND tile (seize one tile)? */
+function canSeizeLand(unit: UnitView): boolean {
+  if (unit.type() === UnitType.AtomicSubmarine) return true;
+  return (
+    unit.type() === UnitType.Warship &&
+    unit.warshipState().shipClass === "ultra"
+  );
+}
+
 /**
  * Controller for warship selection state + click handling.
  *
@@ -226,7 +244,7 @@ export class WarshipSelectionController implements Controller {
     const myPlayer = this.game.myPlayer();
     if (!myPlayer) return [];
     return this.game
-      .units(UnitType.Warship)
+      .units(...MOVABLE_SHIP_TYPES)
       .filter(
         (unit) =>
           unit.isActive() &&
@@ -260,7 +278,24 @@ export class WarshipSelectionController implements Controller {
       if (!this.game.isValidCoord(cell.x, cell.y)) return;
       clickRef = this.game.ref(cell.x, cell.y);
     }
-    if (!this.game.isWater(clickRef)) return;
+    if (!this.game.isWater(clickRef)) {
+      // A LAND click is an amphibious order: the ultra warship / atomic
+      // submarine sails next to the tile and seizes exactly that one tile.
+      const landCapable = [
+        ...this.multiSelectedWarships,
+        ...(this.selectedUnit ? [this.selectedUnit] : []),
+      ].filter((u) => u.isActive() && canSeizeLand(u));
+      if (landCapable.length > 0 && this.game.isLand(clickRef)) {
+        this.eventBus.emit(
+          new MoveWarshipIntentEvent(
+            landCapable.map((u) => u.id()),
+            clickRef,
+          ),
+        );
+        this.eventBus.emit(new UnitSelectionEvent(null, false));
+      }
+      return;
+    }
 
     // Clicking a capturable enemy water structure orders the selected
     // warships to capture it (the structure's tile becomes the move target).
@@ -316,7 +351,17 @@ export class WarshipSelectionController implements Controller {
       return;
     }
     if (!this.game.isWater(clickRef)) {
-      this.eventBus.emit(new ContextMenuEvent(event.x, event.y));
+      // Land tap with a land-capable ship selected → amphibious order
+      // (handled in onMouseUp); otherwise the usual radial menu.
+      const hasLandCapable = [
+        ...this.multiSelectedWarships,
+        ...(this.selectedUnit ? [this.selectedUnit] : []),
+      ].some((u) => u.isActive() && canSeizeLand(u));
+      if (hasLandCapable) {
+        this.onMouseUp(new MouseUpEvent(event.x, event.y), clickRef);
+      } else {
+        this.eventBus.emit(new ContextMenuEvent(event.x, event.y));
+      }
       return;
     }
     if (this.selectedUnit || this.multiSelectedWarships.length > 0) {

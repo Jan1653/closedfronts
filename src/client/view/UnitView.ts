@@ -72,6 +72,7 @@ function unitStateFromUpdate(u: UnitUpdate): UnitState {
     loaded: u.loaded ?? null,
     constructionStartTick: null, // GameView fills in createdAt when underConstruction
     captureProgress: u.captureProgress ?? 0,
+    shipClass: u.warshipState?.shipClass,
   };
 }
 
@@ -102,6 +103,7 @@ function applyUpdateInPlace(target: UnitState, u: UnitUpdate): void {
   target.trainType = trainTypeToNum(u.trainType);
   target.loaded = u.loaded ?? null;
   target.captureProgress = u.captureProgress ?? 0;
+  target.shipClass = u.warshipState?.shipClass;
 }
 
 export class UnitView {

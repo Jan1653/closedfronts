@@ -1,9 +1,11 @@
-import { PlayerBuildableUnitType } from "../core/game/Game";
+import { PlayerBuildableUnitType, ShipClass } from "../core/game/Game";
 import { TileRef } from "../core/game/GameMap";
 
 export interface UIState {
   attackRatio: number;
   ghostStructure: PlayerBuildableUnitType | null;
+  // Warship hull class armed with the ghost (ships tab); null = normal.
+  ghostShipClass: ShipClass | null;
   rocketDirectionUp: boolean;
   // How many copies of the ghost structure to place per click. Adjusted with
   // Shift + mouse wheel while a build ghost is active; 1 = normal single build.

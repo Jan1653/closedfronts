@@ -14,6 +14,10 @@
 export const UT_TRANSPORT = "Transport" as const;
 export const UT_TRADE_SHIP = "Trade Ship" as const;
 export const UT_WARSHIP = "Warship" as const;
+export const UT_FISHING_BOAT = "Fishing Boat" as const;
+export const UT_PATROL_BOAT = "Patrol Boat" as const;
+export const UT_SUBMARINE = "Submarine" as const;
+export const UT_ATOMIC_SUBMARINE = "Atomic Submarine" as const;
 export const UT_ATOM_BOMB = "Atom Bomb" as const;
 export const UT_HYDROGEN_BOMB = "Hydrogen Bomb" as const;
 export const UT_ELECTRIC_BOMB = "Electric Bomb" as const;
@@ -35,6 +39,7 @@ export const UT_WALL = "Wall" as const;
 export const UT_OIL_PUMP = "Oil Pump" as const;
 export const UT_OIL_STORAGE = "Oil Storage" as const;
 export const UT_EMERGENCY_STATION = "Emergency Station" as const;
+export const UT_LIGHTHOUSE = "Lighthouse" as const;
 
 // ---------------------------------------------------------------------------
 // Derived sets
@@ -52,6 +57,7 @@ export const STRUCTURE_TYPES: ReadonlySet<string> = new Set([
   UT_OIL_PUMP,
   UT_OIL_STORAGE,
   UT_EMERGENCY_STATION,
+  UT_LIGHTHOUSE,
 ]);
 
 export const NUKE_TYPES: ReadonlySet<string> = new Set([
@@ -108,4 +114,9 @@ export const ALL_UNIT_TYPES = [
   UT_OIL_PUMP,
   UT_OIL_STORAGE,
   UT_EMERGENCY_STATION,
+  UT_LIGHTHOUSE,
+  UT_FISHING_BOAT,
+  UT_PATROL_BOAT,
+  UT_SUBMARINE,
+  UT_ATOMIC_SUBMARINE,
 ] as const;

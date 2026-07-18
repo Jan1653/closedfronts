@@ -5,7 +5,17 @@ import { TileRef } from "../game/GameMap";
 const CAPTURABLE_TYPES: ReadonlySet<UnitType> = new Set([
   UnitType.WaterTollStation,
   UnitType.OilPump,
+  UnitType.Lighthouse,
 ]);
+
+// Every player-steerable ship (they all carry warshipState.patrolTile).
+const MOVABLE_SHIP_TYPES = [
+  UnitType.Warship,
+  UnitType.FishingBoat,
+  UnitType.PatrolBoat,
+  UnitType.Submarine,
+  UnitType.AtomicSubmarine,
+] as const;
 
 export class MoveWarshipExecution implements Execution {
   constructor(
@@ -23,35 +33,57 @@ export class MoveWarshipExecution implements Execution {
       return;
     }
     const captureTarget = this.resolveCaptureTarget(mg);
+    // Clicking LAND is only meaningful for ships that can seize a land tile
+    // (ultra warship / atomic submarine) — everyone else ignores the order.
+    const landTarget = mg.isLand(this.position) ? this.position : undefined;
     // Get water component of new TargetTile for connectivity check
-    const newPatrolTileWaterComponent = mg.getWaterComponent(this.position);
-    // Cache warship list and build a lookup map — avoids repeated iteration
-    const warshipMap = new Map(
-      this.owner.units(UnitType.Warship).map((u) => [u.id(), u]),
+    const newPatrolTileWaterComponent =
+      landTarget === undefined ? mg.getWaterComponent(this.position) : null;
+    // Cache ship list and build a lookup map — avoids repeated iteration
+    const shipMap = new Map(
+      this.owner
+        .units(MOVABLE_SHIP_TYPES as unknown as UnitType[])
+        .map((u) => [u.id(), u]),
     );
-    // Deduplicate ids so each warship is only moved once
+    // Deduplicate ids so each ship is only moved once
     for (const unitId of new Set(this.unitIds)) {
-      const warship = warshipMap.get(unitId);
-      if (!warship) {
-        console.warn(`MoveWarshipExecution: warship ${unitId} not found`);
+      const ship = shipMap.get(unitId);
+      if (!ship) {
+        console.warn(`MoveWarshipExecution: ship ${unitId} not found`);
         continue;
       }
-      if (!warship.isActive()) {
-        console.warn(`MoveWarshipExecution: warship ${unitId} is not active`);
+      if (!ship.isActive()) {
+        console.warn(`MoveWarshipExecution: ship ${unitId} is not active`);
         continue;
       }
-      // Do not update the warship's patrolTile if it is in a different Water Component
-      if (!mg.hasWaterComponent(warship.tile(), newPatrolTileWaterComponent!)) {
+      if (landTarget !== undefined) {
+        if (this.canSeizeLand(ship)) {
+          ship.updateWarshipState({ landTargetTile: landTarget });
+        }
         continue;
       }
-      warship.updateWarshipState({
+      // Do not update the ship's patrolTile if it is in a different Water Component
+      if (!mg.hasWaterComponent(ship.tile(), newPatrolTileWaterComponent!)) {
+        continue;
+      }
+      ship.updateWarshipState({
         patrolTile: this.position,
         // A plain move cancels a previous capture order; clicking a structure
-        // sets one.
-        captureTargetId: captureTarget?.id(),
+        // sets one. Only real warships capture structures.
+        captureTargetId:
+          ship.type() === UnitType.Warship ? captureTarget?.id() : undefined,
+        landTargetTile: undefined,
       });
-      warship.setTargetTile(undefined);
+      ship.setTargetTile(undefined);
     }
+  }
+
+  private canSeizeLand(ship: Unit): boolean {
+    if (ship.type() === UnitType.AtomicSubmarine) return true;
+    return (
+      ship.type() === UnitType.Warship &&
+      ship.warshipState().shipClass === "ultra"
+    );
   }
 
   private resolveCaptureTarget(mg: Game): Unit | undefined {

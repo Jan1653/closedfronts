@@ -112,7 +112,9 @@ export class Executor {
         // in place as usual.
         const atSea =
           intent.unit === UnitType.WaterTollStation ||
-          (intent.unit === UnitType.OilPump && this.mg.isWater(intent.tile));
+          ((intent.unit === UnitType.OilPump ||
+            intent.unit === UnitType.Lighthouse) &&
+            this.mg.isWater(intent.tile));
         if (atSea) {
           return new SeaBuildExecution(player, intent.unit, intent.tile);
         }
@@ -128,6 +130,7 @@ export class Executor {
           intent.tile,
           intent.rocketDirectionUp,
           intent.count ?? 1,
+          intent.shipClass,
         );
       }
       case "allianceExtension": {

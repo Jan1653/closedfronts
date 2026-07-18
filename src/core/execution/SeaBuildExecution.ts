@@ -2,6 +2,7 @@ import { Execution, Game, Player, Unit, UnitType } from "../game/Game";
 import { TileRef } from "../game/GameMap";
 import { WaterPathFinder } from "../pathfinding/PathFinder";
 import { PathStatus } from "../pathfinding/types";
+import { LighthouseExecution } from "./LighthouseExecution";
 import { OilPumpExecution } from "./OilPumpExecution";
 import { WaterTollStationExecution } from "./WaterTollStationExecution";
 
@@ -123,6 +124,8 @@ export class SeaBuildExecution implements Execution {
         this.mg.addExecution(new WaterTollStationExecution(structure));
       } else if (this.structureType === UnitType.OilPump) {
         this.mg.addExecution(new OilPumpExecution(structure));
+      } else if (this.structureType === UnitType.Lighthouse) {
+        this.mg.addExecution(new LighthouseExecution(structure));
       }
     }
     this.builder?.delete(false);

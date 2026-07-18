@@ -243,9 +243,10 @@ export class NukeExecution implements Execution {
         }
       }
 
-      // after sending a nuke set the missilesilo on cooldown
+      // after sending a nuke set the launch platform (missile silo or atomic
+      // submarine) on cooldown
       const silo = this.player
-        .units(UnitType.MissileSilo)
+        .units(UnitType.MissileSilo, UnitType.AtomicSubmarine)
         .find((silo) => silo.tile() === spawn);
       if (silo) {
         silo.launch();

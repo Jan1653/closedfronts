@@ -1,9 +1,21 @@
-import { Execution, Game, Player, Tick, Unit, UnitType } from "../game/Game";
+import {
+  Execution,
+  Game,
+  Player,
+  ShipClass,
+  Tick,
+  Unit,
+  UnitType,
+} from "../game/Game";
 import { TileRef } from "../game/GameMap";
 import { CityExecution } from "./CityExecution";
 import { DefensePostExecution } from "./DefensePostExecution";
 import { EmergencyStationExecution } from "./EmergencyStationExecution";
 import { FactoryExecution } from "./FactoryExecution";
+import { FishingBoatExecution } from "./FishingBoatExecution";
+import { LighthouseExecution } from "./LighthouseExecution";
+import { PatrolBoatExecution } from "./PatrolBoatExecution";
+import { SubmarineExecution } from "./SubmarineExecution";
 import { MirvExecution } from "./MIRVExecution";
 import { MissileSiloExecution } from "./MissileSiloExecution";
 import { NukeExecution } from "./NukeExecution";
@@ -29,6 +41,8 @@ export class ConstructionExecution implements Execution {
     // Mass placement: once built, immediately level the structure up to this
     // many (each extra level costs gold like a normal upgrade). 1 = plain build.
     private stackCount: number = 1,
+    // Warship hull class from the ships tab (small/normal/large/ultra).
+    private shipClass?: ShipClass,
   ) {}
 
   init(mg: Game, ticks: number): void {
@@ -129,7 +143,30 @@ export class ConstructionExecution implements Execution {
         break;
       case UnitType.Warship:
         this.mg.addExecution(
-          new WarshipExecution({ owner: player, patrolTile: this.tile }),
+          new WarshipExecution({
+            owner: player,
+            patrolTile: this.tile,
+            shipClass: this.shipClass,
+          }),
+        );
+        break;
+      case UnitType.FishingBoat:
+        this.mg.addExecution(
+          new FishingBoatExecution({ owner: player, patrolTile: this.tile }),
+        );
+        break;
+      case UnitType.PatrolBoat:
+        this.mg.addExecution(
+          new PatrolBoatExecution({ owner: player, patrolTile: this.tile }),
+        );
+        break;
+      case UnitType.Submarine:
+      case UnitType.AtomicSubmarine:
+        this.mg.addExecution(
+          new SubmarineExecution(this.constructionType, {
+            owner: player,
+            patrolTile: this.tile,
+          }),
         );
         break;
       case UnitType.Port:
@@ -169,6 +206,9 @@ export class ConstructionExecution implements Execution {
       case UnitType.EmergencyStation:
         this.mg.addExecution(new EmergencyStationExecution(this.structure!));
         break;
+      case UnitType.Lighthouse:
+        this.mg.addExecution(new LighthouseExecution(this.structure!));
+        break;
       default:
         console.warn(
           `unit type ${this.constructionType} cannot be constructed`,
@@ -200,6 +240,7 @@ export class ConstructionExecution implements Execution {
       case UnitType.OilPump:
       case UnitType.OilStorage:
       case UnitType.EmergencyStation:
+      case UnitType.Lighthouse:
         return true;
       default:
         return false;

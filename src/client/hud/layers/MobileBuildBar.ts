@@ -5,6 +5,7 @@ import { EventBus } from "../../../core/EventBus";
 import {
   BuildableUnit,
   BuildMenus,
+  Gold,
   PlayerBuildableUnitType,
   UnitType,
 } from "../../../core/game/Game";
@@ -13,6 +14,7 @@ import { UIState } from "../../UIState";
 import { renderNumber, translateText } from "../../Utils";
 import { GameView } from "../../view";
 import { flattenedBuildTable } from "./BuildMenu";
+import { SHIPS } from "./UnitDisplay";
 
 const goldCoinIcon = assetUrl("images/GoldCoinIcon.svg");
 
@@ -26,6 +28,13 @@ const BOMB_ORDER: PlayerBuildableUnitType[] = [
 ];
 const BOMB_SET: ReadonlySet<PlayerBuildableUnitType> = new Set(BOMB_ORDER);
 const SELECTED_BOMB_KEY = "unitDisplay.selectedBomb";
+
+// Every ship lives in the "Ships" picker (shared SHIPS list with the desktop
+// unit-display), so keep the individual tiles off the bar.
+const SHIP_SET: ReadonlySet<PlayerBuildableUnitType> = new Set(
+  SHIPS.map((s) => s.type),
+);
+const SELECTED_SHIP_KEY = "unitDisplay.selectedShip";
 
 /**
  * Mobile-only vertical build bar pinned to the right edge. Tapping an item arms
@@ -44,6 +53,13 @@ export class MobileBuildBar extends LitElement implements Controller {
 
   @state() private selected: PlayerBuildableUnitType | null = null;
   @state() private bombMenuOpen = false;
+  @state() private shipsMenuOpen = false;
+  @state() private selectedShipIdx: number = (() => {
+    const saved = Number(localStorage.getItem(SELECTED_SHIP_KEY));
+    return Number.isInteger(saved) && saved >= 0 && saved < SHIPS.length
+      ? saved
+      : 0;
+  })();
   @state() private selectedBomb: PlayerBuildableUnitType =
     (BOMB_SET.has(
       localStorage.getItem(SELECTED_BOMB_KEY) as PlayerBuildableUnitType,
@@ -101,9 +117,13 @@ export class MobileBuildBar extends LitElement implements Controller {
             false)
         );
       case UnitType.Warship:
+      case UnitType.FishingBoat:
+      case UnitType.PatrolBoat:
+      case UnitType.Submarine:
+      case UnitType.AtomicSubmarine:
       case UnitType.WaterTollStation:
-        // Both need a FINISHED port (a toll station must be reachable by boat
-        // from one), so grey them out until a port is built — like the warship.
+        // All ships and the toll station need a FINISHED port (ships launch
+        // from one), so grey them out until a port is built.
         return (
           this.cost(type) <= gold &&
           (player?.units(UnitType.Port).some((u) => !u.isUnderConstruction()) ??
@@ -112,6 +132,25 @@ export class MobileBuildBar extends LitElement implements Controller {
       default:
         return this.cost(type) <= gold;
     }
+  }
+
+  // Full price of a ships-picker entry (warship hull classes are flat-priced).
+  private shipCost(entry: (typeof SHIPS)[number]): Gold {
+    if (entry.type === UnitType.Warship && entry.shipClass !== null) {
+      const player = this.game?.myPlayer();
+      if (player) {
+        return this.game.config().warshipClassCost(entry.shipClass, player);
+      }
+    }
+    return this.cost(entry.type);
+  }
+
+  private canBuildShip(entry: (typeof SHIPS)[number]): boolean {
+    const player = this.game?.myPlayer();
+    return (
+      this.canBuild(entry.type) &&
+      this.shipCost(entry) <= (player?.gold() ?? 0n)
+    );
   }
 
   private onTap(type: PlayerBuildableUnitType) {
@@ -198,7 +237,13 @@ export class MobileBuildBar extends LitElement implements Controller {
 
     const cfg = this.game.config();
     const items = flattenedBuildTable.filter(
-      (i) => !cfg.isUnitDisabled(i.unitType) && !BOMB_SET.has(i.unitType),
+      (i) =>
+        !cfg.isUnitDisabled(i.unitType) &&
+        !BOMB_SET.has(i.unitType) &&
+        !SHIP_SET.has(i.unitType),
+    );
+    const shipItems = SHIPS.map((s, idx) => ({ ...s, idx })).filter(
+      (s) => !cfg.isUnitDisabled(s.type),
     );
     const bombItems = BOMB_ORDER.map((t) =>
       flattenedBuildTable.find((i) => i.unitType === t),
@@ -221,10 +266,14 @@ export class MobileBuildBar extends LitElement implements Controller {
             () => this.onTap(item.unitType),
           ),
         )}
+        ${shipItems.length > 0 ? this.renderShipsButton(shipItems) : null}
         ${bombItems.length > 0 ? this.renderBombButton(bombItems) : null}
       </div>
       ${this.bombMenuOpen && bombItems.length > 0
         ? this.renderBombPicker(bombItems)
+        : null}
+      ${this.shipsMenuOpen && shipItems.length > 0
+        ? this.renderShipsPicker(shipItems)
         : null}
     `;
   }
@@ -290,6 +339,113 @@ export class MobileBuildBar extends LitElement implements Controller {
           </div>
           <div class="flex flex-wrap justify-center gap-2">
             ${bombItems.map((b) => this.renderBombCard(b))}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  private selectShip(idx: number) {
+    this.selectedShipIdx = idx;
+    try {
+      localStorage.setItem(SELECTED_SHIP_KEY, String(idx));
+    } catch {
+      /* storage unavailable */
+    }
+    const entry = SHIPS[idx];
+    if (this.canBuildShip(entry)) {
+      this.uiState.ghostStructure = entry.type;
+      this.uiState.ghostShipClass = entry.shipClass;
+      this.uiState.buildQuantity = 1;
+      this.uiState.mobilePlacementTile = null;
+      this.selected = entry.type;
+    }
+    this.shipsMenuOpen = false;
+    this.requestUpdate();
+  }
+
+  private renderShipsButton(shipItems: ((typeof SHIPS)[number] & { idx: number })[]) {
+    const armed =
+      this.uiState.ghostStructure !== null &&
+      SHIP_SET.has(this.uiState.ghostStructure);
+    // Ships need a finished port; grey the whole button out until then.
+    const unlocked = shipItems.some((s) => this.canBuild(s.type));
+    const sel =
+      shipItems.find((s) => s.idx === this.selectedShipIdx) ?? shipItems[0];
+    return html`
+      <button
+        class="relative w-11 h-11 shrink-0 flex items-center justify-center rounded-md border transition-colors ${armed ||
+        this.shipsMenuOpen
+          ? "border-sky-300 bg-sky-400/20 ring-1 ring-sky-300"
+          : "border-slate-500"} ${unlocked ? "" : "opacity-40"}"
+        title=${translateText("unit_type.ships")}
+        @click=${() => {
+          if (unlocked) {
+            this.shipsMenuOpen = !this.shipsMenuOpen;
+            this.requestUpdate();
+          }
+        }}
+      >
+        <img src=${sel.icon} width="24" height="24" class="-mt-1" />
+        <span
+          class="absolute bottom-0 inset-x-0 text-[8px] leading-none text-center font-bold text-white bg-black/55 rounded-b-md py-px truncate"
+          >${translateText("unit_type.ships")}</span
+        >
+      </button>
+    `;
+  }
+
+  // Centred ship chooser (like the bomb picker): every buyable ship with name
+  // + price, greyed when it can't be built. Tapping one arms it.
+  private renderShipsPicker(
+    shipItems: ((typeof SHIPS)[number] & { idx: number })[],
+  ) {
+    return html`
+      <div
+        class="lg:hidden fixed inset-0 z-[300] flex items-center justify-center bg-black/50 pointer-events-auto"
+        @click=${(e: MouseEvent) => {
+          if (e.target === e.currentTarget) {
+            this.shipsMenuOpen = false;
+            this.requestUpdate();
+          }
+        }}
+      >
+        <div
+          class="flex flex-col gap-2 p-3 rounded-xl bg-gray-800/95 backdrop-blur-sm shadow-2xl max-w-[92vw]"
+        >
+          <div class="text-white font-bold text-center text-sm">
+            ${translateText("build_menu.select_ship")}
+          </div>
+          <div class="flex flex-wrap justify-center gap-2">
+            ${shipItems.map((s) => {
+              const enabled = this.canBuildShip(s);
+              const active = this.selectedShipIdx === s.idx;
+              return html`
+                <button
+                  class="relative w-24 flex flex-col items-center gap-1 p-2 rounded-lg border transition-colors ${active
+                    ? "border-sky-300 bg-sky-400/20"
+                    : "border-slate-500 bg-slate-700/40"} ${enabled
+                    ? ""
+                    : "opacity-40"}"
+                  @click=${() => this.selectShip(s.idx)}
+                >
+                  <img src=${s.icon} width="34" height="34" />
+                  <span
+                    class="text-white text-xs font-semibold text-center leading-tight"
+                    >${translateText("unit_type." + s.key)}</span
+                  >
+                  <span
+                    class="flex items-center gap-1 text-yellow-300 text-xs font-bold tabular-nums"
+                  >
+                    <img
+                      src=${goldCoinIcon}
+                      width="11"
+                      height="11"
+                    />${renderNumber(this.shipCost(s))}
+                  </span>
+                </button>
+              `;
+            })}
           </div>
         </div>
       </div>

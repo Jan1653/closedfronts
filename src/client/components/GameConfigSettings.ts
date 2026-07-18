@@ -128,6 +128,14 @@ const unitOptions: { type: UnitType; translationKey: string }[] = [
     type: UnitType.EmergencyStation,
     translationKey: "unit_type.emergency_station",
   },
+  { type: UnitType.Lighthouse, translationKey: "unit_type.lighthouse" },
+  { type: UnitType.FishingBoat, translationKey: "unit_type.fishing_boat" },
+  { type: UnitType.PatrolBoat, translationKey: "unit_type.patrol_boat" },
+  { type: UnitType.Submarine, translationKey: "unit_type.submarine" },
+  {
+    type: UnitType.AtomicSubmarine,
+    translationKey: "unit_type.atomic_submarine",
+  },
 ];
 
 const MAP_ICON = svg`<path

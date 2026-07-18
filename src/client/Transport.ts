@@ -6,6 +6,7 @@ import {
   GameType,
   Gold,
   PlayerID,
+  ShipClass,
   Tick,
   UnitType,
 } from "../core/game/Game";
@@ -94,6 +95,8 @@ export class BuildUnitIntentEvent implements GameEvent {
     // Wall drag-build: the drag start tile. When set (walls only), the sim
     // builds a wall line from here (tile2) to `tile`.
     public readonly tile2?: TileRef,
+    // Warship hull class picked in the ships tab (small/normal/large/ultra).
+    public readonly shipClass?: ShipClass,
   ) {}
 }
 
@@ -611,6 +614,7 @@ export class Transport {
       rocketDirectionUp: event.rocketDirectionUp,
       count: event.count,
       tile2: event.tile2,
+      shipClass: event.shipClass,
     });
   }
 

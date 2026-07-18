@@ -36,7 +36,13 @@ import { buildRelationMatrix } from "../render/frame/derive/RelationMatrix";
 import { RailroadCache } from "../render/frame/RailroadCache";
 import { TrailManager } from "../render/frame/TrailManager";
 import type { FrameData, NameEntry } from "../render/types";
-import { STRUCTURE_TYPES } from "../render/types";
+import {
+  STRUCTURE_TYPES,
+  UT_ATOMIC_SUBMARINE,
+  UT_LIGHTHOUSE,
+  UT_PATROL_BOAT,
+  UT_SUBMARINE,
+} from "../render/types";
 import { PlayerView } from "./PlayerView";
 import { UnitView } from "./UnitView";
 
@@ -618,6 +624,8 @@ export class GameView implements GameMap {
       f.relationMatrix,
       f.relationSize,
     );
+    this.updateSubmarineVisibility(f.relationMatrix, f.relationSize);
+
     // Localized natural disaster (flood / landslide): draw its struck region
     // as a red target circle so everyone sees where it will hit / is hitting.
     const disaster = this._naturalDisaster;
@@ -1070,6 +1078,77 @@ export class GameView implements GameMap {
   /** Current natural-disaster lifecycle state (null = none running). */
   naturalDisaster(): NaturalDisasterUpdate | null {
     return this._naturalDisaster;
+  }
+
+  // Spotted enemy submarines: unitId -> visible-until tick. Per-VIEWER,
+  // client-side: only MY (and friendly) patrol boats / lighthouses reveal, so
+  // each player sees exactly what their own scanners have pinged.
+  private _subSpottedUntil = new Map<number, Tick>();
+
+  private updateSubmarineVisibility(
+    relationMatrix: Uint8Array,
+    relationSize: number,
+  ): void {
+    const me = this._myPlayer?.smallID() ?? 0;
+    const tick = this.ticks();
+    const config = this._config;
+    const scanR = config.patrolBoatScanRange();
+    const lightR = config.lighthouseRadius();
+    const spottedFor = config.submarineSpottedDurationTicks();
+    const mapW = this._map.width();
+
+    const isFriendly = (ownerID: number): boolean => {
+      if (me <= 0) return false;
+      if (ownerID === me) return true;
+      return (
+        ownerID > 0 &&
+        ownerID < relationSize &&
+        me < relationSize &&
+        relationMatrix[me * relationSize + ownerID] === 1 // RELATION_FRIENDLY
+      );
+    };
+
+    // Collect my (and friendly) active scanners, and every submarine.
+    const scanners: { x: number; y: number; r: number }[] = [];
+    const subs: import("../render/types").UnitState[] = [];
+    for (const u of this._unitStates.values()) {
+      if (!u.isActive) continue;
+      if (
+        u.unitType === UT_SUBMARINE ||
+        u.unitType === UT_ATOMIC_SUBMARINE
+      ) {
+        subs.push(u);
+        continue;
+      }
+      if (!isFriendly(u.ownerID)) continue;
+      if (u.unitType === UT_PATROL_BOAT) {
+        const x = u.pos % mapW;
+        scanners.push({ x, y: (u.pos - x) / mapW, r: scanR });
+      } else if (
+        u.unitType === UT_LIGHTHOUSE &&
+        !u.underConstruction &&
+        !u.disabled
+      ) {
+        const x = u.pos % mapW;
+        scanners.push({ x, y: (u.pos - x) / mapW, r: lightR });
+      }
+    }
+
+    for (const sub of subs) {
+      if (isFriendly(sub.ownerID)) {
+        sub.hidden = false;
+        continue;
+      }
+      const x = sub.pos % mapW;
+      const y = (sub.pos - x) / mapW;
+      for (const s of scanners) {
+        if (Math.abs(s.x - x) + Math.abs(s.y - y) <= s.r) {
+          this._subSpottedUntil.set(sub.id, tick + spottedFor);
+          break;
+        }
+      }
+      sub.hidden = (this._subSpottedUntil.get(sub.id) ?? -1) < tick;
+    }
   }
   inSpawnPhase(): boolean {
     return this.startTick === null;

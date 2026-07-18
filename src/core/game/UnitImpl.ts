@@ -3,6 +3,7 @@ import {
   AllUnitParams,
   MessageType,
   Player,
+  SHIP_CLASS_HEALTH,
   Tick,
   TrainType,
   TrajectoryTile,
@@ -49,6 +50,8 @@ export class UnitImpl implements Unit {
   private _disabledUntilTick: number = 0;
   // Warship capture bar on capturable water structures (0..1).
   private _captureProgress: number = 0;
+  // Submarine spotting: targetable until this tick after a patrol ping.
+  private _spottedUntilTick: number = 0;
 
   constructor(
     private _type: UnitType,
@@ -75,10 +78,19 @@ export class UnitImpl implements Unit {
       this._warshipState = {
         state: "patrolling",
         patrolTile: params.patrolTile,
+        shipClass: "shipClass" in params ? params.shipClass : undefined,
         lastCombatTick: -100,
         veterancy: 0,
         veterancyProgress: 0,
       };
+    }
+    // Submarines run silent: not targetable until a patrol boat or lighthouse
+    // spots them (PatrolScan sets targetable for a while).
+    if (
+      this._type === UnitType.Submarine ||
+      this._type === UnitType.AtomicSubmarine
+    ) {
+      this._targetable = false;
     }
     this._targetUnit =
       "targetUnit" in params ? (params.targetUnit ?? undefined) : undefined;
@@ -243,7 +255,12 @@ export class UnitImpl implements Unit {
   }
 
   maxHealth(): number {
-    const base = this.info().maxHealth ?? 1;
+    let base = this.info().maxHealth ?? 1;
+    // Warship hull class scales the hull (small < normal < large < ultra).
+    const shipClass = this._warshipState?.shipClass;
+    if (shipClass !== undefined) {
+      base = Math.round(base * (SHIP_CLASS_HEALTH[shipClass] ?? 1));
+    }
     // veterancy() is 0 for non-warships, so this returns base for them.
     return maxHealthWithVeterancy(
       base,
@@ -396,7 +413,8 @@ export class UnitImpl implements Unit {
       merged.state === this._warshipState.state &&
       merged.patrolTile === this._warshipState.patrolTile &&
       merged.retreatPort === this._warshipState.retreatPort &&
-      merged.captureTargetId === this._warshipState.captureTargetId
+      merged.captureTargetId === this._warshipState.captureTargetId &&
+      merged.landTargetTile === this._warshipState.landTargetTile
     )
       return;
     this._warshipState = {
@@ -404,6 +422,8 @@ export class UnitImpl implements Unit {
       patrolTile: merged.patrolTile,
       retreatPort: merged.retreatPort,
       captureTargetId: merged.captureTargetId,
+      landTargetTile: merged.landTargetTile,
+      shipClass: this._warshipState.shipClass, // fixed at build time
       lastCombatTick: this._warshipState.lastCombatTick,
       veterancy: this._warshipState.veterancy,
       veterancyProgress: this._warshipState.veterancyProgress,
@@ -476,6 +496,17 @@ export class UnitImpl implements Unit {
       this._disabledUntilTick = 0;
       this.mg.addUpdate(this.toUpdate());
     }
+  }
+
+  spot(untilTick: number): void {
+    if (untilTick > this._spottedUntilTick) {
+      this._spottedUntilTick = untilTick;
+    }
+    this.setTargetable(true);
+  }
+
+  spottedUntilTick(): number {
+    return this._spottedUntilTick;
   }
 
   isUnderConstruction(): boolean {

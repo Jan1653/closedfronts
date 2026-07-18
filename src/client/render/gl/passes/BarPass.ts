@@ -13,7 +13,11 @@
  */
 
 import type { Config } from "../../../../core/configuration/Config";
-import { UnitType } from "../../../../core/game/Game";
+import {
+  SHIP_CLASS_HEALTH,
+  ShipClass,
+  UnitType,
+} from "../../../../core/game/Game";
 import { maxHealthWithVeterancy } from "../../../../core/game/Veterancy";
 import type { RendererConfig, UnitState } from "../../types";
 import { UT_MISSILE_SILO, UT_SAM_LAUNCHER, UT_WALL } from "../../types";
@@ -66,6 +70,8 @@ export class BarPass {
   private mapW: number;
   private warshipMaxHealth: number;
   private veterancyHealthBonus: number;
+  /** Per-type base max health for the mobile ships (fallback: warship). */
+  private maxHealthByType = new Map<string, number>();
 
   constructor(
     gl: WebGL2RenderingContext,
@@ -78,6 +84,16 @@ export class BarPass {
     this.mapW = header.mapWidth;
     this.warshipMaxHealth = config.unitInfo(UnitType.Warship).maxHealth ?? 0;
     this.veterancyHealthBonus = config.warshipVeterancyHealthBonus();
+    for (const t of [
+      UnitType.Warship,
+      UnitType.FishingBoat,
+      UnitType.PatrolBoat,
+      UnitType.Submarine,
+      UnitType.AtomicSubmarine,
+    ]) {
+      const mh = config.unitInfo(t).maxHealth;
+      if (mh !== undefined) this.maxHealthByType.set(t, mh);
+    }
 
     // --- Shader program ---
     this.program = createProgram(gl, barVertSrc, barFragSrc);
@@ -144,15 +160,24 @@ export class BarPass {
     // warship-only.
     for (const unit of mobileUnits.values()) {
       if (unit.health === null || unit.health <= 0) continue;
+      // Unspotted enemy submarines are invisible — no bar either.
+      if (unit.hidden) continue;
       // Walls carry siege health too, but draw their own on-tile damage bar
       // (WallPass). The warship-scaled bar here would read a full-health wall
       // (100 vs the warship max of 1000) as a nearly-empty 11×3-tile bar
       // hovering permanently over every wall — a black blob over wall lines.
       if (unit.unitType === UT_WALL) continue;
-      // Veteran warships have a higher effective max health, so a full veteran
-      // ship reads as full. Shared with the engine's UnitImpl.maxHealth().
+      // Base max health by unit type (ships differ), scaled by the warship
+      // hull class, then by veterancy — mirrors UnitImpl.maxHealth().
+      let base = this.maxHealthByType.get(unit.unitType);
+      if (base === undefined) base = this.warshipMaxHealth;
+      if (unit.shipClass !== undefined) {
+        base = Math.round(
+          base * (SHIP_CLASS_HEALTH[unit.shipClass as ShipClass] ?? 1),
+        );
+      }
       const maxHealth = maxHealthWithVeterancy(
-        this.warshipMaxHealth,
+        base,
         unit.veterancy,
         this.veterancyHealthBonus,
       );
