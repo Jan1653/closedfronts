@@ -47,6 +47,7 @@ const missileSiloIcon = assetUrl("images/MissileSiloIconWhite.svg");
 const portIcon = assetUrl("images/PortIcon.svg");
 const samLauncherIcon = assetUrl("images/SamLauncherIconWhite.svg");
 const soldierIcon = assetUrl("images/SoldierIcon.svg");
+const oilPumpIcon = assetUrl("images/OilPumpIconWhite.svg");
 
 function euclideanDistWorld(
   coord: { x: number; y: number },
@@ -338,6 +339,7 @@ export class PlayerInfoOverlay extends LitElement implements Controller {
           <div class="w-28 md:w-36" translate="no">
             ${this.renderTroopBar(totalTroops, attackingTroops, maxTroops)}
           </div>
+          ${this.renderOilBar(player)}
         </div>
         <!-- Right: Player identity + Units below -->
         <div class="flex flex-col justify-between self-stretch">
@@ -391,6 +393,48 @@ export class PlayerInfoOverlay extends LitElement implements Controller {
             ${this.displayUnitCount(player, UnitType.Warship, warshipIcon)}
           </div>
         </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Oil readout for the hovered player, mirroring the troop bar. Oil decides
+   * how fast someone can push and how long their navy keeps moving, so it
+   * belongs next to their army when you size an opponent up — including as a
+   * spectator.
+   */
+  private renderOilBar(player: PlayerView) {
+    const oil = player.oil();
+    const maxOil = Math.max(1, this.game.config().maxOil(player));
+    const percent = Math.max(0, Math.min(100, (oil / maxOil) * 100));
+    return html`
+      <div
+        class="w-28 md:w-36 h-4 lg:h-5 border border-gray-600 rounded-md bg-gray-900/60 overflow-hidden relative"
+        title=${translateText("control_panel.oil")}
+        translate="no"
+      >
+        <div
+          class="absolute inset-y-0 left-0 w-full origin-left bg-emerald-700 transition-transform duration-200 ease-out"
+          style="transform: scaleX(${percent / 100});"
+        ></div>
+        <div
+          class="absolute inset-0 flex items-center justify-between px-1.5 text-xs font-bold leading-none pointer-events-none"
+        >
+          <span class="text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]"
+            >${renderNumber(Math.floor(oil))}</span
+          >
+          <span class="text-white/80 drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]"
+            >${renderNumber(Math.floor(maxOil))}</span
+          >
+        </div>
+        <img
+          src=${oilPumpIcon}
+          alt=""
+          aria-hidden="true"
+          width="12"
+          height="12"
+          class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 brightness-0 invert drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)] pointer-events-none"
+        />
       </div>
     `;
   }

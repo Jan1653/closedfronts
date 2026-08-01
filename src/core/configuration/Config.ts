@@ -20,7 +20,11 @@ import {
   UnitType,
 } from "../game/Game";
 import { TileRef } from "../game/GameMap";
-import { isOilDepositAt } from "../game/OilDeposits";
+import {
+  isOilDepositAt,
+  OIL_GRADE_PERCENT,
+  oilDepositGradeAt,
+} from "../game/OilDeposits";
 import { UserSettings } from "../game/UserSettings";
 import { GameConfig, TeamCountConfig } from "../Schemas";
 import { NukeType } from "../StatsSchemas";
@@ -163,8 +167,17 @@ export class Config {
     return this._userSettings;
   }
 
+  // Housing: every city level raises the troop ceiling by this much. Cities are
+  // the main way to grow an army now — raw territory contributes noticeably
+  // less than it used to (see maxTroops).
   cityTroopIncrease(): number {
-    return 250_000;
+    return 400_000;
+  }
+
+  // Weight of raw territory in the troop ceiling. Deliberately below the old
+  // 1000 so sprawling without building cities no longer carries an army.
+  troopsPerTileWeight(): number {
+    return 800;
   }
 
   falloutDefenseModifier(falloutRatio: number): number {
@@ -201,24 +214,24 @@ export class Config {
   }
 
   defensePostDefenseBonus(): number {
-    // Deliberately weak — about a sixth of the old strength. The old post
-    // multiplied attacker losses by 5 (×4 above neutral); this is only ~×0.67
-    // above neutral. Overlapping posts stack this up to 3× (see attackLogic), so
-    // a real cluster still bites while a lone post is easy to push through.
-    return 1 + (5 - 1) / 6; // ≈ 1.67
+    // Still far below the old post (which multiplied attacker losses by 5, i.e.
+    // ×4 above neutral) but a noticeable step up from the previous ≈×0.67 above
+    // neutral. Overlapping posts stack this up to 3× (see attackLogic), so a
+    // real cluster bites hard while a lone post is still pushable.
+    return 1 + (5 - 1) / 4; // = 2.0
   }
 
   // Multiplier on attack cost when conquering a walled tile. Walls are meant to
   // be very hard to break through with normal attacks (bombs / defense-post
   // barrages remain the easy answers).
   wallDefenseBonus(): number {
-    return 50;
+    return 120;
   }
 
   // A wall's "health": it must be sieged from full down to 0 before an attack can
   // breach it. Higher = walls take longer to break.
   wallMaxHealth(): number {
-    return 100;
+    return 250;
   }
 
   // Health a wall regenerates per tick while it is NOT under active siege — this
@@ -227,7 +240,7 @@ export class Config {
   // troop count.
   wallRegenPerTick(owner?: Player): number {
     const troops = owner?.troops() ?? 0;
-    return Math.min(6, 2 + Math.floor(troops / 100_000));
+    return Math.min(12, 4 + Math.floor(troops / 80_000));
   }
 
   // Health a besieging attacker strips from a wall each tick, scaled by the
@@ -319,7 +332,9 @@ export class Config {
   trainSpawnRate(numPlayerFactories: number): number {
     // hyperbolic decay, midpoint at 10 factories
     // expected number of trains = numPlayerFactories  / trainSpawnRate(numPlayerFactories)
-    return (numPlayerFactories + 10) * 15;
+    // Lower divisor than before => trains run more often, so a rail network of
+    // factories pays off much more than it used to.
+    return (numPlayerFactories + 10) * 10;
   }
   trainGold(
     rel: "self" | "team" | "ally" | "other",
@@ -328,21 +343,23 @@ export class Config {
   ): Gold {
     // No penalty for the first 10 cities.
     citiesVisited = Math.max(0, citiesVisited - 9);
+    // Rail freight pays substantially better than it used to — a well-linked
+    // factory network is meant to be a real economy, not a side hustle.
     let baseGold: number;
     switch (rel) {
       case "ally":
-        baseGold = 35_000;
+        baseGold = 60_000;
         break;
       case "team":
       case "other":
-        baseGold = 25_000;
+        baseGold = 45_000;
         break;
       case "self":
-        baseGold = 10_000;
+        baseGold = 20_000;
         break;
     }
     const distPenalty = citiesVisited * 5_000;
-    const gold = Math.max(5000, baseGold - distPenalty);
+    const gold = Math.max(10_000, baseGold - distPenalty);
     return toInt(gold * this.goldMultiplierFor(player));
   }
 
@@ -358,10 +375,20 @@ export class Config {
 
   tradeShipGold(dist: number, player: Player | PlayerView): Gold {
     // Sigmoid: concave start, sharp S-curve middle, linear end - heavily punishes trades under range debuff.
+    // Trimmed down a notch: sea trade should support an economy, not be one.
     const debuff = this.tradeShipShortRangeDebuff();
     const baseGold =
-      75_000 / (1 + Math.exp(-0.03 * (dist - debuff))) + 50 * dist;
+      60_000 / (1 + Math.exp(-0.03 * (dist - debuff))) + 40 * dist;
     return BigInt(Math.floor(baseGold * this.goldMultiplierFor(player)));
+  }
+
+  /**
+   * Share (integer percent) of the normal arrival gold a PIRATED trade ship
+   * pays out when it reaches the captor's port. Taking someone else's freighter
+   * is still worth doing, just not as lucrative as running your own routes.
+   */
+  capturedTradeShipGoldPercent(): bigint {
+    return 65n;
   }
 
   // Probability of trade ship spawn = 1 / tradeShipSpawnRate
@@ -393,10 +420,13 @@ export class Config {
           cost: () => 0n,
         };
         break;
+      // Ship prices are all doubled — a navy is a real investment. The one
+      // exception is the atomic submarine: already the most expensive thing in
+      // the game, it got a bigger hull and heavier torpedoes instead.
       case UnitType.Warship:
         info = {
           cost: this.costWrapper(
-            (numUnits: number) => Math.min(1_000_000, (numUnits + 1) * 250_000),
+            (numUnits: number) => Math.min(2_000_000, (numUnits + 1) * 500_000),
             UnitType.Warship,
           ),
           maxHealth: 1000,
@@ -404,26 +434,29 @@ export class Config {
         break;
       case UnitType.FishingBoat:
         info = {
-          cost: this.costWrapper(() => 100_000, UnitType.FishingBoat),
+          cost: this.costWrapper(() => 200_000, UnitType.FishingBoat),
           maxHealth: 120,
         };
         break;
       case UnitType.PatrolBoat:
         info = {
-          cost: this.costWrapper(() => 200_000, UnitType.PatrolBoat),
+          cost: this.costWrapper(() => 400_000, UnitType.PatrolBoat),
           maxHealth: 300,
         };
         break;
       case UnitType.Submarine:
         info = {
-          cost: this.costWrapper(() => 1_500_000, UnitType.Submarine),
+          cost: this.costWrapper(() => 3_000_000, UnitType.Submarine),
           maxHealth: 800,
         };
         break;
       case UnitType.AtomicSubmarine:
         info = {
           cost: this.costWrapper(() => 12_000_000, UnitType.AtomicSubmarine),
-          maxHealth: 2200,
+          // Price unchanged, but the hull is now more than four times what it
+          // was — the atomic sub is the flagship of the fleet, not a slightly
+          // better submarine.
+          maxHealth: 10_000,
         };
         break;
       case UnitType.Lighthouse:
@@ -434,6 +467,9 @@ export class Config {
           ),
           constructionDuration: this.instantBuild() ? 0 : 5 * 10,
           maxHealth: 1000,
+          // Stackable up to level 5: each level widens the scan/support radius
+          // enormously (see lighthouseRadius).
+          upgradable: true,
         };
         break;
       case UnitType.Shell:
@@ -459,21 +495,23 @@ export class Config {
           upgradable: true,
         };
         break;
+      // Every bomb costs twice what it used to — ordnance is a decision, not a
+      // rotation.
       case UnitType.AtomBomb:
         info = {
-          cost: this.nukeCost(750_000, UnitType.AtomBomb),
+          cost: this.nukeCost(1_500_000, UnitType.AtomBomb),
         };
         break;
       case UnitType.HydrogenBomb:
         info = {
-          cost: this.nukeCost(5_000_000, UnitType.HydrogenBomb),
+          cost: this.nukeCost(10_000_000, UnitType.HydrogenBomb),
         };
         break;
       case UnitType.ElectricBomb:
         // Slightly pricier than an atom bomb (it denies the whole area instead
         // of levelling it).
         info = {
-          cost: this.nukeCost(900_000, UnitType.ElectricBomb),
+          cost: this.nukeCost(1_800_000, UnitType.ElectricBomb),
         };
         break;
       case UnitType.MIRV:
@@ -485,7 +523,7 @@ export class Config {
             ) {
               return 0n;
             }
-            return 25_000_000n + game.stats().numMirvsLaunched() * 15_000_000n;
+            return 50_000_000n + game.stats().numMirvsLaunched() * 30_000_000n;
           },
         };
         break;
@@ -997,7 +1035,10 @@ export class Config {
     const maxTroops =
       player.type() === PlayerType.Human && this.hasInfiniteTroopsFor(player)
         ? 1_000_000_000
-        : 2 * (Math.pow(player.numTilesOwned(), 0.6) * 1000 + 50000) +
+        : 2 *
+            (Math.pow(player.numTilesOwned(), 0.6) *
+              this.troopsPerTileWeight() +
+              50000) +
           player
             .units(UnitType.City)
             .filter((u) => !u.isUnderConstruction())
@@ -1042,7 +1083,7 @@ export class Config {
     }
     switch (shipClass) {
       case "small":
-        return 150_000n;
+        return 300_000n;
       case "normal":
         // costWrapper ignores the Game argument; PlayerView carries the unit
         // counters the wrapper reads, so the client can price this too.
@@ -1051,15 +1092,16 @@ export class Config {
           player as Player,
         );
       case "large":
-        return 750_000n;
+        return 1_500_000n;
       case "ultra":
-        return 5_000_000n;
+        return 10_000_000n;
     }
   }
 
-  // Gold a fishing boat earns each payout, and how often (ticks).
+  // Gold a fishing boat earns each payout, and how often (ticks). Deliberately
+  // small — a single boat is a trickle, a whole fleet is an economy.
   fishingBoatIncome(): Gold {
-    return 15_000n;
+    return 5_000n;
   }
 
   fishingBoatIncomeIntervalTicks(): Tick {
@@ -1087,8 +1129,25 @@ export class Config {
     return 25;
   }
 
+  // The atomic sub reloads three times as fast as a plain submarine.
+  atomicSubmarineAttackRate(): Tick {
+    return 8;
+  }
+
+  // Torpedo damage multiplier per sub class. The atomic sub's torpedoes hit
+  // four times as hard as they used to (1.6 → 6.4), on top of its far bigger
+  // hull and its much faster reload.
+  atomicSubmarineDamageMultiplier(): number {
+    return 6.4;
+  }
+
   submarineHitPercentVsWarship(): number {
     return 55;
+  }
+
+  // The atomic sub's fire control is far better: even warships rarely dodge.
+  atomicSubmarineHitPercentVsWarship(): number {
+    return 90;
   }
 
   submarineHitPercent(): number {
@@ -1096,9 +1155,10 @@ export class Config {
   }
 
   // Lighthouse: huge scan/support radius reaching well into the sea, and slow
-  // healing for own/team boats inside it.
-  lighthouseRadius(): number {
-    return 90;
+  // healing for own/team boats inside it. Stackable to level 5 — a maxed
+  // lighthouse lights up a whole sea.
+  lighthouseRadius(level: number = 1): number {
+    return 90 + (Math.min(5, Math.max(1, level)) - 1) * 70; // 90 … 370
   }
 
   lighthouseHealPerInterval(): number {
@@ -1107,6 +1167,23 @@ export class Config {
 
   lighthouseHealIntervalTicks(): Tick {
     return 10;
+  }
+
+  // Coastal battery: a lighthouse shells enemy ships that come inside its
+  // radius. Slower than a warship's guns, but it never has to reload at a port.
+  lighthouseShellAttackRate(): Tick {
+    return 30;
+  }
+
+  // Shell-damage multiplier of a lighthouse battery, growing with its level.
+  lighthouseShellDamage(level: number = 1): number {
+    return 0.8 + (Math.min(5, Math.max(1, level)) - 1) * 0.4; // 0.8 … 2.4
+  }
+
+  // Own/teammate boats inside a lighthouse's radius move this many extra steps
+  // per tick — a friendly coast is a fast coast.
+  lighthouseSpeedBoostSteps(): number {
+    return 1;
   }
 
   // ── Natural disasters ────────────────────────────────────────────────────
@@ -1139,6 +1216,8 @@ export class Config {
         return 450;
       case NaturalDisasterType.Heatwave:
         return 900;
+      case NaturalDisasterType.Tsunami:
+        return 300; // 30 s — the wave rolls through and is gone
     }
   }
 
@@ -1148,6 +1227,17 @@ export class Config {
 
   disasterLandslideRadius(): number {
     return 18;
+  }
+
+  // Radius of the tsunami's wave front on open water.
+  disasterTsunamiRadius(): number {
+    return 70;
+  }
+
+  // Total chance (0-100) that a surface ship caught in the tsunami is sunk over
+  // the wave's full duration. Submarines are never affected.
+  tsunamiShipDestroyTotalPercent(): number {
+    return 50;
   }
 
   // Percent chance (0-100) that an Emergency Station covering the struck
@@ -1169,8 +1259,11 @@ export class Config {
     return 50;
   }
 
+  // Deliberately enormous: three times a level-1 SAM's radius (3 × 70). An
+  // Emergency Station is meant to blanket a whole region — you build a handful,
+  // not a grid of them.
   emergencyStationRadius(): number {
-    return 35;
+    return 3 * this.samRange(1); // 210
   }
 
   // One disabled structure is repaired per this many ticks by each station.
@@ -1186,7 +1279,25 @@ export class Config {
     // Dialled down further so a single pump never floods the tank — you notice
     // oil running low and have to keep building/gifting to keep moving.
     // e.g. 5k tiles → ~18/tick, 50k → ~93/tick, 100k → ~176/tick per pump.
+    // This is the BASELINE (deposit grade 3); the actual output of a pump also
+    // depends on how rich the ground under it is — see oilProductionForPumpAt.
     return 10 + Math.floor(player.numTilesOwned() / 600);
+  }
+
+  /**
+   * Oil per tick produced by ONE LEVEL of a pump standing at (x, y). The
+   * deposit's grade (1–5, darker = richer) scales the baseline: grade 3 is the
+   * baseline, grade 5 pumps twice as much, grade 1 only half. Integer percent
+   * math keeps this deterministic.
+   */
+  oilProductionForPumpAt(
+    player: Player | PlayerView,
+    x: number,
+    y: number,
+  ): number {
+    const grade = oilDepositGradeAt(x, y);
+    const percent = OIL_GRADE_PERCENT[grade] ?? 0;
+    return Math.floor((this.oilProductionPerPump(player) * percent) / 100);
   }
 
   oilConsumptionRate(player: Player | PlayerView): number {
@@ -1264,9 +1375,11 @@ export class Config {
     return 5000;
   }
 
-  // Extra capacity per oil-storage level.
+  // Extra capacity per oil-storage level. Ten times what it used to be, so a
+  // couple of tanks carry you through a 3-minute drought instead of needing a
+  // whole tank farm.
   oilStorageBonus(): number {
-    return 8000;
+    return 80_000;
   }
 
   // Total capacity: the base tank plus every (active, enabled) oil storage's
@@ -1447,6 +1560,25 @@ export class Config {
 
   defaultSamMissileSpeed(): number {
     return 12;
+  }
+
+  /**
+   * Gold an interception costs the SAM's owner. Air defence is no longer free:
+   * a launcher only fires if its owner can pay, and the money is taken when the
+   * interceptor is launched. MIRV warheads are exempt — a MIRV salvo would
+   * otherwise be unaffordable to defend against by design.
+   */
+  samInterceptCost(nukeType: UnitType): Gold {
+    switch (nukeType) {
+      case UnitType.AtomBomb:
+        return 80_000n;
+      case UnitType.HydrogenBomb:
+        return 150_000n;
+      case UnitType.ElectricBomb:
+        return 50_000n;
+      default:
+        return 0n;
+    }
   }
 
   // Humans can be soldiers, soldiers attacking, soldiers in boat etc.

@@ -2,16 +2,17 @@ import { html, LitElement } from "lit";
 import { customElement } from "lit/decorators.js";
 import { NaturalDisasterType } from "../../../core/game/Game";
 import { NaturalDisasterUpdate } from "../../../core/game/GameUpdates";
-import { translateText } from "../../Utils";
 import { Controller } from "../../Controller";
+import { translateText } from "../../Utils";
 import { GameView } from "../../view";
 
 // Per-type banner accents: emoji + bar color.
 const DISASTER_STYLE: Record<string, { emoji: string; bar: string }> = {
   [NaturalDisasterType.Drought]: { emoji: "🌵", bar: "#eab308" },
-  [NaturalDisasterType.Flood]: { emoji: "🌊", bar: "#3b82f6" },
+  [NaturalDisasterType.Flood]: { emoji: "💧", bar: "#3b82f6" },
   [NaturalDisasterType.Landslide]: { emoji: "⛰️", bar: "#a16207" },
   [NaturalDisasterType.Heatwave]: { emoji: "🔥", bar: "#ef4444" },
+  [NaturalDisasterType.Tsunami]: { emoji: "🌊", bar: "#0ea5e9" },
 };
 
 /**
@@ -86,10 +87,9 @@ export class NaturalDisasterDisplay extends LitElement implements Controller {
             >${phaseLabel}</span
           >
           <span class="ml-auto text-xs tabular-nums text-white/80"
-            >${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(
-              2,
-              "0",
-            )}</span
+            >${Math.floor(secondsLeft / 60)}:${String(
+              secondsLeft % 60,
+            ).padStart(2, "0")}</span
           >
         </div>
         <div class="h-1.5 w-full rounded-full bg-white/15 overflow-hidden">

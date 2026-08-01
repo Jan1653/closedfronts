@@ -1,6 +1,7 @@
 import { EventBus, GameEvent } from "../core/EventBus";
 import { PlayerBuildableUnitType, UnitType } from "../core/game/Game";
 import { UserSettings } from "../core/game/UserSettings";
+import { loadSelectedBomb, loadSelectedShipIdx, SHIPS } from "./hud/BuildTabs";
 import { Platform } from "./Platform";
 import { UIState } from "./UIState";
 import { ReplaySpeedMultiplier } from "./utilities/ReplaySpeedMultiplier";
@@ -368,7 +369,8 @@ export class InputHandler {
       "buildAtomBomb",
       "buildHydrogenBomb",
       "buildElectricBomb",
-      "buildWarship",
+      "buildShip",
+      "buildBomb",
       "buildMIRV",
     ];
     buildKeybinds = buildKeybinds.map((i: string): string => {
@@ -410,6 +412,9 @@ export class InputHandler {
       this.addKeybindAndEvent(
         i,
         (e: KeyboardEvent) => {
+          // The grouped tabs (ships / bombs) arm whatever was picked last, so
+          // one key press is enough to place again.
+          if (this.armGroupedTabKeybind(e)) return;
           const matchedBuild = this.resolveBuildKeybind(
             e.code,
             e.shiftKey,
@@ -422,6 +427,7 @@ export class InputHandler {
         },
         () => this.canUseBuildKeybinds(),
         (e: KeyboardEvent) =>
+          this.matchesGroupedTabKeybind(e) ||
           this.resolveBuildKeybind(e.code, e.shiftKey, e.altKey) !== null,
       );
     }
@@ -1007,6 +1013,11 @@ export class InputHandler {
   }
 
   private setGhostStructure(ghostStructure: PlayerBuildableUnitType | null) {
+    // Only warships carry a hull class; anything else must not inherit a stale
+    // one from the ships tab.
+    if (ghostStructure !== UnitType.Warship) {
+      this.uiState.ghostShipClass = null;
+    }
     this.uiState.ghostStructure = ghostStructure;
   }
 
@@ -1127,7 +1138,6 @@ export class InputHandler {
       { key: "buildAtomBomb", type: UnitType.AtomBomb },
       { key: "buildHydrogenBomb", type: UnitType.HydrogenBomb },
       { key: "buildElectricBomb", type: UnitType.ElectricBomb },
-      { key: "buildWarship", type: UnitType.Warship },
       { key: "buildMIRV", type: UnitType.MIRV },
     ];
     for (const { key, type } of buildKeybinds) {
@@ -1139,6 +1149,61 @@ export class InputHandler {
         return type;
     }
     return null;
+  }
+
+  /** True when this key event is the ships-tab or bombs-tab hotkey. */
+  private matchesGroupedTabKeybind(e: KeyboardEvent): boolean {
+    if (e.altKey) return false;
+    return (
+      this.keybindMatchesEvent(e, this.keybinds["buildShip"]) ||
+      this.keybindMatchesEvent(e, this.keybinds["buildBomb"]) ||
+      this.buildKeybindMatchesDigit(
+        e.code,
+        e.shiftKey,
+        this.keybinds["buildShip"],
+      ) ||
+      this.buildKeybindMatchesDigit(
+        e.code,
+        e.shiftKey,
+        this.keybinds["buildBomb"],
+      )
+    );
+  }
+
+  /**
+   * Ships / bombs tab hotkeys: instead of a fixed unit type they arm whatever
+   * the player picked last in that tab (remembered across games), so the flow
+   * is "open the tab once, then hotkey + click, hotkey + click". Returns true
+   * when the event was one of these hotkeys.
+   */
+  private armGroupedTabKeybind(e: KeyboardEvent): boolean {
+    if (e.altKey) return false;
+    const isShip =
+      this.keybindMatchesEvent(e, this.keybinds["buildShip"]) ||
+      this.buildKeybindMatchesDigit(
+        e.code,
+        e.shiftKey,
+        this.keybinds["buildShip"],
+      );
+    if (isShip) {
+      const entry = SHIPS[loadSelectedShipIdx()] ?? SHIPS[0];
+      this.uiState.ghostShipClass = entry.shipClass;
+      this.setGhostStructure(entry.type);
+      return true;
+    }
+    const isBomb =
+      this.keybindMatchesEvent(e, this.keybinds["buildBomb"]) ||
+      this.buildKeybindMatchesDigit(
+        e.code,
+        e.shiftKey,
+        this.keybinds["buildBomb"],
+      );
+    if (isBomb) {
+      this.uiState.ghostShipClass = null;
+      this.setGhostStructure(loadSelectedBomb());
+      return true;
+    }
+    return false;
   }
 
   private canUseBuildKeybinds(): boolean {

@@ -2,6 +2,7 @@ import { Config } from "../../core/configuration/Config";
 import {
   Cell,
   GameUpdates,
+  NaturalDisasterType,
   PlayerID,
   TerrainType,
   TerraNullius,
@@ -483,13 +484,17 @@ export class GameView implements GameMap {
       const isStructure = STRUCTURE_TYPES.has(update.unitType);
       if (unit !== undefined) {
         // Structure changes that affect rendering: owner changed (captured),
-        // level changed, became inactive, or finished construction
-        // (underConstruction → !underConstruction).
+        // level changed, became inactive, finished construction
+        // (underConstruction → !underConstruction), or got deactivated /
+        // reactivated by an electric bomb or a natural disaster. Without the
+        // `disabled` check the GPU buffer was never re-uploaded, so EMP'd
+        // structures kept rendering as if nothing had happened.
         if (
           isStructure &&
           (unit.state.ownerID !== update.ownerID ||
             unit.state.level !== update.level ||
             unit.state.isActive !== update.isActive ||
+            unit.state.disabled !== (update.disabled ?? false) ||
             (unit.state.underConstruction &&
               !(update.underConstruction ?? false)))
         ) {
@@ -626,8 +631,10 @@ export class GameView implements GameMap {
     );
     this.updateSubmarineVisibility(f.relationMatrix, f.relationSize);
 
-    // Localized natural disaster (flood / landslide): draw its struck region
-    // as a red target circle so everyone sees where it will hit / is hitting.
+    // Localized natural disaster (flood / landslide / tsunami): draw its struck
+    // region as a red target circle so everyone sees where it will hit / is
+    // hitting. A running tsunami instead draws a RING that sweeps outward from
+    // the epicentre — the wave front rolling across the sea.
     const disaster = this._naturalDisaster;
     if (
       disaster !== null &&
@@ -635,11 +642,29 @@ export class GameView implements GameMap {
       disaster.radius !== undefined
     ) {
       const w = this._map.width();
+      const radius = disaster.radius;
+      let innerRadius = Math.max(1, Math.floor(radius / 3));
+      if (
+        disaster.disaster === NaturalDisasterType.Tsunami &&
+        disaster.phase === "active"
+      ) {
+        // Wave front: the hole in the middle grows over the active phase, so
+        // the visible band travels outward and washes over the whole circle.
+        const span = Math.max(
+          1,
+          disaster.phaseEndTick - disaster.phaseStartTick,
+        );
+        const elapsed = Math.min(
+          span,
+          Math.max(0, this.ticks() - disaster.phaseStartTick),
+        );
+        innerRadius = Math.max(1, Math.floor((radius * elapsed) / span));
+      }
       f.nukeTelegraphs.push({
         x: disaster.center % w,
         y: (disaster.center - (disaster.center % w)) / w,
-        innerRadius: Math.max(1, Math.floor(disaster.radius / 3)),
-        outerRadius: disaster.radius,
+        innerRadius,
+        outerRadius: radius,
         relation: 2, // enemy-red — danger for everyone
       });
     }
@@ -1113,10 +1138,7 @@ export class GameView implements GameMap {
     const subs: import("../render/types").UnitState[] = [];
     for (const u of this._unitStates.values()) {
       if (!u.isActive) continue;
-      if (
-        u.unitType === UT_SUBMARINE ||
-        u.unitType === UT_ATOMIC_SUBMARINE
-      ) {
+      if (u.unitType === UT_SUBMARINE || u.unitType === UT_ATOMIC_SUBMARINE) {
         subs.push(u);
         continue;
       }

@@ -14,14 +14,14 @@ import { EmergencyStationExecution } from "./EmergencyStationExecution";
 import { FactoryExecution } from "./FactoryExecution";
 import { FishingBoatExecution } from "./FishingBoatExecution";
 import { LighthouseExecution } from "./LighthouseExecution";
-import { PatrolBoatExecution } from "./PatrolBoatExecution";
-import { SubmarineExecution } from "./SubmarineExecution";
 import { MirvExecution } from "./MIRVExecution";
 import { MissileSiloExecution } from "./MissileSiloExecution";
 import { NukeExecution } from "./NukeExecution";
 import { OilPumpExecution } from "./OilPumpExecution";
+import { PatrolBoatExecution } from "./PatrolBoatExecution";
 import { PortExecution } from "./PortExecution";
 import { SAMLauncherExecution } from "./SAMLauncherExecution";
+import { SubmarineExecution } from "./SubmarineExecution";
 import { WallExecution } from "./WallExecution";
 import { WarshipExecution } from "./WarshipExecution";
 import { WaterTollStationExecution } from "./WaterTollStationExecution";
@@ -66,11 +66,16 @@ export class ConstructionExecution implements Execution {
   tick(ticks: number): void {
     if (this.structure === null) {
       const info = this.mg.unitInfo(this.constructionType);
-      // For non-structure units (nukes/warship), charge once and delegate to specialized executions.
+      // For non-structure units (nukes/ships), charge once and delegate to specialized executions.
       const isStructure = this.isStructure(this.constructionType);
       if (!isStructure) {
-        // Defer validation and gold deduction to the specific execution
-        this.completeConstruction();
+        // Defer validation and gold deduction to the specific execution. The
+        // build quantity (Tab+wheel) means "launch this many at once" here
+        // rather than "stack this many levels" — see mobileUnitBatchSize.
+        const batch = this.mobileUnitBatchSize();
+        for (let i = 0; i < batch; i++) {
+          this.completeConstruction();
+        }
         this.active = false;
         return;
       }
@@ -224,6 +229,47 @@ export class ConstructionExecution implements Execution {
         if (!this.player.canUpgradeUnit(this.structure)) break;
         this.player.upgradeUnit(this.structure);
       }
+    }
+  }
+
+  /**
+   * How many copies of a mobile unit (ship / bomb) this build order launches.
+   *
+   * Ships are limited only by gold — each spawned execution pays for itself and
+   * quietly gives up if the player can't afford it.
+   *
+   * Bombs are additionally limited by LAUNCH PLATFORMS: every salvo missile
+   * needs its own ready missile silo (or atomic submarine), because firing puts
+   * the platform on cooldown. Asking for three bombs with two ready silos
+   * launches two. MIRVs are never batched — one is quite enough.
+   */
+  private mobileUnitBatchSize(): number {
+    const requested = Math.max(1, Math.floor(this.stackCount));
+    if (requested === 1) return 1;
+    switch (this.constructionType) {
+      case UnitType.MIRV:
+        return 1;
+      case UnitType.AtomBomb:
+      case UnitType.HydrogenBomb:
+      case UnitType.ElectricBomb: {
+        let ready = 0;
+        for (const silo of this.player.units(
+          UnitType.MissileSilo,
+          UnitType.AtomicSubmarine,
+        )) {
+          if (
+            silo.isActive() &&
+            !silo.isInCooldown() &&
+            !silo.isUnderConstruction() &&
+            !silo.isDisabled()
+          ) {
+            ready++;
+          }
+        }
+        return Math.max(1, Math.min(requested, ready));
+      }
+      default:
+        return requested;
     }
   }
 

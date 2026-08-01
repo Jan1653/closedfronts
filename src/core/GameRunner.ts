@@ -1,8 +1,8 @@
 import { placeName, placeSpawnName } from "../client/hud/NameBoxCalculator";
 import { Config } from "./configuration/Config";
 import { DoomsdayClockExecution } from "./execution/DoomsdayClockExecution";
-import { NaturalDisasterExecution } from "./execution/NaturalDisasterExecution";
 import { Executor } from "./execution/ExecutionManager";
+import { NaturalDisasterExecution } from "./execution/NaturalDisasterExecution";
 import { RecomputeRailClusterExecution } from "./execution/RecomputeRailClusterExecution";
 import { SpawnTimerExecution } from "./execution/SpawnTimerExecution";
 import { WinCheckExecution } from "./execution/WinCheckExecution";

@@ -18,6 +18,16 @@ import { OilExplosionExecution } from "./OilExplosionExecution";
 // realistic game length.
 const PERMANENT_DISABLE_TICKS = 100_000_000;
 
+// Surface ships a tsunami can sink. Submarines are deliberately absent — they
+// simply dive below the wave.
+const TSUNAMI_SINKABLE_SHIPS: UnitType[] = [
+  UnitType.TransportShip,
+  UnitType.Warship,
+  UnitType.TradeShip,
+  UnitType.FishingBoat,
+  UnitType.PatrolBoat,
+];
+
 /**
  * Natural disasters: a single long-lived scheduler that periodically rolls one
  * of the enabled disaster types, announces it ~1 minute ahead (HUD banner via
@@ -50,6 +60,10 @@ export class NaturalDisasterExecution implements Execution {
   // so the cumulative chance over the whole duration hits the configured 50%.
   private heatwavePerTickMicro = 0;
 
+  // Tsunami: same trick — per-tick sinking probability for a surface ship
+  // caught in the wave, so the cumulative chance over the wave hits 50%.
+  private tsunamiPerTickMicro = 0;
+
   init(mg: Game, ticks: number): void {
     this.mg = mg;
     this.random = new PseudoRandom(ticks + 0xd15a);
@@ -75,6 +89,9 @@ export class NaturalDisasterExecution implements Execution {
       case "active":
         if (this.currentType === NaturalDisasterType.Heatwave) {
           this.tickHeatwave();
+        }
+        if (this.currentType === NaturalDisasterType.Tsunami) {
+          this.tickTsunami();
         }
         if (ticks >= this.phaseEndsAt) {
           this.finish(ticks);
@@ -128,6 +145,18 @@ export class NaturalDisasterExecution implements Execution {
           : config.disasterLandslideRadius();
     }
 
+    // The tsunami rolls over open water instead of over territory: aim it at a
+    // busy stretch of sea so the wave actually catches somebody's fleet.
+    if (type === NaturalDisasterType.Tsunami) {
+      const center = this.pickWaterTile();
+      if (center === null) {
+        this.scheduleNext(now);
+        return;
+      }
+      this.center = center;
+      this.radius = config.disasterTsunamiRadius();
+    }
+
     this.currentType = type;
     this.phase = "warning";
     this.phaseEndsAt = now + config.disasterWarningDurationTicks();
@@ -159,6 +188,16 @@ export class NaturalDisasterExecution implements Execution {
         const total = config.heatwavePumpExplosionTotalPercent() / 100;
         const p = 1 - Math.pow(1 - total, 1 / duration);
         this.heatwavePerTickMicro = Math.max(1, Math.round(p * 1_000_000));
+        break;
+      }
+      case NaturalDisasterType.Tsunami: {
+        // Same cumulative-probability trick as the heatwave, so a ship that
+        // stays in the wave for its whole duration ends up with the configured
+        // total chance of going down.
+        const duration = config.disasterDurationTicks(type);
+        const total = config.tsunamiShipDestroyTotalPercent() / 100;
+        const p = 1 - Math.pow(1 - total, 1 / duration);
+        this.tsunamiPerTickMicro = Math.max(1, Math.round(p * 1_000_000));
         break;
       }
     }
@@ -268,6 +307,50 @@ export class NaturalDisasterExecution implements Execution {
         this.mg.addExecution(new OilExplosionExecution(tile, level));
       }
     }
+  }
+
+  /**
+   * Tsunami impact: every SURFACE ship inside the wave rolls each tick to be
+   * sunk. Submarines dive under the wave and are never touched — the one thing
+   * a tsunami can't reach.
+   */
+  private tickTsunami(): void {
+    if (this.center === null) return;
+    for (const { unit } of this.mg.nearbyUnits(
+      this.center,
+      this.radius,
+      TSUNAMI_SINKABLE_SHIPS,
+    )) {
+      if (!unit.isActive()) continue;
+      if (this.random.nextInt(0, 1_000_000) < this.tsunamiPerTickMicro) {
+        unit.delete(true);
+      }
+    }
+  }
+
+  /**
+   * A random open-water tile, preferring a stretch of sea that actually has
+   * ships on it (a wave in an empty ocean is just scenery). Bounded rejection
+   * sampling, deterministic.
+   */
+  private pickWaterTile(): TileRef | null {
+    // Prefer the neighbourhood of a random surface ship.
+    const ships: Unit[] = [];
+    for (const type of TSUNAMI_SINKABLE_SHIPS) {
+      for (const u of this.mg.units(type)) {
+        if (u.isActive()) ships.push(u);
+      }
+    }
+    if (ships.length > 0) {
+      return ships[this.random.nextInt(0, ships.length)].tile();
+    }
+    for (let i = 0; i < 300; i++) {
+      const x = this.random.nextInt(0, this.mg.width());
+      const y = this.random.nextInt(0, this.mg.height());
+      const t = this.mg.ref(x, y);
+      if (this.mg.isWater(t)) return t;
+    }
+    return null;
   }
 
   private allPumps(): Unit[] {

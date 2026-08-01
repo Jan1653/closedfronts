@@ -5,6 +5,7 @@ import {
   Gold,
   Player,
   PlayerType,
+  ShipClass,
   Unit,
   UnitType,
 } from "../../game/Game";
@@ -15,6 +16,50 @@ import {
   EMOJI_WARSHIP_RETALIATION,
   NationEmojiBehavior,
 } from "./NationEmojiBehavior";
+
+/**
+ * Hull classes a nation will buy, cheapest first. A nation picks the best hull
+ * it can comfortably afford (see pickHullClass) instead of always building the
+ * plain "normal" warship, which is what the ships overhaul left them doing.
+ */
+const HULL_LADDER: readonly ShipClass[] = ["small", "normal", "large", "ultra"];
+
+/**
+ * Hull class a nation is willing to reach for, per difficulty. Easy nations
+ * stick to cheap escorts, Impossible ones field the floating fortress.
+ */
+const MAX_HULL_BY_DIFFICULTY: Record<Difficulty, ShipClass> = {
+  [Difficulty.Easy]: "small",
+  [Difficulty.Medium]: "normal",
+  [Difficulty.Hard]: "large",
+  [Difficulty.Impossible]: "ultra",
+};
+
+/** Fishing boats a nation will run, per port, capped by FISHING_BOAT_CAP. */
+const FISHING_BOATS_PER_PORT = 2;
+const FISHING_BOAT_CAP = 8;
+
+/** Patrol boats (the submarine counter) a nation keeps, per difficulty. */
+const PATROL_BOATS_BY_DIFFICULTY: Record<Difficulty, number> = {
+  [Difficulty.Easy]: 0,
+  [Difficulty.Medium]: 1,
+  [Difficulty.Hard]: 2,
+  [Difficulty.Impossible]: 3,
+};
+
+/** Submarines a nation keeps, per difficulty. */
+const SUBMARINES_BY_DIFFICULTY: Record<Difficulty, number> = {
+  [Difficulty.Easy]: 0,
+  [Difficulty.Medium]: 0,
+  [Difficulty.Hard]: 2,
+  [Difficulty.Impossible]: 3,
+};
+
+/**
+ * Gold a nation wants to keep in the bank on top of an atomic submarine's price
+ * before it splurges on one — it must not bankrupt its land war for a boat.
+ */
+const ATOMIC_SUB_GOLD_RESERVE = 20_000_000n;
 
 export class NationWarshipBehavior {
   // Track our transport ships we currently own
@@ -43,10 +88,12 @@ export class NationWarshipBehavior {
     }
     const ports = this.player.units(UnitType.Port);
     const ships = this.player.units(UnitType.Warship);
+    const hull = this.pickHullClass();
     if (
       ports.length > 0 &&
       ships.length === 0 &&
-      this.player.gold() > this.cost(UnitType.Warship)
+      this.player.gold() >=
+        this.game.config().warshipClassCost(hull, this.player)
     ) {
       const port = this.random.randElement(ports);
       const targetTile = this.warshipSpawnTile(port.tile(), 250);
@@ -58,11 +105,117 @@ export class NationWarshipBehavior {
         return false;
       }
       this.game.addExecution(
-        new ConstructionExecution(this.player, UnitType.Warship, targetTile),
+        new ConstructionExecution(
+          this.player,
+          UnitType.Warship,
+          targetTile,
+          undefined,
+          1,
+          hull,
+        ),
       );
       return true;
     }
     return false;
+  }
+
+  /**
+   * Best hull class the nation can comfortably afford: it must be able to pay
+   * for the hull AND still have that much again in the bank, so buying a big
+   * ship never leaves it broke. Capped per difficulty.
+   */
+  private pickHullClass(): ShipClass {
+    const config = this.game.config();
+    const { difficulty } = config.gameConfig();
+    const cap = HULL_LADDER.indexOf(MAX_HULL_BY_DIFFICULTY[difficulty]);
+    const gold = this.player.gold();
+    let best: ShipClass = HULL_LADDER[0];
+    for (let i = 0; i <= cap; i++) {
+      const hull = HULL_LADDER[i];
+      if (gold >= config.warshipClassCost(hull, this.player) * 2n) {
+        best = hull;
+      }
+    }
+    return best;
+  }
+
+  /**
+   * The rest of the modern fleet: fishing boats for income, patrol boats to
+   * light up enemy submarines, and — for the harder nations — submarines of
+   * their own. One ship per call at most, so a nation grows its navy over time
+   * instead of dumping its whole treasury into boats in a single tick.
+   */
+  maybeSpawnSupportShips(): boolean {
+    if (this.player === null) throw new Error("not initialized");
+    const ports = this.player.units(UnitType.Port);
+    if (ports.length === 0) return false;
+    // Only finished ports can launch anything.
+    const usablePorts = ports.filter((p) => !p.isUnderConstruction());
+    if (usablePorts.length === 0) return false;
+    if (!this.random.chance(30)) return false;
+
+    const { difficulty } = this.game.config().gameConfig();
+    const port = this.random.randElement(usablePorts);
+
+    // 1) Fishing boats — cheap, pay for themselves, and give warships
+    //    something to raid. Scaled by how many ports the nation runs.
+    const fishingTarget = Math.min(
+      FISHING_BOAT_CAP,
+      usablePorts.length * FISHING_BOATS_PER_PORT,
+    );
+    if (this.trySpawnShip(UnitType.FishingBoat, fishingTarget, port)) {
+      return true;
+    }
+
+    // 2) Patrol boats — the only thing that reveals a hidden submarine.
+    if (
+      this.trySpawnShip(
+        UnitType.PatrolBoat,
+        PATROL_BOATS_BY_DIFFICULTY[difficulty],
+        port,
+      )
+    ) {
+      return true;
+    }
+
+    // 3) Submarines — hidden hunters for the harder nations.
+    if (
+      this.trySpawnShip(
+        UnitType.Submarine,
+        SUBMARINES_BY_DIFFICULTY[difficulty],
+        port,
+      )
+    ) {
+      return true;
+    }
+
+    // 4) A single atomic submarine, and only for a rich Impossible nation: it
+    //    doubles as a mobile missile silo, so it is worth the outlay.
+    if (
+      difficulty === Difficulty.Impossible &&
+      this.player.gold() >
+        this.cost(UnitType.AtomicSubmarine) + ATOMIC_SUB_GOLD_RESERVE &&
+      this.trySpawnShip(UnitType.AtomicSubmarine, 1, port)
+    ) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /** Launch one `type` from `port` if the nation is under `target` and can pay. */
+  private trySpawnShip(type: UnitType, target: number, port: Unit): boolean {
+    if (target <= 0) return false;
+    const config = this.game.config();
+    if (config.isUnitDisabled(type)) return false;
+    if (this.player.unitsOwned(type) >= target) return false;
+    if (this.player.gold() < this.cost(type)) return false;
+
+    const tile = this.warshipSpawnTile(port.tile(), 150);
+    if (tile === null) return false;
+    if (this.player.canBuild(type, tile) === false) return false;
+    this.game.addExecution(new ConstructionExecution(this.player, type, tile));
+    return true;
   }
 
   private warshipSpawnTile(portTile: TileRef, radius: number): TileRef | null {
@@ -248,7 +401,14 @@ export class NationWarshipBehavior {
         return;
       }
       this.game.addExecution(
-        new ConstructionExecution(this.player, UnitType.Warship, tile),
+        new ConstructionExecution(
+          this.player,
+          UnitType.Warship,
+          tile,
+          undefined,
+          1,
+          this.pickHullClass(),
+        ),
       );
       this.emojiBehavior.maybeSendEmoji(enemy, EMOJI_WARSHIP_RETALIATION);
       this.player.updateRelation(enemy, reason === "trade" ? -7.5 : -15);
@@ -454,6 +614,9 @@ export class NationWarshipBehavior {
         this.player,
         UnitType.Warship,
         target.warship.tile(),
+        undefined,
+        1,
+        this.pickHullClass(),
       ),
     );
     this.emojiBehavior.sendEmoji(AllPlayers, EMOJI_WARSHIP_RETALIATION);

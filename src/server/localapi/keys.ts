@@ -1,13 +1,13 @@
 import fs from "fs";
-import path from "path";
 import {
+  type CryptoKey,
   exportJWK,
   generateKeyPair,
   importJWK,
   type JWK,
-  type CryptoKey,
   SignJWT,
 } from "jose";
+import path from "path";
 import { uuidToBase64url } from "../../core/Base64";
 
 // EdDSA (Ed25519) signing key for the localapi. The private JWK is persisted

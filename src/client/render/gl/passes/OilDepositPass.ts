@@ -11,11 +11,15 @@
  * button). Nothing draws while disabled.
  */
 
-import { isOilDepositAt } from "../../../../core/game/OilDeposits";
-import { createMapQuad, createProgram, createTexture2D } from "../utils/GlUtils";
+import { oilDepositGradeAt } from "../../../../core/game/OilDeposits";
+import {
+  createMapQuad,
+  createProgram,
+  createTexture2D,
+} from "../utils/GlUtils";
 
-import oilFragSrc from "../shaders/oil/oil-deposit.frag.glsl?raw";
 import overlayVertSrc from "../shaders/map-overlay/overlay.vert.glsl?raw";
+import oilFragSrc from "../shaders/oil/oil-deposit.frag.glsl?raw";
 
 const OPACITY = 0.55;
 
@@ -38,13 +42,14 @@ export class OilDepositPass {
     this.mapW = mapW;
     this.mapH = mapH;
 
-    // Bake the deposit mask once (1 = deposit). Same integer function the
-    // simulation uses, so the overlay is pixel-accurate to where pumps build.
+    // Bake the deposit mask once (0 = none, 1..5 = grade). Same integer
+    // function the simulation uses, so the overlay is pixel-accurate to where
+    // pumps build AND to how much they will actually produce there.
     const mask = new Uint8Array(mapW * mapH);
     for (let y = 0; y < mapH; y++) {
       const row = y * mapW;
       for (let x = 0; x < mapW; x++) {
-        if (isOilDepositAt(x, y)) mask[row + x] = 1;
+        mask[row + x] = oilDepositGradeAt(x, y);
       }
     }
     // 1 byte per texel (R8UI): rows aren't 4-byte aligned when mapW isn't a

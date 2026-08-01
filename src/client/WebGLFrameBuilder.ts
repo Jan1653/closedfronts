@@ -212,20 +212,20 @@ export class WebGLFrameBuilder {
     if (gameView.ticks() % 10 !== 0) return;
     const me = gameView.myPlayer();
     if (me === null) return;
-    // Per pump LEVEL, per second (a stacked/levelled pump produces more).
-    const perLevelPerSecond = gameView.config().oilProductionPerPump(me) * 10;
-    if (perLevelPerSecond <= 0) return;
     const popups: { x: number; y: number; amount: number }[] = [];
     for (const pump of me.units(UnitType.OilPump)) {
       if (!pump.isActive() || pump.isUnderConstruction() || pump.isDisabled()) {
         continue;
       }
       const tile = pump.tile();
-      popups.push({
-        x: gameView.x(tile),
-        y: gameView.y(tile),
-        amount: perLevelPerSecond * pump.level(),
-      });
+      const x = gameView.x(tile);
+      const y = gameView.y(tile);
+      // Per pump LEVEL, per second (a stacked/levelled pump produces more), and
+      // scaled by how rich the deposit under this particular pump is.
+      const amount =
+        gameView.config().oilProductionForPumpAt(me, x, y) * 10 * pump.level();
+      if (amount <= 0) continue;
+      popups.push({ x, y, amount });
     }
     if (popups.length > 0) this.view.applyOilPopups(popups);
   }

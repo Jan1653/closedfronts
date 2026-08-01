@@ -531,16 +531,11 @@ export class BuildMenu extends LitElement implements Controller {
     this.requestUpdate();
   }
 
+  // Ships launch as a squadron and bombs as a salvo (the sim caps a salvo at
+  // the number of ready silos); only the MIRV stays strictly single.
   private placeCount(type: UnitType): number {
-    switch (type) {
-      case UnitType.AtomBomb:
-      case UnitType.HydrogenBomb:
-      case UnitType.MIRV:
-      case UnitType.Warship:
-        return 1;
-      default:
-        return Math.max(1, this.uiState.buildQuantity);
-    }
+    if (type === UnitType.MIRV) return 1;
+    return Math.max(1, this.uiState.buildQuantity);
   }
 
   public sendBuildOrUpgrade(buildableUnit: BuildableUnit, tile: TileRef): void {

@@ -310,6 +310,12 @@ export class SAMLauncherExecution implements Execution {
       target = this.targetingSystem.getSingleTarget(ticks);
     }
 
+    // Interceptions cost gold (MIRV warheads are free). A launcher whose owner
+    // cannot pay simply holds fire — the bomb gets through.
+    if (target !== null && !this.payInterceptCost(target.unit.type())) {
+      return;
+    }
+
     // target is already filtered to exclude nukes targeted by other SAMs
     if (target || mirvWarheadTargets.length > 0) {
       this.sam.launch();
@@ -358,6 +364,23 @@ export class SAMLauncherExecution implements Execution {
         throw new Error("target is null");
       }
     }
+  }
+
+  /**
+   * Charge the SAM owner for engaging a bomb of `nukeType`. Returns false when
+   * they can't afford it, in which case the launcher must not fire. Free types
+   * (MIRV warheads) always pass.
+   */
+  private payInterceptCost(nukeType: UnitType): boolean {
+    const cost = this.mg.config().samInterceptCost(nukeType);
+    if (cost <= 0n) return true;
+    if (this.sam === null) return false;
+    const owner = this.sam.owner();
+    if (owner.gold() < cost) {
+      return false;
+    }
+    owner.removeGold(cost);
+    return true;
   }
 
   isActive(): boolean {

@@ -1262,18 +1262,20 @@ export class PlayerImpl implements Player {
   updateOil(): void {
     const config = this.mg.config();
     // Each pump level produces a full pump's worth of oil, so stacking a pump
-    // (levelling it up) makes it pump more.
-    let pumpLevels = 0;
+    // (levelling it up) makes it pump more. How much a pump is worth also
+    // depends on the grade of the deposit it sits on (richer core = more oil).
+    let rawProduction = 0;
     for (const p of this.units(UnitType.OilPump)) {
       if (p.isActive() && !p.isUnderConstruction() && !p.isDisabled()) {
-        pumpLevels += p.level();
+        const tile = p.tile();
+        rawProduction +=
+          p.level() *
+          config.oilProductionForPumpAt(this, this.mg.x(tile), this.mg.y(tile));
       }
     }
     // A drought (natural disaster) halts ALL oil production for its duration —
     // players who banked oil in storage ride it out.
-    const production = this.mg.isDroughtActive()
-      ? 0
-      : pumpLevels * config.oilProductionPerPump(this);
+    const production = this.mg.isDroughtActive() ? 0 : rawProduction;
     const consumption = config.oilConsumptionRate(this);
 
     // Expanding burns fuel: charge oil per tile conquered since the last

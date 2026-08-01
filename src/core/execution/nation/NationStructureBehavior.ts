@@ -11,6 +11,7 @@ import {
   UnitType,
 } from "../../game/Game";
 import { TileRef } from "../../game/GameMap";
+import { OIL_GRADE_MAX, oilDepositGradeAt } from "../../game/OilDeposits";
 import { Cluster } from "../../game/TrainStation";
 import { PseudoRandom } from "../../PseudoRandom";
 import { assertNever } from "../../Util";
@@ -190,6 +191,20 @@ const TOLL_STATION_MAX_CANBUILD_CHECKS = 12;
  */
 const DEFENSE_POST_RATIO_PER_POST = 0.4;
 
+/**
+ * Tiles per additional Emergency Station. Its radius is enormous (3× a level-1
+ * SAM), so a nation only ever wants one or two.
+ */
+const EMERGENCY_STATION_TILES = 60000;
+
+/** Coastal lighthouses a nation keeps, per difficulty. */
+const LIGHTHOUSES_BY_DIFFICULTY: Record<Difficulty, number> = {
+  [Difficulty.Easy]: 0,
+  [Difficulty.Medium]: 1,
+  [Difficulty.Hard]: 2,
+  [Difficulty.Impossible]: 3,
+};
+
 // Reusable neighbor buffer for hot loops; the simulation is single-threaded.
 const NEIGHBOR_SCRATCH: TileRef[] = [0, 0, 0, 0];
 
@@ -239,6 +254,19 @@ export class NationStructureBehavior {
     // Oil storage banks the pumps' output (bigger tank), so the nation stops
     // wasting overflow and keeps a buffer for expansion.
     if (this.tryBuildOilStorage()) {
+      return true;
+    }
+
+    // An emergency station shields the oil field from heatwaves and repairs
+    // whatever a flood or landslide knocked out. Its radius is enormous, so one
+    // or two cover a whole nation.
+    if (this.tryBuildEmergencyStation()) {
+      return true;
+    }
+
+    // A lighthouse lights up the coast: it reveals submarines, shells raiders
+    // and speeds up the nation's own boats.
+    if (this.tryBuildLighthouse()) {
       return true;
     }
 
@@ -380,24 +408,124 @@ export class NationStructureBehavior {
     return false;
   }
 
-  /** Build an oil pump on the first sampled owned oil deposit, if any. */
+  /**
+   * Build an oil pump on the RICHEST owned oil deposit found in a sample.
+   * Deposits are graded 1–5 and a grade-5 core pumps four times what a grade-1
+   * rim does, so drilling the best tile in reach matters far more than drilling
+   * the first one.
+   */
   private buildPumpOnOwnedDeposit(): boolean {
-    const config = this.game.config();
     const tiles = randTerritoryTileArray(
       this.random,
       this.game,
       this.player,
       OIL_DEPOSIT_SAMPLE,
     );
+    let bestTile: TileRef | null = null;
+    let bestGrade = 0;
     for (const t of tiles) {
-      if (!config.isOilDeposit(this.game, t)) continue;
+      const grade = oilDepositGradeAt(this.game.x(t), this.game.y(t));
+      if (grade <= bestGrade) continue;
       if (!this.player.canBuild(UnitType.OilPump, t)) continue;
+      bestTile = t;
+      bestGrade = grade;
+      if (grade === OIL_GRADE_MAX) break; // can't do better than the core
+    }
+    if (bestTile === null) return false;
+    this.game.addExecution(
+      new ConstructionExecution(this.player, UnitType.OilPump, bestTile),
+    );
+    return true;
+  }
+
+  /**
+   * Builds an Emergency Station once the nation has an oil field worth
+   * protecting: it makes heatwaves harmless to every pump in radius and repairs
+   * structures a flood or landslide disabled. The radius is huge, so the target
+   * count stays tiny — one for a normal nation, two for a sprawling one.
+   */
+  private tryBuildEmergencyStation(): boolean {
+    const config = this.game.config();
+    if (config.isUnitDisabled(UnitType.EmergencyStation)) return false;
+    if (this.placementsCount === 0) return false;
+    // Pointless if disasters can't strike at all.
+    if (config.enabledNaturalDisasters().length === 0) return false;
+    // The main thing it protects is the oil field.
+    if (this.player.unitsOwned(UnitType.OilPump) === 0) return false;
+
+    const target = Math.min(
+      2,
+      1 + Math.floor(this.player.numTilesOwned() / EMERGENCY_STATION_TILES),
+    );
+    if (this.player.unitsOwned(UnitType.EmergencyStation) >= target) {
+      return false;
+    }
+    if (this.player.gold() < this.cost(UnitType.EmergencyStation)) return false;
+
+    // Place it near a pump so the oil field is actually inside the radius.
+    const pump = this.random.randElement(this.player.units(UnitType.OilPump));
+    const tiles = this.sampleTilesNear(pump.tile(), 25);
+    for (const t of tiles) {
+      if (!this.player.canBuild(UnitType.EmergencyStation, t)) continue;
       this.game.addExecution(
-        new ConstructionExecution(this.player, UnitType.OilPump, t),
+        new ConstructionExecution(this.player, UnitType.EmergencyStation, t),
       );
       return true;
     }
     return false;
+  }
+
+  /**
+   * Builds a coastal lighthouse (Medium+): it reveals enemy submarines, shells
+   * raiders that come close and speeds up the nation's own boats. Only worth it
+   * once the nation actually has a navy to support.
+   */
+  private tryBuildLighthouse(): boolean {
+    const config = this.game.config();
+    if (config.isUnitDisabled(UnitType.Lighthouse)) return false;
+    if (this.placementsCount === 0) return false;
+
+    const { difficulty } = config.gameConfig();
+    const target = LIGHTHOUSES_BY_DIFFICULTY[difficulty];
+    if (target === 0) return false;
+    if (this.player.unitsOwned(UnitType.Port) === 0) return false;
+    if (this.player.unitsOwned(UnitType.Lighthouse) >= target) return false;
+    if (this.player.gold() < this.cost(UnitType.Lighthouse)) return false;
+    // Rare enough that it doesn't crowd out the economy.
+    if (!this.random.chance(40)) return false;
+
+    this._sharedWaterComponents ??= this.game.sharedWaterComponents(
+      this.player,
+    );
+    const tiles = this.randCoastalTileArray(20);
+    for (const t of tiles) {
+      if (!this.player.canBuild(UnitType.Lighthouse, t)) continue;
+      this.game.addExecution(
+        new ConstructionExecution(this.player, UnitType.Lighthouse, t),
+      );
+      return true;
+    }
+    return false;
+  }
+
+  /** Random owned tiles within `radius` of `center` (bounded rejection sampling). */
+  private sampleTilesNear(center: TileRef, count: number): TileRef[] {
+    const game = this.game;
+    const radius = Math.floor(game.config().emergencyStationRadius() / 3);
+    const result: TileRef[] = [];
+    for (
+      let attempt = 0;
+      attempt < count * 6 && result.length < count;
+      attempt++
+    ) {
+      const x = game.x(center) + this.random.nextInt(-radius, radius + 1);
+      const y = game.y(center) + this.random.nextInt(-radius, radius + 1);
+      if (!game.isValidCoord(x, y)) continue;
+      const t = game.ref(x, y);
+      if (game.owner(t) !== this.player) continue;
+      result.push(t);
+    }
+    return result;
   }
 
   /** The nation's lowest-level oil pump that can currently be upgraded. */

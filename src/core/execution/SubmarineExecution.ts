@@ -41,9 +41,7 @@ export class SubmarineExecution implements Execution {
 
   constructor(
     private subType: UnitType.Submarine | UnitType.AtomicSubmarine,
-    private input:
-      | (UnitParams<UnitType.Submarine> & OwnerComp)
-      | Unit,
+    private input: (UnitParams<UnitType.Submarine> & OwnerComp) | Unit,
   ) {}
 
   init(mg: Game, ticks: number): void {
@@ -107,7 +105,11 @@ export class SubmarineExecution implements Execution {
   // are only fair game when at war (and patrol boats only up close).
   private fireTorpedo(ticks: number): void {
     const config = this.mg.config();
-    if (ticks - this.lastTorpedo < config.submarineAttackRate()) return;
+    const isAtomic = this.subType === UnitType.AtomicSubmarine;
+    const attackRate = isAtomic
+      ? config.atomicSubmarineAttackRate()
+      : config.submarineAttackRate();
+    if (ticks - this.lastTorpedo < attackRate) return;
     const target = this.findTarget();
     if (target === undefined) return;
     this.lastTorpedo = ticks;
@@ -115,13 +117,16 @@ export class SubmarineExecution implements Execution {
 
     const vsWarship = target.type() === UnitType.Warship;
     const hitPercent = vsWarship
-      ? config.submarineHitPercentVsWarship()
+      ? isAtomic
+        ? config.atomicSubmarineHitPercentVsWarship()
+        : config.submarineHitPercentVsWarship()
       : config.submarineHitPercent();
     if (this.random.nextInt(0, 100) >= hitPercent) {
       return; // torpedo missed
     }
-    const damageMultiplier =
-      this.subType === UnitType.AtomicSubmarine ? 1.6 : 1;
+    const damageMultiplier = isAtomic
+      ? config.atomicSubmarineDamageMultiplier()
+      : 1;
     this.mg.addExecution(
       new ShellExecution(
         this.sub.tile(),

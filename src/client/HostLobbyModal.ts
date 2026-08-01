@@ -658,6 +658,12 @@ export class HostLobbyModal extends BaseModal {
                       NaturalDisasterType.Heatwave,
                     ),
                   },
+                  {
+                    labelKey: "host_modal.disaster_tsunami",
+                    checked: !this.disabledDisasters.includes(
+                      NaturalDisasterType.Tsunami,
+                    ),
+                  },
                   // Host cheats and public listing are mutually exclusive
                   // (the server rejects both combinations), so the controls
                   // disappear while the lobby is listed.
@@ -1061,6 +1067,9 @@ export class HostLobbyModal extends BaseModal {
         break;
       case "host_modal.disaster_heatwave":
         this.setDisasterEnabled(NaturalDisasterType.Heatwave, checked);
+        break;
+      case "host_modal.disaster_tsunami":
+        this.setDisasterEnabled(NaturalDisasterType.Tsunami, checked);
         break;
       case "host_modal.host_cheats":
         this.hostCheatsEnabled = checked;

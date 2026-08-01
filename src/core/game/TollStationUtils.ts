@@ -14,7 +14,7 @@ export const TOLL_GATE_RADIUS = 2;
 // on the route claims (percent). Two or more different owners on one route
 // leave the trader with nothing — but never a negative balance, because the
 // toll is settled out of the arrival income, not the trader's treasury.
-export const TOLL_INCOME_SHARE_PERCENT = 50n;
+export const TOLL_INCOME_SHARE_PERCENT = 35n;
 
 // The minimal map/unit surface tollStationConnections needs — satisfied by both
 // the server's Game and the client's GameView, so the client can compute a

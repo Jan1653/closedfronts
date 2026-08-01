@@ -72,7 +72,11 @@ export class FxPass {
     // Electric bomb: an electric burst (EMP shockwave + sparks), no fireball.
     if (typeName === UT_ELECTRIC_BOMB) {
       if (unit.reachedTarget) {
-        this.shockwavePass.pushElectricShockwave(x, y, ELECTRIC_EXPLOSION_RADIUS);
+        this.shockwavePass.pushElectricShockwave(
+          x,
+          y,
+          ELECTRIC_EXPLOSION_RADIUS,
+        );
       } else {
         // Intercepted mid-flight: same as the other nukes (SAM burst + ring).
         this.spritePass.pushFx(x, y, FX_SAM_EXPLOSION, now);

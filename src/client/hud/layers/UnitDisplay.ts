@@ -7,7 +7,6 @@ import {
   BuildMenus,
   Gold,
   PlayerBuildableUnitType,
-  ShipClass,
   UnitType,
 } from "../../../core/game/Game";
 import { UserSettings } from "../../../core/game/UserSettings";
@@ -16,15 +15,20 @@ import { ToggleStructureEvent } from "../../InputHandler";
 import { UIState } from "../../UIState";
 import { renderNumber, translateText } from "../../Utils";
 import { GameView } from "../../view";
-const warshipIcon = assetUrl("images/BattleshipIconWhite.svg");
+import {
+  BOMB_TYPES,
+  BOMBS,
+  loadSelectedBomb,
+  loadSelectedShipIdx,
+  saveSelectedBomb,
+  saveSelectedShipIdx,
+  SHIP_TYPES,
+  SHIPS,
+} from "../BuildTabs";
 const cityIcon = assetUrl("images/CityIconWhite.svg");
 const factoryIcon = assetUrl("images/FactoryIconWhite.svg");
 const goldCoinIcon = assetUrl("images/GoldCoinIcon.svg");
-const mirvIcon = assetUrl("images/MIRVIcon.svg");
 const missileSiloIcon = assetUrl("images/MissileSiloIconWhite.svg");
-const hydrogenBombIcon = assetUrl("images/MushroomCloudIconWhite.svg");
-const atomBombIcon = assetUrl("images/NukeIconWhite.svg");
-const electricBombIcon = assetUrl("images/ElectricBombIconWhite.svg");
 const oilStorageIcon = assetUrl("images/OilStorageIconWhite.svg");
 const portIcon = assetUrl("images/PortIcon.svg");
 const samLauncherIcon = assetUrl("images/SamLauncherIconWhite.svg");
@@ -34,117 +38,6 @@ const oilPumpIcon = assetUrl("images/OilPumpIconWhite.svg");
 const tollStationIcon = assetUrl("images/TollStationIconWhite.svg");
 const emergencyStationIcon = assetUrl("images/EmergencyStationIconWhite.svg");
 const lighthouseIcon = assetUrl("images/LighthouseIconWhite.svg");
-const fishingBoatIcon = assetUrl("images/FishingBoatIconWhite.svg");
-const patrolBoatIcon = assetUrl("images/PatrolBoatIconWhite.svg");
-const submarineIcon = assetUrl("images/SubmarineIconWhite.svg");
-const atomicSubmarineIcon = assetUrl("images/AtomicSubmarineIconWhite.svg");
-
-// The four bombs collapse into one "Bombs" button with a sub-menu. Order per
-// design: Electric, Atom, Hydrogen, MIRV. Each carries its build-keybind action
-// + default key so the sub-menu can show the hotkey (they'd otherwise be
-// invisible, hidden behind the "Bombs" button).
-const BOMBS: {
-  type: PlayerBuildableUnitType;
-  icon: string;
-  key: string;
-  keybind: string;
-  defaultKey: string;
-}[] = [
-  {
-    type: UnitType.ElectricBomb,
-    icon: electricBombIcon,
-    key: "electric_bomb",
-    keybind: "buildElectricBomb",
-    defaultKey: "I",
-  },
-  {
-    type: UnitType.AtomBomb,
-    icon: atomBombIcon,
-    key: "atom_bomb",
-    keybind: "buildAtomBomb",
-    defaultKey: "8",
-  },
-  {
-    type: UnitType.HydrogenBomb,
-    icon: hydrogenBombIcon,
-    key: "hydrogen_bomb",
-    keybind: "buildHydrogenBomb",
-    defaultKey: "9",
-  },
-  {
-    type: UnitType.MIRV,
-    icon: mirvIcon,
-    key: "mirv",
-    keybind: "buildMIRV",
-    defaultKey: "0",
-  },
-];
-const BOMB_TYPES: ReadonlySet<PlayerBuildableUnitType> = new Set(
-  BOMBS.map((b) => b.type),
-);
-const SELECTED_BOMB_KEY = "unitDisplay.selectedBomb";
-
-// The ships tab (like the bombs sub-menu): every buyable ship in one place.
-// The three warship hull classes share UnitType.Warship and differ via
-// shipClass (sent with the build intent).
-export const SHIPS: {
-  type: PlayerBuildableUnitType;
-  shipClass: ShipClass | null;
-  icon: string;
-  key: string;
-}[] = [
-  {
-    type: UnitType.FishingBoat,
-    shipClass: null,
-    icon: fishingBoatIcon,
-    key: "fishing_boat",
-  },
-  {
-    type: UnitType.PatrolBoat,
-    shipClass: null,
-    icon: patrolBoatIcon,
-    key: "patrol_boat",
-  },
-  {
-    type: UnitType.Warship,
-    shipClass: "small",
-    icon: warshipIcon,
-    key: "warship_small",
-  },
-  {
-    type: UnitType.Warship,
-    shipClass: "large",
-    icon: warshipIcon,
-    key: "warship_large",
-  },
-  {
-    type: UnitType.Warship,
-    shipClass: "ultra",
-    icon: warshipIcon,
-    key: "warship_ultra",
-  },
-  {
-    type: UnitType.Submarine,
-    shipClass: null,
-    icon: submarineIcon,
-    key: "submarine",
-  },
-  {
-    type: UnitType.AtomicSubmarine,
-    shipClass: null,
-    icon: atomicSubmarineIcon,
-    key: "atomic_submarine",
-  },
-];
-const SHIP_TYPES: ReadonlySet<PlayerBuildableUnitType> = new Set(
-  SHIPS.map((s) => s.type),
-);
-const SELECTED_SHIP_KEY = "unitDisplay.selectedShip";
-
-function loadSelectedBomb(): PlayerBuildableUnitType {
-  const saved = localStorage.getItem(SELECTED_BOMB_KEY);
-  return BOMBS.find((b) => b.type === saved)?.type ?? UnitType.AtomBomb;
-}
 
 @customElement("unit-display")
 export class UnitDisplay extends LitElement implements Controller {
@@ -173,12 +66,7 @@ export class UnitDisplay extends LitElement implements Controller {
   private selectedBomb: PlayerBuildableUnitType = loadSelectedBomb();
   private _hoveredShip: number | null = null;
   private shipsMenuOpen = false;
-  private selectedShipIdx: number = (() => {
-    const saved = Number(localStorage.getItem(SELECTED_SHIP_KEY));
-    return Number.isInteger(saved) && saved >= 0 && saved < SHIPS.length
-      ? saved
-      : 0;
-  })();
+  private selectedShipIdx: number = loadSelectedShipIdx();
 
   createRenderRoot() {
     return this;
@@ -252,7 +140,8 @@ export class UnitDisplay extends LitElement implements Controller {
   private canBuildShip(entry: (typeof SHIPS)[number]): boolean {
     const player = this.game?.myPlayer();
     return (
-      this.canBuild(entry.type) && this.shipCost(entry) <= (player?.gold() ?? 0n)
+      this.canBuild(entry.type) &&
+      this.shipCost(entry) <= (player?.gold() ?? 0n)
     );
   }
 
@@ -275,10 +164,14 @@ export class UnitDisplay extends LitElement implements Controller {
     this._waterTollStation = player.totalUnitLevels(UnitType.WaterTollStation);
     this._emergencyStation = player.totalUnitLevels(UnitType.EmergencyStation);
     this._lighthouse = player.totalUnitLevels(UnitType.Lighthouse);
-    // Close the bomb fly-out once a non-bomb structure gets armed elsewhere.
+    // Close a fly-out once something outside it gets armed elsewhere (bar
+    // click, hotkey, build menu).
     const g = this.uiState.ghostStructure;
     if (this.bombMenuOpen && g !== null && !BOMB_TYPES.has(g)) {
       this.bombMenuOpen = false;
+    }
+    if (this.shipsMenuOpen && g !== null && !SHIP_TYPES.has(g)) {
+      this.shipsMenuOpen = false;
     }
     this.requestUpdate();
   }
@@ -506,9 +399,26 @@ export class UnitDisplay extends LitElement implements Controller {
     return g !== null && BOMB_TYPES.has(g);
   }
 
+  // The two grouped tabs are mutually exclusive: opening one always closes the
+  // other, so they never overlap on the bar.
   private toggleBombMenu() {
     this.bombMenuOpen = !this.bombMenuOpen;
+    if (this.bombMenuOpen) this.shipsMenuOpen = false;
     this.requestUpdate();
+  }
+
+  private toggleShipsMenu() {
+    this.shipsMenuOpen = !this.shipsMenuOpen;
+    if (this.shipsMenuOpen) this.bombMenuOpen = false;
+    this.requestUpdate();
+  }
+
+  /** Display form of a keybind, e.g. "Digit7" → "7". */
+  private hotkeyLabel(action: string, fallback: string): string {
+    return (this.keybinds[action]?.key ?? fallback)
+      .replace("Digit", "")
+      .replace("Key", "")
+      .toUpperCase();
   }
 
   private isShipArmed(): boolean {
@@ -518,11 +428,7 @@ export class UnitDisplay extends LitElement implements Controller {
 
   private selectShip(idx: number) {
     this.selectedShipIdx = idx;
-    try {
-      localStorage.setItem(SELECTED_SHIP_KEY, String(idx));
-    } catch {
-      /* storage unavailable */
-    }
+    saveSelectedShipIdx(idx);
     const entry = SHIPS[idx];
     if (this.canBuildShip(entry)) {
       this.uiState.ghostStructure = entry.type;
@@ -541,8 +447,7 @@ export class UnitDisplay extends LitElement implements Controller {
     );
     if (ships.length === 0) return html``;
     const armed = this.isShipArmed();
-    const sel =
-      ships.find((s) => s.idx === this.selectedShipIdx) ?? ships[0];
+    const sel = ships.find((s) => s.idx === this.selectedShipIdx) ?? ships[0];
     return html`
       <div class="flex flex-col items-center relative">
         ${this.shipsMenuOpen
@@ -612,12 +517,11 @@ export class UnitDisplay extends LitElement implements Controller {
             ? "bg-slate-400/20"
             : ""}"
           title=${translateText("unit_type.ships")}
-          @click=${() => {
-            this.shipsMenuOpen = !this.shipsMenuOpen;
-            this.requestUpdate();
-          }}
+          @click=${() => this.toggleShipsMenu()}
         >
-          <div class="ml-0.5"></div>
+          <div class="ml-0.5 text-[10px] relative -top-1 text-gray-400">
+            ${this.hotkeyLabel("buildShip", "7")}
+          </div>
           <div class="flex items-center gap-0.5 pt-0.5">
             <img src=${sel.icon} alt="ships" class="align-middle size-5" />
           </div>
@@ -628,12 +532,11 @@ export class UnitDisplay extends LitElement implements Controller {
 
   private selectBomb(type: PlayerBuildableUnitType) {
     this.selectedBomb = type;
-    try {
-      localStorage.setItem(SELECTED_BOMB_KEY, type);
-    } catch {
-      /* storage unavailable */
+    saveSelectedBomb(type);
+    if (this.canBuild(type)) {
+      this.uiState.ghostStructure = type;
+      this.uiState.ghostShipClass = null;
     }
-    if (this.canBuild(type)) this.uiState.ghostStructure = type;
     this.bombMenuOpen = false;
     this.requestUpdate();
   }
@@ -716,7 +619,9 @@ export class UnitDisplay extends LitElement implements Controller {
           title=${translateText("unit_type.bombs")}
           @click=${() => this.toggleBombMenu()}
         >
-          <div class="ml-0.5"></div>
+          <div class="ml-0.5 text-[10px] relative -top-1 text-gray-400">
+            ${this.hotkeyLabel("buildBomb", "N")}
+          </div>
           <div class="flex items-center gap-0.5 pt-0.5">
             <img src=${sel.icon} alt="bombs" class="align-middle size-5" />
           </div>

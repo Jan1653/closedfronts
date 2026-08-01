@@ -573,6 +573,16 @@ export class BuildPreviewController implements Controller {
         // valid oil deposit.
         rangeRadius = this.game.config().oilPumpRadius();
         break;
+      case UnitType.EmergencyStation:
+        // The protection radius — huge, and previously invisible, which made it
+        // impossible to tell how many stations a region actually needs.
+        rangeRadius = this.game.config().emergencyStationRadius();
+        break;
+      case UnitType.Lighthouse:
+        rangeRadius = this.game
+          .config()
+          .lighthouseRadius(this.resolveGhostRangeLevel(u) ?? 1);
+        break;
     }
     let radiusTileX = this.game.x(tileRef);
     let radiusTileY = this.game.y(tileRef);
@@ -829,31 +839,38 @@ export class BuildPreviewController implements Controller {
   }
 
   /**
-   * How many copies of a structure to place per click. Tab+wheel sets
-   * uiState.buildQuantity; attack units (nukes / warship) are always single.
+   * How many copies to place per click. Tab+wheel sets uiState.buildQuantity;
+   * structures stack levels, ships launch as a squadron and bombs fire as a
+   * salvo (the sim caps a salvo at the number of ready silos). Only the MIRV
+   * stays strictly single.
    */
   private multiPlaceCount(unitType: UnitType): number {
-    switch (unitType) {
-      case UnitType.AtomBomb:
-      case UnitType.HydrogenBomb:
-      case UnitType.MIRV:
-      case UnitType.Warship:
-        return 1;
-      default:
-        return Math.max(1, this.uiState.buildQuantity);
-    }
+    if (unitType === UnitType.MIRV) return 1;
+    return Math.max(1, this.uiState.buildQuantity);
   }
 
+  /**
+   * Level the range circle should be drawn for: the level the structure would
+   * have AFTER this click (so stacking previews the widened radius). Only
+   * meaningful for types whose radius grows with level.
+   */
   private resolveGhostRangeLevel(
     buildableUnit: BuildableUnit,
   ): number | undefined {
-    if (buildableUnit.type !== UnitType.SAMLauncher) return undefined;
+    if (
+      buildableUnit.type !== UnitType.SAMLauncher &&
+      buildableUnit.type !== UnitType.Lighthouse
+    ) {
+      return undefined;
+    }
     if (buildableUnit.canUpgrade !== false) {
       const existing = this.game.unit(buildableUnit.canUpgrade);
       if (existing) {
         return existing.level() + 1;
       } else {
-        console.error("Failed to find existing SAMLauncher for upgrade");
+        console.error(
+          `Failed to find existing ${buildableUnit.type} to upgrade`,
+        );
       }
     }
     return 1;

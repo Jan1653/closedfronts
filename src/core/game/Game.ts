@@ -263,6 +263,9 @@ export enum NaturalDisasterType {
   // Every oil pump not covered by an Emergency Station has a 50% total chance
   // to blow up over the heatwave's duration.
   Heatwave = "Heatwave",
+  // A wave rolls across a patch of open sea: every surface ship caught inside
+  // has a 50% chance of being sunk. Submarines dive under it and are safe.
+  Tsunami = "Tsunami",
 }
 
 export enum TrainType {

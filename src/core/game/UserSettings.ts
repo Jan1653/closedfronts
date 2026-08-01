@@ -16,13 +16,17 @@ export function getDefaultKeybinds(isMac: boolean): Record<string, string> {
     buildDefensePost: "Digit4",
     buildMissileSilo: "Digit5",
     buildSamLauncher: "Digit6",
-    buildWarship: "Digit7",
+    // The "Ships" tab: arms whichever ship was picked last, so you can press 7
+    // and place immediately without reopening the tab.
+    buildShip: "Digit7",
     buildAtomBomb: "Digit8",
     buildHydrogenBomb: "Digit9",
     buildMIRV: "Digit0",
     // The number row (1..0) is full, so the fourth bomb lands on a nearby free
     // letter key. Rebindable in settings like the others.
     buildElectricBomb: "KeyI",
+    // The "Bombs" tab: same idea as buildShip — arms the last bomb you picked.
+    buildBomb: "KeyN",
     attackRatioDown: "KeyT",
     attackRatioUp: "KeyY",
     boatAttack: "KeyB",

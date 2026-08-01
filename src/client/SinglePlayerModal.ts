@@ -21,10 +21,10 @@ import "./components/baseComponents/Button";
 import "./components/baseComponents/Modal";
 import { BaseModal } from "./components/BaseModal";
 import "./components/GameConfigSettings";
+import "./components/InputCard";
 import { CustomMap, listCustomMaps } from "./components/map/CustomMapStore";
 import "./components/map/CustomMapThumb";
 import { MEDAL_ORDER, medalIcon } from "./components/map/Medals";
-import "./components/InputCard";
 import "./components/ToggleInputCard";
 import { modalHeader } from "./components/ui/ModalHeader";
 import { getPlayerCosmetics } from "./Cosmetics";
@@ -554,6 +554,12 @@ export class SinglePlayerModal extends BaseModal {
                       NaturalDisasterType.Heatwave,
                     ),
                   },
+                  {
+                    labelKey: "single_modal.disaster_tsunami",
+                    checked: !this.disabledDisasters.includes(
+                      NaturalDisasterType.Tsunami,
+                    ),
+                  },
                 ],
                 inputCards,
               },
@@ -769,6 +775,9 @@ export class SinglePlayerModal extends BaseModal {
         break;
       case "single_modal.disaster_heatwave":
         this.setDisasterEnabled(NaturalDisasterType.Heatwave, checked);
+        break;
+      case "single_modal.disaster_tsunami":
+        this.setDisasterEnabled(NaturalDisasterType.Tsunami, checked);
         break;
       default:
         break;

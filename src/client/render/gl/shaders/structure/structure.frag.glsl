@@ -165,6 +165,12 @@ void main() {
     vec3 ac = texelFetch(uAffiliation, ivec2(int(vOwnerID), 1), 0).rgb;
     fillColor = vec4(darken(ac, uFillDarken), 1.0);
     borderColor = vec4(darken(ac, uBorderDarken), 1.0);
+  } else if (vUnderConstruction > 1.5) {
+    // Deactivated (electric bomb / disaster): a dead, dark grey. Deliberately
+    // much darker than the construction grey so "offline" can never be
+    // mistaken for "still building" — or for a working structure.
+    fillColor = vec4(78.0/255.0, 78.0/255.0, 82.0/255.0, 1.0);
+    borderColor = vec4(44.0/255.0, 44.0/255.0, 48.0/255.0, 1.0);
   } else if (vUnderConstruction > 0.5) {
     fillColor = vec4(198.0/255.0, 198.0/255.0, 198.0/255.0, 1.0);
     borderColor = vec4(127.0/255.0, 127.0/255.0, 127.0/255.0, 1.0);

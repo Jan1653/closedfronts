@@ -254,21 +254,24 @@ export class TradeShipExecution implements Execution {
       .tradeShipGold(this.tilesTraveled, this.tradeShip!.owner());
 
     if (this.wasCaptured) {
-      this.tradeShip!.owner().addGold(gold, this._dstPort.tile());
+      // A prize crew brings home less than an honest run.
+      const prizeGold =
+        (gold * this.mg.config().capturedTradeShipGoldPercent()) / 100n;
+      this.tradeShip!.owner().addGold(prizeGold, this._dstPort.tile());
       this.mg.displayMessage(
         "events_display.received_gold_from_captured_ship",
         MessageType.CAPTURED_ENEMY_UNIT,
         this.tradeShip!.owner().id(),
-        gold,
+        prizeGold,
         {
-          gold: renderNumber(gold),
+          gold: renderNumber(prizeGold),
           name: this.origOwner.displayName(),
         },
       );
       // Record stats
       this.mg
         .stats()
-        .boatCapturedTrade(this.tradeShip!.owner(), this.origOwner, gold);
+        .boatCapturedTrade(this.tradeShip!.owner(), this.origOwner, prizeGold);
     } else {
       // Tolls come out of the trader's arrival income (never their treasury);
       // the destination port's side of the trade is untouched.

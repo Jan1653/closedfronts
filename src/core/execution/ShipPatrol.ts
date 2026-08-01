@@ -3,6 +3,7 @@ import { TileRef } from "../game/GameMap";
 import { WaterPathFinder } from "../pathfinding/PathFinder";
 import { PathStatus } from "../pathfinding/types";
 import { PseudoRandom } from "../PseudoRandom";
+import { lighthouseSpeedBonus } from "./LighthouseExecution";
 
 /**
  * Shared random-patrol movement for the light ships (fishing boat, patrol
@@ -19,11 +20,22 @@ export class ShipPatrol {
     private readonly patrolRange: number,
   ) {}
 
-  /** One movement step of the patrol. */
+  /**
+   * One movement step of the patrol — plus a bonus step for every friendly
+   * lighthouse covering this stretch of sea.
+   */
   tick(): void {
+    const steps = 1 + lighthouseSpeedBonus(this.mg, this.ship);
+    for (let i = 0; i < steps; i++) {
+      if (!this.step()) return;
+    }
+  }
+
+  /** A single pathfinding step. Returns false when there is nowhere to go. */
+  private step(): boolean {
     if (this.ship.targetTile() === undefined) {
       const next = this.randomTile();
-      if (next === undefined) return;
+      if (next === undefined) return false;
       this.ship.setTargetTile(next);
     }
     const result = this.pathfinder.next(
@@ -34,13 +46,13 @@ export class ShipPatrol {
       case PathStatus.COMPLETE:
         this.ship.setTargetTile(undefined);
         this.ship.move(result.node);
-        break;
+        return true;
       case PathStatus.NEXT:
         this.ship.move(result.node);
-        break;
+        return true;
       case PathStatus.NOT_FOUND:
         this.ship.setTargetTile(undefined);
-        break;
+        return false;
     }
   }
 
@@ -57,8 +69,10 @@ export class ShipPatrol {
     let attempts = 0;
     let expands = 0;
     while (expands < 3) {
-      const x = this.mg.x(patrolTile) + this.random.nextInt(-range / 2, range / 2);
-      const y = this.mg.y(patrolTile) + this.random.nextInt(-range / 2, range / 2);
+      const x =
+        this.mg.x(patrolTile) + this.random.nextInt(-range / 2, range / 2);
+      const y =
+        this.mg.y(patrolTile) + this.random.nextInt(-range / 2, range / 2);
       if (this.mg.isValidCoord(x, y)) {
         const tile = this.mg.ref(x, y);
         if (

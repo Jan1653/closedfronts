@@ -173,7 +173,9 @@ export class ServerEnv {
   // (game archiving) so they hit it directly on loopback instead of looping
   // back out through the public URL. Must include the /localapi prefix.
   static localApiBase(): string {
-    return process.env.LOCALAPI_INTERNAL_URL ?? "http://127.0.0.1:8090/localapi";
+    return (
+      process.env.LOCALAPI_INTERNAL_URL ?? "http://127.0.0.1:8090/localapi"
+    );
   }
 
   // Server-only env values

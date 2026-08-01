@@ -154,16 +154,20 @@ export class ControlPanel extends LitElement implements Controller {
     this._maxOil = config.maxOil(player);
     // Client-side oil rate: active pumps' production minus consumption, per
     // second (×10 like the troop rate). Positive = pumps are feeding your oil.
-    let pumpLevels = 0;
+    let production = 0;
     for (const u of player.units(UnitType.OilPump)) {
       if (u.isActive() && !u.isUnderConstruction() && !u.isDisabled()) {
-        pumpLevels += u.level();
+        const tile = u.tile();
+        production +=
+          u.level() *
+          config.oilProductionForPumpAt(
+            player,
+            this.game.x(tile),
+            this.game.y(tile),
+          );
       }
     }
-    this._oilRate =
-      (pumpLevels * config.oilProductionPerPump(player) -
-        config.oilConsumptionRate(player)) *
-      10;
+    this._oilRate = (production - config.oilConsumptionRate(player)) * 10;
     this._troops = player.troops();
     this._attackingTroops = player
       .outgoingAttacks()
@@ -527,14 +531,18 @@ export class ControlPanel extends LitElement implements Controller {
   // doubles as the oil-deposit map toggle (same click behaviour as before).
   private renderDesktopOilBar() {
     const fill = this.oilFillPercent();
+    const empty = this.isOutOfOil();
     return html`
       <div
-        class="w-full h-6 border rounded-md overflow-hidden relative cursor-pointer bg-gray-900/60 ${this
-          ._oilMapOn
-          ? "border-sky-300 ring-1 ring-sky-300"
-          : "border-sky-500"}"
+        class="w-full h-6 border rounded-md overflow-hidden relative cursor-pointer bg-gray-900/60 ${empty
+          ? "border-red-400 ring-1 ring-red-400/60 animate-pulse"
+          : this._oilMapOn
+            ? "border-sky-300 ring-1 ring-sky-300"
+            : "border-sky-500"}"
         translate="no"
-        title=${translateText("control_panel.oil_map")}
+        title=${empty
+          ? translateText("control_panel.oil_empty_hint")
+          : translateText("control_panel.oil_map")}
         @click=${() => this.toggleOilMap()}
       >
         <div
@@ -544,6 +552,12 @@ export class ControlPanel extends LitElement implements Controller {
         <div
           class="absolute inset-0 flex items-center justify-center gap-1 text-sm font-bold leading-none pointer-events-none px-1"
         >
+          ${empty
+            ? html`<span
+                class="text-red-300 uppercase tracking-wide text-[11px] drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]"
+                >${translateText("control_panel.oil_empty")}</span
+              >`
+            : null}
           <span
             class="text-white tabular-nums drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]"
             >${this.oilAmount(this._oil)}</span
@@ -569,16 +583,30 @@ export class ControlPanel extends LitElement implements Controller {
     `;
   }
 
+  /**
+   * True while the tank is dry. Conquering land burns fuel per tile, so an
+   * active attack can pin oil at zero for minutes — without a loud marker the
+   * bar just reads "0" and it looks like a bug rather than the reason
+   * everything suddenly crawls.
+   */
+  private isOutOfOil(): boolean {
+    return this._oil <= 0;
+  }
+
   private renderMobileOilBar() {
     const fill = this.oilFillPercent();
+    const empty = this.isOutOfOil();
     return html`
       <div
-        class="w-full h-6 border rounded-md overflow-hidden relative cursor-pointer bg-gray-900/60 ${this
-          ._oilMapOn
-          ? "border-sky-300 ring-1 ring-sky-300"
-          : "border-sky-500"}"
+        class="w-full h-6 border rounded-md overflow-hidden relative cursor-pointer bg-gray-900/60 ${empty
+          ? "border-red-400 ring-1 ring-red-400/60 animate-pulse"
+          : this._oilMapOn
+            ? "border-sky-300 ring-1 ring-sky-300"
+            : "border-sky-500"}"
         translate="no"
-        title=${translateText("control_panel.oil_map")}
+        title=${empty
+          ? translateText("control_panel.oil_empty_hint")
+          : translateText("control_panel.oil_map")}
         @click=${() => this.toggleOilMap()}
       >
         <div
@@ -596,6 +624,12 @@ export class ControlPanel extends LitElement implements Controller {
             height="10"
             class="shrink-0 drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]"
           />
+          ${empty
+            ? html`<span
+                class="text-red-300 uppercase tracking-wide text-[9px] drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]"
+                >${translateText("control_panel.oil_empty")}</span
+              >`
+            : null}
           <span
             class="text-white tabular-nums drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]"
             >${this.oilAmount(this._oil)}</span

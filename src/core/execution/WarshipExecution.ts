@@ -14,9 +14,21 @@ import { WaterPathFinder } from "../pathfinding/PathFinder";
 import { PathStatus } from "../pathfinding/types";
 import { PseudoRandom } from "../PseudoRandom";
 import { findMinimumBy } from "../Util";
+import { lighthouseSpeedBonus } from "./LighthouseExecution";
 import { ShellExecution } from "./ShellExecution";
 import { CAPTURE_RANGE } from "./StructureCapture";
 import { seizeLandTile } from "./SubmarineExecution";
+
+/**
+ * Ships a warship takes as a PRIZE instead of sinking: it sails alongside and
+ * the crew changes flag. Trade ships have always worked this way; fishing
+ * boats do too — a fishing fleet is worth more captured than sunk (and it is
+ * only ever fair game once the two sides are actually at war).
+ */
+const CAPTURABLE_SHIPS: ReadonlySet<UnitType> = new Set<UnitType>([
+  UnitType.TradeShip,
+  UnitType.FishingBoat,
+]);
 
 export class WarshipExecution implements Execution {
   private random: PseudoRandom;
@@ -49,10 +61,7 @@ export class WarshipExecution implements Execution {
       // warship price, the difference is collected here. Refuse the build if
       // the full class price isn't affordable.
       const classCost = mg.config().warshipClassCost(shipClass, owner);
-      const baseCost = mg
-        .config()
-        .unitInfo(UnitType.Warship)
-        .cost(mg, owner);
+      const baseCost = mg.config().unitInfo(UnitType.Warship).cost(mg, owner);
       if (owner.gold() < classCost) {
         console.warn(`cannot afford ${shipClass} warship`);
         return;
@@ -116,11 +125,11 @@ export class WarshipExecution implements Execution {
     this.warship.setTargetUnit(this.findTargetUnit());
 
     // Priority 1+2: Shoot any shootable target in range (transports first,
-    // then warships/spotted submarines, then — at war — fishing/patrol
-    // boats; see findBestTarget's priorities). Trade ships are captured, not
-    // shot (below).
+    // then warships/spotted submarines, then — at war — patrol boats; see
+    // findBestTarget's priorities). Trade ships and fishing boats are taken as
+    // prizes instead of sunk (below).
     const targetType = this.warship.targetUnit()?.type();
-    if (targetType !== undefined && targetType !== UnitType.TradeShip) {
+    if (targetType !== undefined && !CAPTURABLE_SHIPS.has(targetType)) {
       this.shootTarget();
       this.patrol();
       return;
@@ -139,9 +148,11 @@ export class WarshipExecution implements Execution {
       return;
     }
 
-    // Priority 4: Hunt trade ship only if not healing and no enemy warship
-    if (this.warship.targetUnit()?.type() === UnitType.TradeShip) {
-      this.huntDownTradeShip();
+    // Priority 4: Board a trade ship / fishing boat, if not healing and no
+    // enemy warship is around.
+    const prize = this.warship.targetUnit()?.type();
+    if (prize !== undefined && CAPTURABLE_SHIPS.has(prize)) {
+      this.huntDownPrize();
       return;
     }
 
@@ -409,7 +420,6 @@ export class WarshipExecution implements Execution {
         }
         if (
           !hasPort ||
-          patrolTile === undefined ||
           unit.isSafeFromPirates() ||
           unit.targetUnit()?.owner() === owner ||
           unit.targetUnit()?.owner().isFriendly(owner)
@@ -425,9 +435,16 @@ export class WarshipExecution implements Execution {
         ) {
           continue;
         }
-        if (
-          mg.euclideanDistSquared(patrolTile, unit.tile()) > patrolRangeSquared!
-        ) {
+        // A trade ship counts as raidable when it is inside the patrol circle
+        // OR simply close to the warship itself. Gating on the patrol tile
+        // alone made a steered warship (whose patrol tile is its destination,
+        // often far from where it currently is) sail straight past freighters
+        // it was sitting on top of.
+        const inPatrolCircle =
+          patrolTile !== undefined &&
+          mg.euclideanDistSquared(patrolTile, unit.tile()) <=
+            patrolRangeSquared!;
+        if (!inPatrolCircle && distSquared > patrolRangeSquared!) {
           continue;
         }
       }
@@ -858,7 +875,7 @@ export class WarshipExecution implements Execution {
     }
   }
 
-  private huntDownTradeShip() {
+  private huntDownPrize() {
     this.warship.updateWarshipState({ isInCombat: true });
     for (let i = 0; i < 2; i++) {
       const target = this.warship.targetUnit()!;
@@ -866,10 +883,7 @@ export class WarshipExecution implements Execution {
       const dist = this.mg.manhattanDist(this.warship.tile(), targetTile);
 
       if (dist <= 5) {
-        this.warship.owner().captureUnit(target);
-        this.warship.recordTradeCapture();
-        this.warship.setTargetUnit(undefined);
-        this.warship.touch();
+        this.capturePrize(target);
         return;
       }
 
@@ -886,10 +900,7 @@ export class WarshipExecution implements Execution {
       const result = this.pathfinder.next(this.warship.tile(), targetTile, 5);
       switch (result.status) {
         case PathStatus.COMPLETE:
-          this.warship.owner().captureUnit(target);
-          this.warship.recordTradeCapture();
-          this.warship.setTargetUnit(undefined);
-          this.warship.touch();
+          this.capturePrize(target);
           return;
         case PathStatus.NEXT:
           this.moveWarship(result.node);
@@ -899,6 +910,19 @@ export class WarshipExecution implements Execution {
           break;
       }
     }
+  }
+
+  /**
+   * Take `target` as a prize. Only trade-ship captures count toward veterancy —
+   * a fishing boat is loot, not a battle honour.
+   */
+  private capturePrize(target: Unit): void {
+    this.warship.owner().captureUnit(target);
+    if (target.type() === UnitType.TradeShip) {
+      this.warship.recordTradeCapture();
+    }
+    this.warship.setTargetUnit(undefined);
+    this.warship.touch();
   }
 
   private bestNeighborToward(targetTile: TileRef): TileRef | undefined {
@@ -934,10 +958,20 @@ export class WarshipExecution implements Execution {
   }
 
   private patrol() {
+    // Friendly lighthouses light the way: each one covering this water grants
+    // an extra movement step.
+    const steps = 1 + lighthouseSpeedBonus(this.mg, this.warship);
+    for (let i = 0; i < steps; i++) {
+      if (!this.patrolStep()) return;
+    }
+  }
+
+  /** A single patrol step. Returns false when there is nowhere to go. */
+  private patrolStep(): boolean {
     if (this.warship.targetTile() === undefined) {
       this.warship.setTargetTile(this.randomTile());
       if (this.warship.targetTile() === undefined) {
-        return;
+        return false;
       }
     }
 
@@ -949,14 +983,14 @@ export class WarshipExecution implements Execution {
       case PathStatus.COMPLETE:
         this.warship.setTargetTile(undefined);
         this.moveWarship(result.node);
-        break;
+        return true;
       case PathStatus.NEXT:
         this.moveWarship(result.node);
-        break;
+        return true;
       case PathStatus.NOT_FOUND: {
         console.log(`path not found to target`);
         this.warship.setTargetTile(undefined);
-        break;
+        return false;
       }
     }
   }

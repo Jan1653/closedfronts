@@ -13,28 +13,23 @@ import { Controller } from "../../Controller";
 import { UIState } from "../../UIState";
 import { renderNumber, translateText } from "../../Utils";
 import { GameView } from "../../view";
+import {
+  BOMB_TYPES as BOMB_SET,
+  BOMBS,
+  loadSelectedBomb,
+  loadSelectedShipIdx,
+  saveSelectedBomb,
+  saveSelectedShipIdx,
+  SHIP_TYPES as SHIP_SET,
+  SHIPS,
+} from "../BuildTabs";
 import { flattenedBuildTable } from "./BuildMenu";
-import { SHIPS } from "./UnitDisplay";
 
 const goldCoinIcon = assetUrl("images/GoldCoinIcon.svg");
 
 // The four bombs collapse into one "Bombs" button + centred picker (same order
 // and remembered selection as the desktop unit-display).
-const BOMB_ORDER: PlayerBuildableUnitType[] = [
-  UnitType.ElectricBomb,
-  UnitType.AtomBomb,
-  UnitType.HydrogenBomb,
-  UnitType.MIRV,
-];
-const BOMB_SET: ReadonlySet<PlayerBuildableUnitType> = new Set(BOMB_ORDER);
-const SELECTED_BOMB_KEY = "unitDisplay.selectedBomb";
-
-// Every ship lives in the "Ships" picker (shared SHIPS list with the desktop
-// unit-display), so keep the individual tiles off the bar.
-const SHIP_SET: ReadonlySet<PlayerBuildableUnitType> = new Set(
-  SHIPS.map((s) => s.type),
-);
-const SELECTED_SHIP_KEY = "unitDisplay.selectedShip";
+const BOMB_ORDER: PlayerBuildableUnitType[] = BOMBS.map((b) => b.type);
 
 /**
  * Mobile-only vertical build bar pinned to the right edge. Tapping an item arms
@@ -54,18 +49,8 @@ export class MobileBuildBar extends LitElement implements Controller {
   @state() private selected: PlayerBuildableUnitType | null = null;
   @state() private bombMenuOpen = false;
   @state() private shipsMenuOpen = false;
-  @state() private selectedShipIdx: number = (() => {
-    const saved = Number(localStorage.getItem(SELECTED_SHIP_KEY));
-    return Number.isInteger(saved) && saved >= 0 && saved < SHIPS.length
-      ? saved
-      : 0;
-  })();
-  @state() private selectedBomb: PlayerBuildableUnitType =
-    (BOMB_SET.has(
-      localStorage.getItem(SELECTED_BOMB_KEY) as PlayerBuildableUnitType,
-    )
-      ? (localStorage.getItem(SELECTED_BOMB_KEY) as PlayerBuildableUnitType)
-      : null) ?? UnitType.AtomBomb;
+  @state() private selectedShipIdx: number = loadSelectedShipIdx();
+  @state() private selectedBomb: PlayerBuildableUnitType = loadSelectedBomb();
 
   createRenderRoot() {
     return this;
@@ -84,10 +69,14 @@ export class MobileBuildBar extends LitElement implements Controller {
       this.selected = this.uiState.ghostStructure;
       this.requestUpdate();
     }
-    // Close the bomb fly-out once a non-bomb structure gets armed.
+    // Close a picker once something outside it gets armed.
     const g = this.uiState.ghostStructure;
     if (this.bombMenuOpen && g !== null && !BOMB_SET.has(g)) {
       this.bombMenuOpen = false;
+      this.requestUpdate();
+    }
+    if (this.shipsMenuOpen && g !== null && !SHIP_SET.has(g)) {
+      this.shipsMenuOpen = false;
       this.requestUpdate();
     }
   }
@@ -171,18 +160,22 @@ export class MobileBuildBar extends LitElement implements Controller {
     return g !== null && BOMB_SET.has(g);
   }
 
+  // The two pickers are mutually exclusive: opening one closes the other.
   private toggleBombMenu() {
     this.bombMenuOpen = !this.bombMenuOpen;
+    if (this.bombMenuOpen) this.shipsMenuOpen = false;
+    this.requestUpdate();
+  }
+
+  private toggleShipsMenu() {
+    this.shipsMenuOpen = !this.shipsMenuOpen;
+    if (this.shipsMenuOpen) this.bombMenuOpen = false;
     this.requestUpdate();
   }
 
   private selectBomb(type: PlayerBuildableUnitType) {
     this.selectedBomb = type;
-    try {
-      localStorage.setItem(SELECTED_BOMB_KEY, type);
-    } catch {
-      /* storage unavailable */
-    }
+    saveSelectedBomb(type);
     if (this.canBuild(type)) {
       this.uiState.ghostStructure = type;
       this.uiState.buildQuantity = 1;
@@ -347,11 +340,7 @@ export class MobileBuildBar extends LitElement implements Controller {
 
   private selectShip(idx: number) {
     this.selectedShipIdx = idx;
-    try {
-      localStorage.setItem(SELECTED_SHIP_KEY, String(idx));
-    } catch {
-      /* storage unavailable */
-    }
+    saveSelectedShipIdx(idx);
     const entry = SHIPS[idx];
     if (this.canBuildShip(entry)) {
       this.uiState.ghostStructure = entry.type;
@@ -364,7 +353,9 @@ export class MobileBuildBar extends LitElement implements Controller {
     this.requestUpdate();
   }
 
-  private renderShipsButton(shipItems: ((typeof SHIPS)[number] & { idx: number })[]) {
+  private renderShipsButton(
+    shipItems: ((typeof SHIPS)[number] & { idx: number })[],
+  ) {
     const armed =
       this.uiState.ghostStructure !== null &&
       SHIP_SET.has(this.uiState.ghostStructure);
@@ -380,10 +371,7 @@ export class MobileBuildBar extends LitElement implements Controller {
           : "border-slate-500"} ${unlocked ? "" : "opacity-40"}"
         title=${translateText("unit_type.ships")}
         @click=${() => {
-          if (unlocked) {
-            this.shipsMenuOpen = !this.shipsMenuOpen;
-            this.requestUpdate();
-          }
+          if (unlocked) this.toggleShipsMenu();
         }}
       >
         <img src=${sel.icon} width="24" height="24" class="-mt-1" />
@@ -467,8 +455,7 @@ export class MobileBuildBar extends LitElement implements Controller {
         @click=${() => this.selectBomb(b.unitType)}
       >
         <img src=${b.icon} width="34" height="34" />
-        <span
-          class="text-white text-xs font-semibold text-center leading-tight"
+        <span class="text-white text-xs font-semibold text-center leading-tight"
           >${b.key ? translateText(b.key) : ""}</span
         >
         <span

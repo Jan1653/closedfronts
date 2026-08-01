@@ -7,8 +7,8 @@ import "../../components/DoomsdayClockPanel";
 import { Controller } from "../../Controller";
 import { crazyGamesSDK } from "../../CrazyGamesSDK";
 import {
-  TogglePauseIntentEvent,
   ToggleOilDepositViewEvent,
+  TogglePauseIntentEvent,
 } from "../../InputHandler";
 import { PauseGameIntentEvent, SendWinnerEvent } from "../../Transport";
 import { translateText } from "../../Utils";

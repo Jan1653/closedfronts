@@ -320,7 +320,11 @@ export class WarshipSelectionController implements Controller {
 
     if (this.selectedUnit) {
       this.eventBus.emit(
-        new MoveWarshipIntentEvent([this.selectedUnit.id()], moveTile, captureId),
+        new MoveWarshipIntentEvent(
+          [this.selectedUnit.id()],
+          moveTile,
+          captureId,
+        ),
       );
       this.eventBus.emit(new UnitSelectionEvent(this.selectedUnit, false));
       return;
