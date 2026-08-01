@@ -500,6 +500,7 @@
     "disaster_flood": "Katastrophe: Überschwemmung",
     "disaster_heatwave": "Katastrophe: Hitzewelle",
     "disaster_tsunami": "Katastrophe: Tsunami",
+    "allow_late_join": "Nachjoinen erlauben (Abstimmung)",
     "disaster_landslide": "Katastrophe: Erdrutsch",
     "random_spawn": "Zufälliger Spawn",
     "allow_alliances": "Bündnisse erlauben",
@@ -1260,6 +1261,16 @@
     "nation_won": "Nation {nation} hat gewonnen!",
     "requeue": "Nochmal spielen"
   },
+  "late_join": {
+    "approve": "Reinlassen",
+    "force": "Trotzdem reinlassen (Host)",
+    "force_title": "Ohne einstimmiges Ja aufnehmen",
+    "reject": "Ablehnen",
+    "vote_body": "Alle Mitspieler müssen zustimmen. Er fängt bei null an und ist damit klar im Nachteil.",
+    "vote_title": "{name} möchte dem laufenden Spiel beitreten",
+    "waiting_body": "Die Spieler im laufenden Spiel stimmen gerade ab.",
+    "waiting_title": "Warte auf Freigabe…"
+  },
   "leaderboard": {
     "title": "Rangliste",
     "hide": "Ausblenden",
@@ -1306,6 +1317,7 @@
     "disaster_active_heatwave": "Hitzewelle! Ungeschützte Ölpumpen können explodieren",
     "disaster_active_landslide": "Erdrutsch! Gebäude auf der Rutschfläche sind deaktiviert, bis sie repariert werden",
     "disaster_active_tsunami": "Tsunami! Schiffe in der Welle können sinken — U-Boote tauchen darunter weg",
+    "player_joined_late": "{name} ist dem laufenden Spiel beigetreten",
     "disaster_warning_drought": "Eine Dürre zieht auf — die Ölproduktion wird stoppen",
     "disaster_warning_flood": "Eine Überschwemmung zieht auf — bring dich in Sicherheit",
     "disaster_warning_heatwave": "Eine Hitzewelle zieht auf — Ölpumpen sind in Gefahr",

@@ -9,6 +9,7 @@ import {
   LobbyInfoEvent,
   PlayerCosmeticRefs,
   PlayerRecord,
+  ServerJoinRequestMessage,
   ServerMessage,
 } from "../core/Schemas";
 import { createPartialGameRecord, findClosestBy, replacer } from "../core/Util";
@@ -52,6 +53,11 @@ import {
   TickMetricsEvent,
   ToggleRenderDebugGuiEvent,
 } from "./InputHandler";
+import {
+  JOIN_REQUEST_EVENT,
+  JOIN_VOTE_EVENT,
+  type JoinVoteDetail,
+} from "./JoinRequestModal";
 import { endGame, startGame, startTime } from "./LocalPersistantStats";
 import { terrainMapFileLoader } from "./TerrainMapFileLoader";
 import { GoToPlayerEvent } from "./TransformHandler";
@@ -114,6 +120,19 @@ export interface JoinLobbyResult {
   updateIdentity: (playerName: string, playerClanTag: string | null) => void;
 }
 
+/**
+ * Hand a late-join update to <join-request-modal>, which lives in the page
+ * rather than the HUD — the applicant has no game running yet, so there is no
+ * HUD to hang it off.
+ */
+function emitJoinRequest(message: ServerJoinRequestMessage): void {
+  window.dispatchEvent(
+    new CustomEvent<ServerJoinRequestMessage>(JOIN_REQUEST_EVENT, {
+      detail: message,
+    }),
+  );
+}
+
 export function joinLobby(
   eventBus: EventBus,
   lobbyConfig: LobbyConfig,
@@ -134,6 +153,18 @@ export function joinLobby(
 
   const transport = new Transport(lobbyConfig, eventBus);
 
+  // Relay ballots from <join-request-modal> to the server for as long as this
+  // lobby's transport is alive.
+  const onJoinVote = (e: Event) => {
+    const detail = (e as CustomEvent<JoinVoteDetail>).detail;
+    transport.sendJoinVote(
+      detail.applicantClientID,
+      detail.approve,
+      detail.force ?? false,
+    );
+  };
+  window.addEventListener(JOIN_VOTE_EVENT, onJoinVote);
+
   let currentGameRunner: ClientGameRunner | null = null;
 
   const onconnect = async () => {
@@ -148,6 +179,10 @@ export function joinLobby(
   let terrainLoad: Promise<TerrainMapData> | null = null;
 
   const onmessage = (message: ServerMessage) => {
+    if (message.type === "join_request") {
+      emitJoinRequest(message);
+      return;
+    }
     if (message.type === "lobby_info") {
       // Server tells us our assigned clientID
       clientID = message.myClientID;
@@ -875,6 +910,10 @@ export class ClientGameRunner {
     let hasGoneToPlayer = false;
     const onmessage = (message: ServerMessage) => {
       this.lastMessageTime = Date.now();
+      if (message.type === "join_request") {
+        emitJoinRequest(message);
+        return;
+      }
       if (message.type === "start") {
         console.log("starting game! in client game runner");
 
@@ -1027,10 +1066,17 @@ export class ClientGameRunner {
     }
     console.log(`clicked cell ${cell}`);
     const tile = this.gameView.ref(cell.x, cell.y);
+    // A late joiner gets their own private spawn phase: the game is long past
+    // the real one, but they own nothing yet, so their first click on free land
+    // plants their starting territory instead of ordering an attack.
+    const needsSpawn =
+      this.gameView.inSpawnPhase() ||
+      (this.clientID !== undefined &&
+        this.gameView.playerByClientID(this.clientID)?.hasSpawned() === false);
     if (
       this.gameView.isLand(tile) &&
       !this.gameView.hasOwner(tile) &&
-      this.gameView.inSpawnPhase() &&
+      needsSpawn &&
       !this.gameView.config().isRandomSpawn()
     ) {
       this.eventBus.emit(new SendSpawnIntentEvent(tile));

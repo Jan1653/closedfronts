@@ -8,6 +8,7 @@ import { GameEnv } from "../core/configuration/Config";
 import { GameType } from "../core/game/Game";
 import {
   ClientID,
+  ClientJoinVoteMessage,
   ClientMessageSchema,
   ClientSendLiveStatsMessage,
   ClientSendWinnerMessage,
@@ -23,6 +24,7 @@ import {
   PublicGameType,
   ServerDesyncSchema,
   ServerErrorMessage,
+  ServerJoinRequestMessage,
   ServerLobbyInfoMessage,
   ServerPrestartMessageSchema,
   ServerStartGameMessage,
@@ -30,7 +32,11 @@ import {
   StampedIntent,
   Turn,
 } from "../core/Schemas";
-import { anonymousUsername, createPartialGameRecord } from "../core/Util";
+import {
+  anonymousUsername,
+  createPartialGameRecord,
+  generateID,
+} from "../core/Util";
 import { archive, finalizeGameRecord } from "./Archive";
 import { Client } from "./Client";
 import { ClientMsgRateLimiter } from "./ClientMsgRateLimiter";
@@ -95,6 +101,13 @@ export class GameServer {
   private intents: StampedIntent[] = [];
   public activeClients: Client[] = [];
   private allClients: Map<ClientID, Client> = new Map();
+  // People who turned up after the game started and are waiting for the table
+  // to vote them in. They are connected but NOT in activeClients, so they get
+  // no turns and no player until they're admitted.
+  private pendingJoins: Map<
+    ClientID,
+    { client: Client; votes: Set<ClientID> }
+  > = new Map();
   // Map persistentID to clientID for reconnection lookup
   private persistentIdToClientId: Map<string, ClientID> = new Map();
   // persistentIDs that have passed authorization (incl. Turnstile) for this
@@ -637,6 +650,31 @@ export class GameServer {
       }
     }
 
+    // Somebody who was never in this game turning up after it started has to be
+    // voted in first (see handleJoinVote). Reconnects don't come through here —
+    // they go via rejoinClient — and a player who was already admitted once is
+    // just reconnecting, so neither needs a ballot.
+    if (
+      this._hasStarted &&
+      !this.admittedPersistentIds.has(client.persistentID)
+    ) {
+      if (!this.lateJoinAllowed()) {
+        client.ws.send(
+          JSON.stringify({
+            type: "error",
+            error: "late-join-disabled",
+          } satisfies ServerErrorMessage),
+        );
+        return "rejected";
+      }
+      this.pendingJoins.set(client.clientID, { client, votes: new Set() });
+      this.allClients.set(client.clientID, client);
+      this.addListeners(client);
+      this.broadcastJoinRequest(client, "pending");
+      this.log.info("late join requested", { clientID: client.clientID });
+      return "joined";
+    }
+
     // Client connection accepted
     this.websockets.add(client.ws);
     this.persistentIdToClientId.set(client.persistentID, client.clientID);
@@ -793,6 +831,10 @@ export class GameServer {
             this.handleLiveStats(client, clientMsg);
             break;
           }
+          case "join_vote": {
+            this.handleJoinVote(client, clientMsg);
+            break;
+          }
           default: {
             this.log.warn(`Unknown message type: ${(clientMsg as any).type}`, {
               clientID: client.clientID,
@@ -838,6 +880,28 @@ export class GameServer {
     this.activeClients = this.activeClients.filter(
       (c) => c.clientID !== client.clientID,
     );
+
+    // An applicant who gave up while waiting: drop the ballot so the prompt
+    // clears for everyone else instead of hanging around forever.
+    if (this.pendingJoins.delete(client.clientID)) {
+      this.broadcastJoinRequest(client, "rejected");
+      return;
+    }
+    // Somebody left mid-vote, so the "everyone agreed" bar just moved. Re-check
+    // every pending application against the smaller table.
+    if (this.pendingJoins.size > 0) {
+      for (const pending of [...this.pendingJoins.values()]) {
+        const voters = this.lateJoinVoters();
+        if (
+          voters.length > 0 &&
+          voters.every((c) => pending.votes.has(c.clientID))
+        ) {
+          this.admitLateJoin(pending.client);
+        } else {
+          this.broadcastJoinRequest(pending.client, "pending");
+        }
+      }
+    }
 
     // hasStarted() includes prestart: during the lobby -> game transition
     // clients reconnect, and a host socket closing then must not tear the
@@ -1029,6 +1093,126 @@ export class GameServer {
 
   private addIntent(intent: StampedIntent) {
     this.intents.push(intent);
+  }
+
+  // ── Late join ───────────────────────────────────────────────────────────
+
+  /**
+   * Whether somebody who was never in this game may still apply to join after
+   * it started. On for private lobbies (that's where friends turn up late),
+   * off for public ones, and the host can flip it in the lobby.
+   */
+  private lateJoinAllowed(): boolean {
+    return (
+      this.gameConfig.allowLateJoin ??
+      this.gameConfig.gameType === GameType.Private
+    );
+  }
+
+  /** Everyone already in the game who gets a vote (applicants excluded). */
+  private lateJoinVoters(): Client[] {
+    return this.activeClients.filter((c) => !this.pendingJoins.has(c.clientID));
+  }
+
+  private broadcastJoinRequest(
+    applicant: Client,
+    resolved: "pending" | "approved" | "rejected",
+  ): void {
+    const pending = this.pendingJoins.get(applicant.clientID);
+    const votesFor = pending?.votes.size ?? 0;
+    const votesNeeded = this.lateJoinVoters().length;
+    const send = (target: Client, isApplicant: boolean) => {
+      const msg: ServerJoinRequestMessage = {
+        type: "join_request",
+        applicantClientID: applicant.clientID,
+        username: applicant.username,
+        votesFor,
+        votesNeeded,
+        isApplicant,
+        canForce: !isApplicant && target.clientID === this.lobbyCreatorID,
+        resolved,
+      };
+      try {
+        target.ws.send(JSON.stringify(msg));
+      } catch {
+        /* socket already gone */
+      }
+    };
+    send(applicant, true);
+    for (const voter of this.lateJoinVoters()) send(voter, false);
+  }
+
+  /** A vote (or the host's override) on a pending application. */
+  private handleJoinVote(voter: Client, msg: ClientJoinVoteMessage): void {
+    const pending = this.pendingJoins.get(msg.applicantClientID);
+    if (pending === undefined) return;
+    // The applicant doesn't get to vote themselves in.
+    if (voter.clientID === msg.applicantClientID) return;
+
+    const isHost = voter.clientID === this.lobbyCreatorID;
+    if (!msg.approve) {
+      // A single no is enough: the vote has to be unanimous anyway.
+      this.rejectLateJoin(pending.client);
+      return;
+    }
+    pending.votes.add(voter.clientID);
+
+    const unanimous = this.lateJoinVoters().every((c) =>
+      pending.votes.has(c.clientID),
+    );
+    if (unanimous || (isHost && msg.force === true)) {
+      this.admitLateJoin(pending.client);
+      return;
+    }
+    this.broadcastJoinRequest(pending.client, "pending");
+  }
+
+  private rejectLateJoin(applicant: Client): void {
+    this.pendingJoins.delete(applicant.clientID);
+    this.broadcastJoinRequest(applicant, "rejected");
+    try {
+      applicant.ws.send(
+        JSON.stringify({
+          type: "error",
+          error: "late-join-rejected",
+        } satisfies ServerErrorMessage),
+      );
+    } catch {
+      /* socket already gone */
+    }
+  }
+
+  /**
+   * Let the applicant in: they become a normal client, and a lateJoin intent
+   * goes into the turn stream so every client's simulation creates their
+   * player on the same tick. They then pick a spawn tile like anyone else.
+   */
+  private admitLateJoin(applicant: Client): void {
+    this.pendingJoins.delete(applicant.clientID);
+    this.broadcastJoinRequest(applicant, "approved");
+
+    this.websockets.add(applicant.ws);
+    this.persistentIdToClientId.set(applicant.persistentID, applicant.clientID);
+    this.admittedPersistentIds.add(applicant.persistentID);
+    this.activeClients.push(applicant);
+    applicant.lastPing = Date.now();
+    this.markClientDisconnected(applicant.clientID, false);
+    this.allClients.set(applicant.clientID, applicant);
+    this.addListeners(applicant);
+
+    // The playerID is minted here, once, and travels in the intent — every
+    // client must create the player with the SAME id or they desync.
+    this.addIntent({
+      type: "lateJoin",
+      clientID: applicant.clientID,
+      joinerClientID: applicant.clientID,
+      playerID: generateID(),
+      username: applicant.username,
+      clanTag: applicant.clanTag,
+    });
+
+    this.log.info("late joiner admitted", { clientID: applicant.clientID });
+    this.sendStartGameMsg(applicant.ws, 0);
   }
 
   // Per-viewer start info. The real gameStartInfo is untouched, so the

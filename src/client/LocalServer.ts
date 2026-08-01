@@ -150,6 +150,11 @@ export class LocalServer {
   }
 
   onMessage(clientMsg: ClientMessage) {
+    // Late-join ballots are a multiplayer-only concept: a singleplayer game has
+    // exactly one seat and nobody to vote.
+    if (clientMsg.type === "join_vote") {
+      return;
+    }
     if (clientMsg.type === "rejoin") {
       if (!this.clientID) {
         throw new Error("missing clientID");

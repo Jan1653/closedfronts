@@ -99,6 +99,8 @@ export class HostLobbyModal extends BaseModal {
   @state() private disabledDisasters: NaturalDisasterType[] = [];
   // Alliance lifetime in minutes (default 5).
   @state() private allianceDurationMinutes: number | undefined = 5;
+  // Late join: on by default for private lobbies — friends turn up late.
+  @state() private allowLateJoin = true;
   @state() private doomsdayClock: boolean = false;
   @state() private doomsdayClockSpeed: DoomsdayClockSpeed = "normal";
   @state() private anonymizeNames: boolean = false;
@@ -659,6 +661,10 @@ export class HostLobbyModal extends BaseModal {
                     ),
                   },
                   {
+                    labelKey: "host_modal.allow_late_join",
+                    checked: this.allowLateJoin,
+                  },
+                  {
                     labelKey: "host_modal.disaster_tsunami",
                     checked: !this.disabledDisasters.includes(
                       NaturalDisasterType.Tsunami,
@@ -925,6 +931,7 @@ export class HostLobbyModal extends BaseModal {
     this.disableAlliances = false;
     this.disabledDisasters = [];
     this.allianceDurationMinutes = 5;
+    this.allowLateJoin = true;
     this.doomsdayClock = false;
     this.doomsdayClockSpeed = "normal";
     this.anonymizeNames = false;
@@ -1067,6 +1074,10 @@ export class HostLobbyModal extends BaseModal {
         break;
       case "host_modal.disaster_heatwave":
         this.setDisasterEnabled(NaturalDisasterType.Heatwave, checked);
+        break;
+      case "host_modal.allow_late_join":
+        this.allowLateJoin = checked;
+        this.putGameConfig();
         break;
       case "host_modal.disaster_tsunami":
         this.setDisasterEnabled(NaturalDisasterType.Tsunami, checked);
@@ -1534,6 +1545,7 @@ export class HostLobbyModal extends BaseModal {
             // and the server merge would keep a stale value otherwise.
             disabledDisasters: [...this.disabledDisasters],
             allianceDuration: this.allianceDurationMinutes ?? null,
+            allowLateJoin: this.allowLateJoin,
             // Send {enabled:false} (not undefined) when off: undefined is dropped
             // by JSON.stringify, so the server's "!== undefined" merge would keep a
             // previously-enabled config and the toggle could never turn off.

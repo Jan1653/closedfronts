@@ -787,6 +787,20 @@ export class Transport {
     }
   }
 
+  /** Vote on a pending late-join application (host may force it through). */
+  public sendJoinVote(
+    applicantClientID: string,
+    approve: boolean,
+    force = false,
+  ) {
+    this.sendMsg({
+      type: "join_vote",
+      applicantClientID,
+      approve,
+      force,
+    });
+  }
+
   private sendMsg(msg: ClientMessage) {
     if (this.isLocal) {
       // Forward message to local server

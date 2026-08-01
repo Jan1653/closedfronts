@@ -540,6 +540,7 @@
     "disaster_active_heatwave": "Heatwave! Unprotected oil pumps may explode",
     "disaster_active_landslide": "Landslide! Structures on the slide are disabled until repaired",
     "disaster_active_tsunami": "Tsunami! Ships caught in the wave may be sunk — submarines dive under it",
+    "player_joined_late": "{name} joined the running game",
     "disaster_warning_drought": "A drought is coming — oil production will stop",
     "disaster_warning_flood": "A flood is coming — move to safety",
     "disaster_warning_heatwave": "A heatwave is coming — oil pumps are in danger",
@@ -864,6 +865,7 @@
     "disaster_flood": "Disaster: Flood",
     "disaster_heatwave": "Disaster: Heatwave",
     "disaster_tsunami": "Disaster: Tsunami",
+    "allow_late_join": "Allow joining after the start (vote)",
     "disaster_landslide": "Disaster: Landslide",
     "donate_gold": "Donate gold",
     "donate_oil": "Donate oil",
@@ -944,6 +946,16 @@
     "lang_code": "en",
     "native": "English",
     "svg": "uk_us_flag"
+  },
+  "late_join": {
+    "approve": "Let them in",
+    "force": "Admit anyway (host)",
+    "force_title": "Admit them without a unanimous vote",
+    "reject": "Turn them away",
+    "vote_body": "Everyone still playing has to agree. They start from nothing, so they are well behind.",
+    "vote_title": "{name} wants to join the running game",
+    "waiting_body": "The players already in the game are voting on it.",
+    "waiting_title": "Waiting to be let in…"
   },
   "leaderboard": {
     "cities": "Cities",

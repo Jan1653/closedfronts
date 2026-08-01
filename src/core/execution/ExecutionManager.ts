@@ -16,6 +16,7 @@ import { DonateTroopsExecution } from "./DonateTroopExecution";
 import { EmbargoAllExecution } from "./EmbargoAllExecution";
 import { EmbargoExecution } from "./EmbargoExecution";
 import { EmojiExecution } from "./EmojiExecution";
+import { LateJoinExecution } from "./LateJoinExecution";
 import { MarkDisconnectedExecution } from "./MarkDisconnectedExecution";
 import { MoveWarshipExecution } from "./MoveWarshipExecution";
 import { NationExecution } from "./NationExecution";
@@ -55,6 +56,17 @@ export class Executor {
   }
 
   createExec(intent: StampedIntent): Execution {
+    // Late join is the one intent whose player does NOT exist yet — it is what
+    // creates them — so it has to be handled before the lookup below.
+    if (intent.type === "lateJoin") {
+      return new LateJoinExecution(
+        intent.playerID,
+        intent.joinerClientID,
+        intent.username,
+        intent.clanTag,
+      );
+    }
+
     const player = this.mg.playerByClientID(intent.clientID);
     if (!player) {
       console.warn(`player with clientID ${intent.clientID} not found`);

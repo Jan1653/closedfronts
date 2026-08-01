@@ -41,6 +41,7 @@ export type Intent =
   | PactRequestIntent
   | PactReplyIntent
   | BreakPactIntent
+  | LateJoinIntent
   | TargetPlayerIntent
   | EmojiIntent
   | DonateGoldIntent
@@ -72,6 +73,7 @@ export type BreakAllianceIntent = z.infer<typeof BreakAllianceIntentSchema>;
 export type PactRequestIntent = z.infer<typeof PactRequestIntentSchema>;
 export type PactReplyIntent = z.infer<typeof PactReplyIntentSchema>;
 export type BreakPactIntent = z.infer<typeof BreakPactIntentSchema>;
+export type LateJoinIntent = z.infer<typeof LateJoinIntentSchema>;
 export type TargetPlayerIntent = z.infer<typeof TargetPlayerIntentSchema>;
 export type EmojiIntent = z.infer<typeof EmojiIntentSchema>;
 export type DonateGoldIntent = z.infer<typeof DonateGoldIntentSchema>;
@@ -112,7 +114,8 @@ export type ClientMessage =
   | ClientJoinMessage
   | ClientRejoinMessage
   | ClientLogMessage
-  | ClientHashMessage;
+  | ClientHashMessage
+  | ClientJoinVoteMessage;
 
 export type ServerMessage =
   | ServerTurnMessage
@@ -121,7 +124,8 @@ export type ServerMessage =
   | ServerDesyncMessage
   | ServerPrestartMessage
   | ServerErrorMessage
-  | ServerLobbyInfoMessage;
+  | ServerLobbyInfoMessage
+  | ServerJoinRequestMessage;
 
 export type ServerTurnMessage = z.infer<typeof ServerTurnMessageSchema>;
 export type ServerStartGameMessage = z.infer<
@@ -134,6 +138,10 @@ export type ServerErrorMessage = z.infer<typeof ServerErrorSchema>;
 export type ServerLobbyInfoMessage = z.infer<
   typeof ServerLobbyInfoMessageSchema
 >;
+export type ServerJoinRequestMessage = z.infer<
+  typeof ServerJoinRequestMessageSchema
+>;
+export type ClientJoinVoteMessage = z.infer<typeof ClientJoinVoteMessageSchema>;
 export type ClientSendWinnerMessage = z.infer<typeof ClientSendWinnerSchema>;
 export type ClientSendLiveStatsMessage = z.infer<
   typeof ClientSendLiveStatsSchema
@@ -388,6 +396,10 @@ export const GameConfigSchema = z.object({
   startDelay: z.number().int().min(0).max(600).nullable().optional(), // In seconds
   // How long an alliance lasts before it must be extended. In minutes.
   allianceDuration: z.number().int().min(1).max(120).nullable().optional(),
+  // May somebody who wasn't in the lobby still apply to join once the game is
+  // running? Every player has to agree (the host can force it). Defaults to on
+  // for private lobbies, off for public ones.
+  allowLateJoin: z.boolean().optional(),
   // Natural disasters the host turned off (all are on by default).
   disabledDisasters: z.enum(NaturalDisasterType).array().optional(),
   spawnImmunityDuration: z.number().int().min(0).nullable().optional(), // In ticks
@@ -516,6 +528,25 @@ export const PactReplyIntentSchema = z.object({
 export const BreakPactIntentSchema = z.object({
   type: z.literal("breakPact"),
   other: ID,
+});
+
+/**
+ * Late join: adds a brand-new player to a game that is already running.
+ *
+ * Unlike every other intent this one is synthesized by the SERVER (once the
+ * table has voted the applicant in), not sent by a client — it carries the
+ * applicant's identity because their player does not exist in the simulation
+ * yet. Every client executes it on the same turn, so all of them create the
+ * same player at the same tick. Afterwards the newcomer sends an ordinary
+ * spawn intent to pick their starting tile.
+ */
+export const LateJoinIntentSchema = z.object({
+  type: z.literal("lateJoin"),
+  // The joining player's own clientID (intent.clientID is the sender's).
+  joinerClientID: ID,
+  playerID: ID,
+  username: UsernameSchema,
+  clanTag: ClanTagSchema,
 });
 
 export const TargetPlayerIntentSchema = z.object({
@@ -661,6 +692,7 @@ export const IntentSchema = z.discriminatedUnion("type", [
   PactRequestIntentSchema,
   PactReplyIntentSchema,
   BreakPactIntentSchema,
+  LateJoinIntentSchema,
   TargetPlayerIntentSchema,
   EmojiIntentSchema,
   DonateGoldIntentSchema,
@@ -843,6 +875,27 @@ export const ServerLobbyInfoMessageSchema = z.object({
   myClientID: ID,
 });
 
+/**
+ * Late join: somebody wants into a game that already started.
+ *
+ * Broadcast to every player already in the game so they can vote, and also
+ * sent to the applicant so they can watch the tally. `resolved` closes the
+ * prompt (approved, rejected or the applicant gave up).
+ */
+export const ServerJoinRequestMessageSchema = z.object({
+  type: z.literal("join_request"),
+  applicantClientID: ID,
+  username: z.string(),
+  votesFor: z.number().int().nonnegative(),
+  votesNeeded: z.number().int().nonnegative(),
+  // True for the connection that is applying, so it shows "waiting" instead
+  // of a ballot.
+  isApplicant: z.boolean(),
+  // The host may wave someone through without a unanimous vote.
+  canForce: z.boolean(),
+  resolved: z.enum(["pending", "approved", "rejected"]),
+});
+
 export const ServerMessageSchema = z.discriminatedUnion("type", [
   ServerTurnMessageSchema,
   ServerPrestartMessageSchema,
@@ -851,6 +904,7 @@ export const ServerMessageSchema = z.discriminatedUnion("type", [
   ServerDesyncSchema,
   ServerErrorSchema,
   ServerLobbyInfoMessageSchema,
+  ServerJoinRequestMessageSchema,
 ]);
 
 //
@@ -931,6 +985,17 @@ export const ClientRejoinMessageSchema = z.object({
   token: TokenSchema,
 });
 
+/**
+ * A vote on a pending late-join request. `force` is the host's override: it
+ * admits the applicant even without a unanimous yes.
+ */
+export const ClientJoinVoteMessageSchema = z.object({
+  type: z.literal("join_vote"),
+  applicantClientID: ID,
+  approve: z.boolean(),
+  force: z.boolean().optional(),
+});
+
 export const ClientMessageSchema = z.discriminatedUnion("type", [
   ClientSendWinnerSchema,
   ClientSendLiveStatsSchema,
@@ -940,6 +1005,7 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
   ClientRejoinMessageSchema,
   ClientLogMessageSchema,
   ClientHashSchema,
+  ClientJoinVoteMessageSchema,
 ]);
 
 //
