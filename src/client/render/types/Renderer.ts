@@ -46,6 +46,23 @@ export interface AllianceData {
   hasExtensionRequest: boolean;
 }
 
+/**
+ * A live non-aggression pact, mirrored for the HUD. `penalty` is the gold the
+ * breaker owes the other side.
+ */
+export interface NonAggressionPactData {
+  id: number;
+  other: string;
+  penalty: bigint;
+  createdAt: number;
+}
+
+/** A pending pact offer this player has sent out. */
+export interface NonAggressionPactRequestData {
+  recipient: string;
+  penalty: bigint;
+}
+
 export interface EmojiData {
   message: string;
   senderID: number;
@@ -77,6 +94,8 @@ export interface PlayerState {
   incomingAttacks: AttackData[];
   outgoingAllianceRequests: string[];
   alliances: AllianceData[];
+  nonAggressionPacts?: NonAggressionPactData[];
+  outgoingPactRequests?: NonAggressionPactRequestData[];
   outgoingEmojis: EmojiData[];
 }
 

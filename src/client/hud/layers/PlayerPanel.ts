@@ -25,9 +25,11 @@ import {
 import {
   SendAllianceRequestIntentEvent,
   SendBreakAllianceIntentEvent,
+  SendBreakPactIntentEvent,
   SendEmbargoAllIntentEvent,
   SendEmbargoIntentEvent,
   SendEmojiIntentEvent,
+  SendPactRequestIntentEvent,
   SendTargetPlayerIntentEvent,
 } from "../../Transport";
 import { UIState } from "../../UIState";
@@ -79,6 +81,10 @@ export class PlayerPanel extends LitElement implements Controller {
   // Whether this game is a publicly listed lobby. Kept out of
   // GameStartInfo (never touches records), so it's fetched from the worker.
   @state() private gameListed = false;
+  // Non-aggression pact composer: while a target is set, the panel shows the
+  // penalty input instead of the normal action grid.
+  @state() private pactTarget: PlayerView | null = null;
+  @state() private pactPenaltyMillions = 10;
 
   setRole(role: string | null): void {
     this.playerRole = role;
@@ -220,6 +226,95 @@ export class PlayerPanel extends LitElement implements Controller {
     e.stopPropagation();
     this.eventBus.emit(new SendBreakAllianceIntentEvent(myPlayer, other));
     this.hide();
+  }
+
+  // ── Non-aggression pact ────────────────────────────────────────────────
+
+  private openPactComposer(e: Event, other: PlayerView) {
+    e.stopPropagation();
+    this.pactTarget = other;
+    this.requestUpdate();
+  }
+
+  private closePactComposer() {
+    this.pactTarget = null;
+    this.requestUpdate();
+  }
+
+  private adjustPactPenalty(delta: number) {
+    this.pactPenaltyMillions = Math.max(
+      1,
+      Math.min(500, this.pactPenaltyMillions + delta),
+    );
+    this.requestUpdate();
+  }
+
+  private sendPactOffer(other: PlayerView) {
+    this.eventBus.emit(
+      new SendPactRequestIntentEvent(
+        other,
+        this.pactPenaltyMillions * 1_000_000,
+      ),
+    );
+    this.closePactComposer();
+    this.hide();
+  }
+
+  private handleBreakPactClick(e: Event, other: PlayerView) {
+    e.stopPropagation();
+    this.eventBus.emit(new SendBreakPactIntentEvent(other));
+    this.hide();
+  }
+
+  /**
+   * The penalty composer. A pact is only as binding as the number both sides
+   * agreed on, so the amount is set here before the offer goes out.
+   */
+  private renderPactComposer(other: PlayerView) {
+    return html`
+      <div class="flex flex-col gap-2 p-2 rounded-lg bg-slate-800/60">
+        <div class="text-sm text-white font-bold text-center">
+          ${translateText("player_panel.pact_title", {
+            name: other.displayName(),
+          })}
+        </div>
+        <div class="text-xs text-gray-300 text-center">
+          ${translateText("player_panel.pact_explainer")}
+        </div>
+        <div class="flex items-center justify-center gap-3" translate="no">
+          <button
+            class="w-9 h-9 rounded border border-slate-500 text-white text-xl leading-none"
+            @click=${() => this.adjustPactPenalty(-5)}
+          >
+            −
+          </button>
+          <span
+            class="text-yellow-300 font-bold tabular-nums min-w-24 text-center"
+            >${this.pactPenaltyMillions} Mio.</span
+          >
+          <button
+            class="w-9 h-9 rounded border border-slate-500 text-white text-xl leading-none"
+            @click=${() => this.adjustPactPenalty(5)}
+          >
+            +
+          </button>
+        </div>
+        <div class="grid grid-cols-2 gap-1">
+          <button
+            class="px-2 py-1.5 rounded bg-slate-600 hover:bg-slate-500 text-white text-sm"
+            @click=${() => this.closePactComposer()}
+          >
+            ${translateText("player_panel.pact_cancel")}
+          </button>
+          <button
+            class="px-2 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold"
+            @click=${() => this.sendPactOffer(other)}
+          >
+            ${translateText("player_panel.pact_send")}
+          </button>
+        </div>
+      </div>
+    `;
   }
 
   private openSendTroops(target: PlayerView) {
@@ -758,6 +853,25 @@ export class PlayerPanel extends LitElement implements Controller {
     const canBreakAlliance = this.actions?.interaction?.canBreakAlliance;
     const canTarget = this.actions?.interaction?.canTarget;
     const canEmbargo = this.actions?.interaction?.canEmbargo;
+    // Pacts are derived client-side: the sim mirrors both the live pacts and
+    // the offers already out, so no extra round trip is needed.
+    const hasPact =
+      myPlayer !== null &&
+      other !== myPlayer &&
+      my.hasNonAggressionPactWith(other);
+    const pactOfferPending =
+      myPlayer !== null && other !== myPlayer && my.isOfferingPactTo(other);
+    const canOfferPact =
+      myPlayer !== null &&
+      other !== myPlayer &&
+      other.isAlive() &&
+      !hasPact &&
+      !pactOfferPending &&
+      !my.isFriendly(other);
+
+    if (this.pactTarget !== null && this.pactTarget.id() === other.id()) {
+      return this.renderPactComposer(other);
+    }
 
     return html`
       <div class="flex flex-col gap-2.5">
@@ -867,6 +981,32 @@ export class PlayerPanel extends LitElement implements Controller {
                       title: translateText("player_panel.send_alliance"),
                       label: translateText("player_panel.send_alliance"),
                       type: "indigo",
+                    })
+                  : ""}
+                ${hasPact
+                  ? actionButton({
+                      onClick: (e: MouseEvent) =>
+                        this.handleBreakPactClick(e, other),
+                      icon: breakAllianceIcon,
+                      iconAlt: "Break Pact",
+                      title: translateText("player_panel.break_pact_title", {
+                        gold: renderNumber(
+                          my.nonAggressionPactWith(other)?.penalty ?? 0n,
+                        ),
+                      }),
+                      label: translateText("player_panel.break_pact"),
+                      type: "red",
+                    })
+                  : ""}
+                ${canOfferPact
+                  ? actionButton({
+                      onClick: (e: MouseEvent) =>
+                        this.openPactComposer(e, other),
+                      icon: allianceIcon,
+                      iconAlt: "Non-aggression pact",
+                      title: translateText("player_panel.send_pact"),
+                      label: translateText("player_panel.send_pact"),
+                      type: "normal",
                     })
                   : ""}
               </div>

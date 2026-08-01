@@ -25,6 +25,7 @@ import { applyStateUpdate } from "../../core/game/GameUpdateUtils";
 import {
   AllianceView,
   AttackUpdate,
+  NonAggressionPactView,
   PlayerUpdate,
 } from "../../core/game/GameUpdates";
 import { UserSettings } from "../../core/game/UserSettings";
@@ -95,6 +96,8 @@ function stateFromUpdate(pu: PlayerUpdate): PlayerState {
     incomingAttacks: pu.incomingAttacks!,
     outgoingAllianceRequests: pu.outgoingAllianceRequests!.slice(),
     alliances: pu.alliances!,
+    nonAggressionPacts: pu.nonAggressionPacts ?? [],
+    outgoingPactRequests: pu.outgoingPactRequests ?? [],
     outgoingEmojis: pu.outgoingEmojis!,
   };
 }
@@ -518,6 +521,35 @@ export class PlayerView {
 
   alliances(): AllianceView[] {
     return this.state.alliances;
+  }
+
+  // ── Non-aggression pacts ────────────────────────────────────────────────
+
+  nonAggressionPacts(): NonAggressionPactView[] {
+    return this.state.nonAggressionPacts ?? [];
+  }
+
+  nonAggressionPactWith(other: PlayerView): NonAggressionPactView | null {
+    return (
+      this.nonAggressionPacts().find((p) => p.other === other.id()) ?? null
+    );
+  }
+
+  hasNonAggressionPactWith(other: PlayerView): boolean {
+    return this.nonAggressionPactWith(other) !== null;
+  }
+
+  /** The pact offer this player has out to `other`, if any. */
+  outgoingPactRequestTo(other: PlayerView): { penalty: bigint } | null {
+    return (
+      (this.state.outgoingPactRequests ?? []).find(
+        (r) => r.recipient === other.id(),
+      ) ?? null
+    );
+  }
+
+  isOfferingPactTo(other: PlayerView): boolean {
+    return this.outgoingPactRequestTo(other) !== null;
   }
 
   hasEmbargoAgainst(other: PlayerView): boolean {

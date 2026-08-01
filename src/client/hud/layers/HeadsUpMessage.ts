@@ -29,6 +29,11 @@ export class HeadsUpMessage extends LitElement implements Controller {
   private isCatchingUp = false;
   private catchingUpTicks = 0;
 
+  // Set once the player hits "Catch up now" — the worker then chews through the
+  // backlog in big slices, so the button is disabled until it's done.
+  @state()
+  private instantCatchUpRequested = false;
+
   private static readonly CATCHING_UP_SHOW_THRESHOLD = 10;
 
   @state()
@@ -116,6 +121,12 @@ export class HeadsUpMessage extends LitElement implements Controller {
     this.isCatchingUp =
       this.catchingUpTicks >= HeadsUpMessage.CATCHING_UP_SHOW_THRESHOLD;
 
+    // Caught up (or dropped back to normal jitter) → re-arm the button for a
+    // possible next backlog.
+    if (!currentlyCatchingUp && this.instantCatchUpRequested) {
+      this.instantCatchUpRequested = false;
+    }
+
     this.isVisible =
       this.game.inSpawnPhase() ||
       this.isPaused ||
@@ -124,9 +135,19 @@ export class HeadsUpMessage extends LitElement implements Controller {
     this.requestUpdate();
   }
 
+  private onInstantCatchUp = (): void => {
+    if (this.instantCatchUpRequested) return;
+    this.instantCatchUpRequested = true;
+    this.game.instantCatchUp();
+    this.requestUpdate();
+  };
+
   private getMessage(): string {
     if (this.isCatchingUp) {
-      return translateText("heads_up_message.catching_up");
+      const pending = this.game.pendingTurns();
+      return translateText("heads_up_message.catching_up_pending", {
+        turns: pending,
+      });
     }
     if (this.isPaused) {
       if (this.game.config().gameConfig().gameType === GameType.Singleplayer) {
@@ -187,10 +208,29 @@ export class HeadsUpMessage extends LitElement implements Controller {
                             bg-gray-800/70 rounded-md lg:rounded-lg
                             backdrop-blur-xs text-white text-md lg:text-xl px-3 lg:px-4 py-1
                             text-center break-words"
-                style="word-wrap: break-word; hyphens: auto;"
+                style="word-wrap: break-word; hyphens: auto; ${this.isCatchingUp
+                  ? "pointer-events: auto;"
+                  : ""}"
                 @contextmenu=${(e: MouseEvent) => e.preventDefault()}
               >
-                ${this.getMessage()}
+                <div class="flex flex-col items-center gap-1.5">
+                  <span>${this.getMessage()}</span>
+                  ${this.isCatchingUp
+                    ? html`<button
+                        class="px-3 py-1 rounded text-sm lg:text-base font-semibold
+                               bg-sky-500/80 hover:bg-sky-400/90 disabled:opacity-50
+                               disabled:cursor-default transition-colors"
+                        ?disabled=${this.instantCatchUpRequested}
+                        @click=${this.onInstantCatchUp}
+                      >
+                        ${this.instantCatchUpRequested
+                          ? translateText(
+                              "heads_up_message.instant_catch_up_running",
+                            )
+                          : translateText("heads_up_message.instant_catch_up")}
+                      </button>`
+                    : null}
+                </div>
               </div>
             `
           : null}

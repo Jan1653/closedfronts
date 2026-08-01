@@ -8,6 +8,8 @@ import {
   AllianceRequestUpdate,
   BrokeAllianceUpdate,
   GameUpdateType,
+  NonAggressionPactBrokenUpdate,
+  NonAggressionPactRequestUpdate,
 } from "../../../core/game/GameUpdates";
 import { Controller } from "../../Controller";
 import { PlaySoundEffectEvent } from "../../sound/Sounds";
@@ -16,9 +18,14 @@ import {
   SendAllianceExtensionIntentEvent,
   SendAllianceRejectIntentEvent,
   SendAllianceRequestIntentEvent,
+  SendPactReplyIntentEvent,
 } from "../../Transport";
 import { UIState } from "../../UIState";
-import { getMessageTypeClasses, translateText } from "../../Utils";
+import {
+  getMessageTypeClasses,
+  renderNumber,
+  translateText,
+} from "../../Utils";
 import { GameView, PlayerView } from "../../view";
 
 interface ActionableEvent {
@@ -61,6 +68,11 @@ export class ActionableEvents extends LitElement implements Controller {
       GameUpdateType.AllianceExtension,
       this.onAllianceExtensionEvent.bind(this),
     ],
+    [
+      GameUpdateType.NonAggressionPactRequest,
+      this.onPactRequestEvent.bind(this),
+    ],
+    [GameUpdateType.NonAggressionPactBroken, this.onPactBrokenEvent.bind(this)],
   ] as const;
 
   createRenderRoot() {
@@ -254,6 +266,81 @@ export class ActionableEvents extends LitElement implements Controller {
       duration: this.game.config().allianceRequestDuration(),
       focusID: update.requestorID,
       requestorID: update.requestorID,
+    });
+  }
+
+  /**
+   * Someone offered us a non-aggression pact. The prompt spells out both the
+   * limit (land only — ships stay fair game) and the price of walking away.
+   */
+  private onPactRequestEvent(update: NonAggressionPactRequestUpdate) {
+    const myPlayer = this.game.myPlayer();
+    if (!myPlayer || update.recipientID !== myPlayer.smallID()) {
+      return;
+    }
+    const requestor = this.game.playerBySmallID(
+      update.requestorID,
+    ) as PlayerView;
+
+    this.addEvent({
+      description: translateText("events_display.request_pact", {
+        name: requestor.displayName(),
+        gold: renderNumber(update.penalty),
+      }),
+      buttons: [
+        {
+          text: translateText("events_display.focus"),
+          className: "btn-gray",
+          action: () => this.eventBus.emit(new GoToPlayerEvent(requestor)),
+          preventClose: true,
+        },
+        {
+          text: translateText("events_display.accept_pact"),
+          className: "btn",
+          action: () =>
+            this.eventBus.emit(new SendPactReplyIntentEvent(requestor, true)),
+        },
+        {
+          text: translateText("events_display.reject_pact"),
+          className: "btn-info",
+          action: () =>
+            this.eventBus.emit(new SendPactReplyIntentEvent(requestor, false)),
+        },
+      ],
+      type: MessageType.ALLIANCE_REQUEST,
+      createdAt: this.game.ticks(),
+      priority: 0,
+      duration: this.game.config().allianceRequestDuration(),
+      focusID: update.requestorID,
+      requestorID: update.requestorID,
+    });
+  }
+
+  /** Our pact partner walked away — tell us, and how much they paid for it. */
+  private onPactBrokenEvent(update: NonAggressionPactBrokenUpdate) {
+    const myPlayer = this.game.myPlayer();
+    if (!myPlayer || update.betrayedID !== myPlayer.smallID()) {
+      return;
+    }
+    const breaker = this.game.playerBySmallID(update.breakerID) as PlayerView;
+    this.addEvent({
+      description: translateText("events_display.pact_broken", {
+        name: breaker.displayName(),
+        gold: renderNumber(update.penaltyPaid),
+      }),
+      buttons: [
+        {
+          text: translateText("events_display.focus"),
+          className: "btn-gray",
+          action: () => this.eventBus.emit(new GoToPlayerEvent(breaker)),
+        },
+      ],
+      type: MessageType.ALLIANCE_BROKEN,
+      createdAt: this.game.ticks(),
+      priority: 1,
+      duration: this.game.config().allianceRequestDuration(),
+      focusID: update.breakerID,
+      requestorID: update.breakerID,
     });
   }
 

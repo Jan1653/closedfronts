@@ -7,7 +7,9 @@ import {
   Structures,
   UnitType,
 } from "../game/Game";
+import { GameImpl } from "../game/GameImpl";
 import { GameMap, TileRef } from "../game/GameMap";
+import { PlayerImpl } from "../game/PlayerImpl";
 import {
   bumpTraversalGeneration,
   tileTraversalScratch,
@@ -447,5 +449,8 @@ export class PlayerExecution implements Execution {
     });
 
     this.player.removeAllAlliances();
+    // A dead player's non-aggression pacts die with them — no penalty is owed,
+    // nobody broke anything.
+    (this.mg as GameImpl).removeAllPacts(this.player as PlayerImpl);
   }
 }

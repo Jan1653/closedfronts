@@ -96,7 +96,9 @@ export class TransportShipExecution implements Execution {
       return;
     }
 
-    if (this.target.isPlayer() && !this.attacker.canAttackPlayer(this.target)) {
+    // An amphibious landing is still a land grab, so a non-aggression pact
+    // blocks it just like a border attack.
+    if (this.target.isPlayer() && !this.attacker.canAttackLandOf(this.target)) {
       this.active = false;
       return;
     }

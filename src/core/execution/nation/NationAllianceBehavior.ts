@@ -26,6 +26,28 @@ export class NationAllianceBehavior {
     private emojiBehavior: NationEmojiBehavior,
   ) {}
 
+  /**
+   * Answer incoming non-aggression pact offers. A pact costs a nation nothing
+   * but the option to invade, so it is a much easier yes than an alliance: it
+   * accepts unless it is actively hostile toward the offerer, or the penalty is
+   * so large it couldn't pay it if it later changed its mind.
+   */
+  handlePactRequests() {
+    for (const req of this.player.incomingPactRequests()) {
+      const requestor = req.requestor();
+      if (this.player.relation(requestor) === Relation.Hostile) {
+        req.reject();
+        continue;
+      }
+      // Never sign something it couldn't afford to walk away from later.
+      if (req.penalty() > this.player.gold() * 3n) {
+        req.reject();
+        continue;
+      }
+      req.accept();
+    }
+  }
+
   handleAllianceRequests() {
     if (this.game.config().disableAlliances()) return;
 

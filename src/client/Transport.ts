@@ -52,6 +52,27 @@ export class SendBreakAllianceIntentEvent implements GameEvent {
   ) {}
 }
 
+/** Offer a non-aggression pact, with the gold penalty for breaking it. */
+export class SendPactRequestIntentEvent implements GameEvent {
+  constructor(
+    public readonly recipient: PlayerView,
+    public readonly penalty: number,
+  ) {}
+}
+
+/** Accept or reject an incoming pact offer. */
+export class SendPactReplyIntentEvent implements GameEvent {
+  constructor(
+    public readonly requestor: PlayerView,
+    public readonly accepted: boolean,
+  ) {}
+}
+
+/** Walk away from a pact (and pay the agreed penalty). */
+export class SendBreakPactIntentEvent implements GameEvent {
+  constructor(public readonly other: PlayerView) {}
+}
+
 export class SendUpgradeStructureIntentEvent implements GameEvent {
   constructor(
     public readonly unitId: number,
@@ -243,6 +264,11 @@ export class Transport {
     this.eventBus.on(SendBreakAllianceIntentEvent, (e) =>
       this.onBreakAllianceRequestUIEvent(e),
     );
+    this.eventBus.on(SendPactRequestIntentEvent, (e) =>
+      this.onSendPactRequest(e),
+    );
+    this.eventBus.on(SendPactReplyIntentEvent, (e) => this.onSendPactReply(e));
+    this.eventBus.on(SendBreakPactIntentEvent, (e) => this.onSendBreakPact(e));
     this.eventBus.on(SendSpawnIntentEvent, (e) =>
       this.onSendSpawnIntentEvent(e),
     );
@@ -499,6 +525,29 @@ export class Transport {
     this.sendIntent({
       type: "breakAlliance",
       recipient: event.recipient.id(),
+    });
+  }
+
+  private onSendPactRequest(event: SendPactRequestIntentEvent) {
+    this.sendIntent({
+      type: "pactRequest",
+      recipient: event.recipient.id(),
+      penalty: Math.max(0, Math.floor(event.penalty)),
+    });
+  }
+
+  private onSendPactReply(event: SendPactReplyIntentEvent) {
+    this.sendIntent({
+      type: "pactReply",
+      requestor: event.requestor.id(),
+      accepted: event.accepted,
+    });
+  }
+
+  private onSendBreakPact(event: SendBreakPactIntentEvent) {
+    this.sendIntent({
+      type: "breakPact",
+      other: event.other.id(),
     });
   }
 

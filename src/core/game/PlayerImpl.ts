@@ -23,6 +23,8 @@ import {
   GameMode,
   Gold,
   MutableAlliance,
+  NonAggressionPact,
+  NonAggressionPactRequest,
   Player,
   PlayerBuildable,
   PlayerBuildableUnitType,
@@ -51,6 +53,8 @@ import {
   AllianceView,
   AttackUpdate,
   GameUpdateType,
+  NonAggressionPactRequestView,
+  NonAggressionPactView,
   PlayerUpdate,
 } from "./GameUpdates";
 import { ReadonlyTileSet, TileSet } from "./TileSet";
@@ -84,6 +88,8 @@ const EMPTY_NUMBER_ARRAY: number[] = [];
 const EMPTY_STRING_ARRAY: string[] = [];
 const EMPTY_ATTACK_UPDATES: AttackUpdate[] = [];
 const EMPTY_ALLIANCE_VIEWS: AllianceView[] = [];
+const EMPTY_PACT_VIEWS: NonAggressionPactView[] = [];
+const EMPTY_PACT_REQUEST_VIEWS: NonAggressionPactRequestView[] = [];
 const EMPTY_EMOJIS: EmojiMessage[] = [];
 const EMPTY_EMBARGOES = new Set<string>();
 // Reusable buffers for hot loops. The simulation is single-threaded and these
@@ -98,6 +104,8 @@ Object.freeze(EMPTY_NUMBER_ARRAY);
 Object.freeze(EMPTY_STRING_ARRAY);
 Object.freeze(EMPTY_ATTACK_UPDATES);
 Object.freeze(EMPTY_ALLIANCE_VIEWS);
+Object.freeze(EMPTY_PACT_VIEWS);
+Object.freeze(EMPTY_PACT_REQUEST_VIEWS);
 Object.freeze(EMPTY_EMOJIS);
 
 export class PlayerImpl implements Player {
@@ -151,6 +159,7 @@ export class PlayerImpl implements Player {
   public _outgoingLandAttacks: Attack[] = [];
 
   public _alliances: MutableAlliance[] = [];
+  public _nonAggressionPacts: NonAggressionPact[] = [];
 
   private _spawnTile: TileRef | undefined;
   private _isDisconnected = false;
@@ -274,6 +283,32 @@ export class PlayerImpl implements Player {
       );
     }
 
+    let pacts = EMPTY_PACT_VIEWS;
+    if (this._nonAggressionPacts.length > 0) {
+      pacts = this._nonAggressionPacts.map(
+        (p) =>
+          ({
+            id: p.id(),
+            other: p.other(this).id(),
+            penalty: p.penalty(),
+            createdAt: p.createdAt(),
+          }) satisfies NonAggressionPactView,
+      );
+    }
+
+    let outgoingPactRequests = EMPTY_PACT_REQUEST_VIEWS;
+    for (const r of this.mg.pactRequests) {
+      if (r.requestor() === this) {
+        if (outgoingPactRequests === EMPTY_PACT_REQUEST_VIEWS) {
+          outgoingPactRequests = [];
+        }
+        outgoingPactRequests.push({
+          recipient: r.recipient().id(),
+          penalty: r.penalty(),
+        });
+      }
+    }
+
     let embargoes = EMPTY_EMBARGOES;
     if (this.embargoes.size > 0) {
       embargoes = new Set<string>();
@@ -354,6 +389,8 @@ export class PlayerImpl implements Player {
       incomingAttacks: incomingAttacks,
       outgoingAllianceRequests: outgoingAllianceRequests,
       alliances: allianceViews,
+      nonAggressionPacts: pacts,
+      outgoingPactRequests: outgoingPactRequests,
       hasSpawned: this.hasSpawned(),
       spawnTile: this._spawnTile,
       betrayals: this._betrayalCount,
@@ -691,6 +728,52 @@ export class PlayerImpl implements Player {
       otherAgreedToExtend: alliance.agreedToExtend(other),
       canExtend,
     };
+  }
+
+  // ── Non-aggression pacts ────────────────────────────────────────────────
+
+  nonAggressionPacts(): NonAggressionPact[] {
+    return this._nonAggressionPacts;
+  }
+
+  nonAggressionPactWith(other: Player): NonAggressionPact | null {
+    if (other === this) return null;
+    return (
+      this._nonAggressionPacts.find((p) => p.other(this) === other) ?? null
+    );
+  }
+
+  hasNonAggressionPactWith(other: Player): boolean {
+    return this.nonAggressionPactWith(other) !== null;
+  }
+
+  incomingPactRequests(): NonAggressionPactRequest[] {
+    return this.mg.pactRequests.filter((r) => r.recipient() === this);
+  }
+
+  outgoingPactRequests(): NonAggressionPactRequest[] {
+    return this.mg.pactRequests.filter((r) => r.requestor() === this);
+  }
+
+  /**
+   * A pact only makes sense with someone you are NOT already tied to: allies
+   * and teammates already can't attack each other, and you can't stack a second
+   * pact on an existing one.
+   */
+  canSendPactRequest(other: Player): boolean {
+    if (other === this) return false;
+    if (!this.isAlive() || !other.isAlive()) return false;
+    if (this.isDisconnected() || other.isDisconnected()) return false;
+    if (this.isFriendly(other)) return false;
+    if (this.hasNonAggressionPactWith(other)) return false;
+    if (this.outgoingPactRequests().some((r) => r.recipient() === other)) {
+      return false;
+    }
+    return true;
+  }
+
+  breakNonAggressionPact(pact: NonAggressionPact): void {
+    this.mg.breakNonAggressionPact(this, pact);
   }
 
   canSendAllianceRequest(other: Player): boolean {
@@ -1934,13 +2017,24 @@ export class PlayerImpl implements Player {
     return !player.isImmune() && !this.isFriendly(player, treatAFKFriendly);
   }
 
+  /**
+   * Whether this player is allowed to take LAND from `other`. A non-aggression
+   * pact blocks exactly this and nothing else — their ships, trade and sea
+   * structures stay fair game. Break the pact (and pay the penalty) first if
+   * you want their ground.
+   */
+  public canAttackLandOf(other: Player): boolean {
+    if (!this.canAttackPlayer(other)) return false;
+    return !this.hasNonAggressionPactWith(other);
+  }
+
   public canAttack(tile: TileRef): boolean {
     const owner = this.mg.owner(tile);
     if (owner === this) {
       return false;
     }
 
-    if (owner.isPlayer() && !this.canAttackPlayer(owner)) {
+    if (owner.isPlayer() && !this.canAttackLandOf(owner)) {
       return false;
     }
 

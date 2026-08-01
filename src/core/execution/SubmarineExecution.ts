@@ -223,7 +223,8 @@ export class SubmarineExecution implements Execution {
 export function seizeLandTile(mg: Game, owner: Player, tile: TileRef): void {
   const prev = mg.owner(tile);
   if (prev.isPlayer()) {
-    if (prev === owner || !owner.canAttackPlayer(prev as Player, true)) {
+    // Taking a tile ashore is a land grab: a non-aggression pact blocks it.
+    if (prev === owner || !owner.canAttackLandOf(prev as Player)) {
       return;
     }
     startWar(owner, prev as Player);

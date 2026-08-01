@@ -20,10 +20,13 @@ import {
   Game,
   GameMode,
   GameUpdates,
+  Gold,
   HumansVsNations,
   MessageType,
   MutableAlliance,
   Nation,
+  NonAggressionPact,
+  NonAggressionPactRequest,
   Player,
   PlayerID,
   PlayerInfo,
@@ -42,6 +45,10 @@ import {
 import { GameMap, TileRef } from "./GameMap";
 import { GameUpdate, GameUpdateType } from "./GameUpdates";
 import { MotionPlanRecord, packMotionPlans } from "./MotionPlans";
+import {
+  NonAggressionPactImpl,
+  NonAggressionPactRequestImpl,
+} from "./NonAggressionPactImpl";
 import { PlayerImpl } from "./PlayerImpl";
 import { RailNetwork } from "./RailNetwork";
 import { createRailNetwork } from "./RailNetworkImpl";
@@ -89,6 +96,8 @@ export class GameImpl implements Game {
   _terraNullius: TerraNulliusImpl;
 
   allianceRequests: AllianceRequestImpl[] = [];
+  /** Pending non-aggression pact offers, waiting on the recipient. */
+  pactRequests: NonAggressionPactRequestImpl[] = [];
 
   private nextPlayerID = 1;
   private _nextUnitID = 1;
@@ -110,6 +119,8 @@ export class GameImpl implements Game {
 
   // Used to assign unique IDs to each new alliance
   private nextAllianceID: number = 0;
+  // Used to assign unique IDs to each new non-aggression pact
+  private nextPactID: number = 0;
 
   private _isPaused: boolean = false;
   private _winner: Player | Team | null = null;
@@ -440,6 +451,135 @@ export class GameImpl implements Game {
       request: request.toUpdate(),
       accepted: false,
     });
+  }
+
+  // ── Non-aggression pacts ────────────────────────────────────────────────
+
+  /**
+   * Offer a non-aggression pact with the given penalty. Refuses duplicates and
+   * self-offers; two crossing offers resolve into an accepted pact (the same
+   * shortcut alliances use), taking the RECIPIENT's stated penalty so nobody
+   * can undercut the price by racing an offer through.
+   */
+  createPactRequest(
+    requestor: Player,
+    recipient: Player,
+    penalty: Gold,
+  ): NonAggressionPactRequest | null {
+    if (requestor === recipient) return null;
+    if (requestor.hasNonAggressionPactWith(recipient)) {
+      console.log("cannot offer pact, one already exists");
+      return null;
+    }
+    if (
+      recipient
+        .incomingPactRequests()
+        .find((r) => r.requestor() === requestor) !== undefined
+    ) {
+      console.log(`duplicate pact offer from ${requestor.name()}`);
+      return null;
+    }
+    const crossing = requestor
+      .incomingPactRequests()
+      .find((r) => r.requestor() === recipient);
+    if (crossing !== undefined) {
+      crossing.accept();
+      return null;
+    }
+    const req = new NonAggressionPactRequestImpl(
+      requestor,
+      recipient,
+      penalty,
+      this._ticks,
+      this,
+    );
+    this.pactRequests.push(req);
+    this.addUpdate({
+      type: GameUpdateType.NonAggressionPactRequest,
+      requestorID: requestor.smallID(),
+      recipientID: recipient.smallID(),
+      penalty,
+      createdAt: this._ticks,
+    });
+    return req;
+  }
+
+  acceptPactRequest(request: NonAggressionPactRequestImpl) {
+    this.pactRequests = this.pactRequests.filter((r) => r !== request);
+    const requestor = request.requestor();
+    const recipient = request.recipient();
+    if (requestor.hasNonAggressionPactWith(recipient)) return;
+
+    const pact = new NonAggressionPactImpl(
+      requestor,
+      recipient,
+      request.penalty(),
+      this._ticks,
+      this.nextPactID++,
+    );
+    (requestor as PlayerImpl)._nonAggressionPacts.push(pact);
+    (recipient as PlayerImpl)._nonAggressionPacts.push(pact);
+
+    this.addUpdate({
+      type: GameUpdateType.NonAggressionPactReply,
+      requestorID: requestor.smallID(),
+      recipientID: recipient.smallID(),
+      penalty: request.penalty(),
+      accepted: true,
+    });
+  }
+
+  rejectPactRequest(request: NonAggressionPactRequestImpl) {
+    this.pactRequests = this.pactRequests.filter((r) => r !== request);
+    this.addUpdate({
+      type: GameUpdateType.NonAggressionPactReply,
+      requestorID: request.requestor().smallID(),
+      recipientID: request.recipient().smallID(),
+      penalty: request.penalty(),
+      accepted: false,
+    });
+  }
+
+  /**
+   * Break a pact. The breaker immediately owes the other side the agreed
+   * penalty — as much of it as they can actually pay, so a broke player can
+   * still walk away, just with an empty treasury.
+   */
+  public breakNonAggressionPact(breaker: Player, pact: NonAggressionPact) {
+    const other = pact.other(breaker);
+    if (!breaker.hasNonAggressionPactWith(other)) return;
+
+    this.detachPact(pact);
+
+    const paid = (breaker as PlayerImpl).removeGold(pact.penalty());
+    if (paid > 0n) {
+      other.addGold(paid);
+    }
+
+    this.addUpdate({
+      type: GameUpdateType.NonAggressionPactBroken,
+      breakerID: breaker.smallID(),
+      betrayedID: other.smallID(),
+      penaltyPaid: paid,
+    });
+  }
+
+  /** Remove the pact from both members' lists. */
+  private detachPact(pact: NonAggressionPact) {
+    for (const player of this._players.values()) {
+      const idx = player._nonAggressionPacts.indexOf(pact);
+      if (idx !== -1) player._nonAggressionPacts.splice(idx, 1);
+    }
+  }
+
+  /** Drop every pact a player is in (used when they die / are removed). */
+  public removeAllPacts(player: PlayerImpl) {
+    for (const pact of [...player._nonAggressionPacts]) {
+      this.detachPact(pact);
+    }
+    this.pactRequests = this.pactRequests.filter(
+      (r) => r.requestor() !== player && r.recipient() !== player,
+    );
   }
 
   hasPlayer(id: PlayerID): boolean {

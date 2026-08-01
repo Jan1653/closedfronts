@@ -22,6 +22,15 @@ const mapLoader = new FetchGameMapLoader((path) => assetUrl(`maps/${path}`));
 // and flooding the main thread with messages during catch-up.
 const MAX_TICKS_BEFORE_YIELD = 4;
 
+// Yield threshold while "catch up now" is armed: the player has explicitly
+// asked to trade a short freeze for a much shorter catch-up, so we run far more
+// ticks per worker task slice (each slice still ends with one batched postMessage,
+// so no update is skipped and the client's mirror stays in sync).
+const INSTANT_CATCH_UP_TICKS_BEFORE_YIELD = 250;
+
+// Set by the "instant_catch_up" message; cleared as soon as the backlog is gone.
+let instantCatchUp = false;
+
 let drainScheduled = false;
 let draining = false;
 let drainRequested = false;
@@ -71,8 +80,11 @@ async function drain(): Promise<void> {
     // Temporarily route tick callbacks into this drain's batch.
     tickUpdateSink = onTickUpdate;
 
+    const maxTicks = instantCatchUp
+      ? INSTANT_CATCH_UP_TICKS_BEFORE_YIELD
+      : MAX_TICKS_BEFORE_YIELD;
     let ticksRun = 0;
-    while (ticksRun < MAX_TICKS_BEFORE_YIELD && gr.pendingTurns() > 0) {
+    while (ticksRun < maxTicks && gr.pendingTurns() > 0) {
       const ok = gr.executeNextTick(gr.pendingTurns());
       if (!ok) {
         break;
@@ -85,6 +97,10 @@ async function drain(): Promise<void> {
     sendGameUpdateBatch(batch);
 
     shouldContinue = gr.pendingTurns() > 0;
+    // Back to the gentle pace once we're level with the server again.
+    if (!shouldContinue) {
+      instantCatchUp = false;
+    }
   } finally {
     tickUpdateSink = null;
     draining = false;
@@ -174,6 +190,13 @@ ctx.addEventListener("message", async (e: MessageEvent<MainThreadMessage>) => {
         console.error("Failed to process turn:", error);
         throw error;
       }
+      break;
+
+    case "instant_catch_up":
+      // Arm the fast drain and kick one off right away — the player is staring
+      // at the "Catching up…" banner waiting for it.
+      instantCatchUp = true;
+      scheduleDrain();
       break;
 
     case "player_actions":

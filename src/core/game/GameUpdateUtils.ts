@@ -4,6 +4,8 @@ import {
   AllianceView,
   AttackUpdate,
   GameUpdateType,
+  NonAggressionPactRequestView,
+  NonAggressionPactView,
   PlayerUpdate,
 } from "./GameUpdates";
 
@@ -63,7 +65,9 @@ export function diffPlayerUpdate(
     emojiArrayEqual(prev.outgoingEmojis, next.outgoingEmojis) &&
     attackArrayMembershipEqual(prev.outgoingAttacks, next.outgoingAttacks) &&
     attackArrayMembershipEqual(prev.incomingAttacks, next.incomingAttacks) &&
-    allianceArrayEqual(prev.alliances, next.alliances)
+    allianceArrayEqual(prev.alliances, next.alliances) &&
+    pactArrayEqual(prev.nonAggressionPacts, next.nonAggressionPacts) &&
+    pactRequestArrayEqual(prev.outgoingPactRequests, next.outgoingPactRequests)
   ) {
     return null;
   }
@@ -142,8 +146,42 @@ export function diffPlayerUpdate(
     "alliances",
     allianceArrayEqual(prev.alliances, next.alliances),
   );
+  setIfDifferent(
+    "nonAggressionPacts",
+    pactArrayEqual(prev.nonAggressionPacts, next.nonAggressionPacts),
+  );
+  setIfDifferent(
+    "outgoingPactRequests",
+    pactRequestArrayEqual(prev.outgoingPactRequests, next.outgoingPactRequests),
+  );
 
   return changed ? diff : null;
+}
+
+function pactArrayEqual(
+  a?: NonAggressionPactView[],
+  b?: NonAggressionPactView[],
+): boolean {
+  if (a === b) return true;
+  if (!a || !b || a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i].id !== b[i].id || a[i].other !== b[i].other) return false;
+  }
+  return true;
+}
+
+function pactRequestArrayEqual(
+  a?: NonAggressionPactRequestView[],
+  b?: NonAggressionPactRequestView[],
+): boolean {
+  if (a === b) return true;
+  if (!a || !b || a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i].recipient !== b[i].recipient || a[i].penalty !== b[i].penalty) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /**
@@ -191,6 +229,12 @@ export function applyStateUpdate(target: PlayerState, pu: PlayerUpdate): void {
     target.incomingAttacks = pu.incomingAttacks;
   }
   if (pu.alliances !== undefined) target.alliances = pu.alliances;
+  if (pu.nonAggressionPacts !== undefined) {
+    target.nonAggressionPacts = pu.nonAggressionPacts;
+  }
+  if (pu.outgoingPactRequests !== undefined) {
+    target.outgoingPactRequests = pu.outgoingPactRequests;
+  }
   if (pu.outgoingEmojis !== undefined)
     target.outgoingEmojis = pu.outgoingEmojis;
 }

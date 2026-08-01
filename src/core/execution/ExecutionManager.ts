@@ -20,6 +20,11 @@ import { MarkDisconnectedExecution } from "./MarkDisconnectedExecution";
 import { MoveWarshipExecution } from "./MoveWarshipExecution";
 import { NationExecution } from "./NationExecution";
 import { NoOpExecution } from "./NoOpExecution";
+import {
+  BreakPactExecution,
+  PactReplyExecution,
+  PactRequestExecution,
+} from "./pact/PactExecutions";
 import { PauseExecution } from "./PauseExecution";
 import { QuickChatExecution } from "./QuickChatExecution";
 import { RetreatExecution } from "./RetreatExecution";
@@ -87,6 +92,20 @@ export class Executor {
         return new AllianceRejectExecution(intent.requestor, player);
       case "breakAlliance":
         return new BreakAllianceExecution(player, intent.recipient);
+      case "pactRequest":
+        return new PactRequestExecution(
+          player,
+          intent.recipient,
+          BigInt(intent.penalty),
+        );
+      case "pactReply":
+        return new PactReplyExecution(
+          player,
+          intent.requestor,
+          intent.accepted,
+        );
+      case "breakPact":
+        return new BreakPactExecution(player, intent.other);
       case "targetPlayer":
         return new TargetPlayerExecution(player, intent.target);
       case "emoji":

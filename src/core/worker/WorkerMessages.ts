@@ -28,7 +28,8 @@ export type WorkerMessageType =
   | "attack_clustered_positions"
   | "attack_clustered_positions_result"
   | "transport_ship_spawn"
-  | "transport_ship_spawn_result";
+  | "transport_ship_spawn_result"
+  | "instant_catch_up";
 
 // Base interface for all messages
 interface BaseWorkerMessage {
@@ -137,6 +138,17 @@ export interface TransportShipSpawnResultMessage extends BaseWorkerMessage {
   result: TileRef | false;
 }
 
+/**
+ * "Catch up now": burn through the whole pending-turn backlog in as few
+ * worker task slices as possible instead of the gentle 4-ticks-per-macrotask
+ * pace. Requested by the player from the "Catching up…" banner when they'd
+ * rather have a brief freeze than a long slow crawl. Clears itself once the
+ * backlog is empty.
+ */
+export interface InstantCatchUpMessage extends BaseWorkerMessage {
+  type: "instant_catch_up";
+}
+
 // Union types for type safety
 export type MainThreadMessage =
   | InitMessage
@@ -146,7 +158,8 @@ export type MainThreadMessage =
   | PlayerProfileMessage
   | PlayerBorderTilesMessage
   | AttackClusteredPositionsMessage
-  | TransportShipSpawnMessage;
+  | TransportShipSpawnMessage
+  | InstantCatchUpMessage;
 
 // Message send from worker
 export type WorkerMessage =

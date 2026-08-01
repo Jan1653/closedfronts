@@ -127,6 +127,18 @@ export class WorkerClient {
     });
   }
 
+  /**
+   * Ask the worker to burn through the whole pending-turn backlog at once
+   * instead of the gentle catch-up pace. Fire-and-forget: it clears itself in
+   * the worker as soon as the backlog is empty.
+   */
+  instantCatchUp() {
+    if (!this.isInitialized) {
+      return;
+    }
+    this.worker!.postMessage({ type: "instant_catch_up" });
+  }
+
   playerProfile(playerID: number): Promise<PlayerProfile> {
     return new Promise((resolve, reject) => {
       if (!this.isInitialized) {

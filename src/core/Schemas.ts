@@ -38,6 +38,9 @@ export type Intent =
   | AllianceRejectIntent
   | AllianceExtensionIntent
   | BreakAllianceIntent
+  | PactRequestIntent
+  | PactReplyIntent
+  | BreakPactIntent
   | TargetPlayerIntent
   | EmojiIntent
   | DonateGoldIntent
@@ -66,6 +69,9 @@ export type CancelBoatIntent = z.infer<typeof CancelBoatIntentSchema>;
 export type AllianceRequestIntent = z.infer<typeof AllianceRequestIntentSchema>;
 export type AllianceRejectIntent = z.infer<typeof AllianceRejectIntentSchema>;
 export type BreakAllianceIntent = z.infer<typeof BreakAllianceIntentSchema>;
+export type PactRequestIntent = z.infer<typeof PactRequestIntentSchema>;
+export type PactReplyIntent = z.infer<typeof PactReplyIntentSchema>;
+export type BreakPactIntent = z.infer<typeof BreakPactIntentSchema>;
 export type TargetPlayerIntent = z.infer<typeof TargetPlayerIntentSchema>;
 export type EmojiIntent = z.infer<typeof EmojiIntentSchema>;
 export type DonateGoldIntent = z.infer<typeof DonateGoldIntentSchema>;
@@ -492,6 +498,26 @@ export const BreakAllianceIntentSchema = z.object({
   recipient: ID,
 });
 
+// Non-aggression pact: a land-only truce with an agreed gold penalty for
+// whoever walks away from it. The penalty travels with the offer so both sides
+// see the same number before agreeing.
+export const PactRequestIntentSchema = z.object({
+  type: z.literal("pactRequest"),
+  recipient: ID,
+  penalty: z.number().int().nonnegative().max(1_000_000_000),
+});
+
+export const PactReplyIntentSchema = z.object({
+  type: z.literal("pactReply"),
+  requestor: ID,
+  accepted: z.boolean(),
+});
+
+export const BreakPactIntentSchema = z.object({
+  type: z.literal("breakPact"),
+  other: ID,
+});
+
 export const TargetPlayerIntentSchema = z.object({
   type: z.literal("targetPlayer"),
   target: ID,
@@ -632,6 +658,9 @@ export const IntentSchema = z.discriminatedUnion("type", [
   AllianceRequestIntentSchema,
   AllianceRejectIntentSchema,
   BreakAllianceIntentSchema,
+  PactRequestIntentSchema,
+  PactReplyIntentSchema,
+  BreakPactIntentSchema,
   TargetPlayerIntentSchema,
   EmojiIntentSchema,
   DonateGoldIntentSchema,

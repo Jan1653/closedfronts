@@ -283,6 +283,20 @@ export class GameView implements GameMap {
     return (this.lastUpdate?.pendingTurns ?? 0) > 5;
   }
 
+  /** Turns still waiting to be simulated (0 = level with the server). */
+  public pendingTurns(): number {
+    return this.lastUpdate?.pendingTurns ?? 0;
+  }
+
+  /**
+   * "Catch up now": have the worker chew through the backlog in a few big
+   * slices instead of the gentle default pace. Briefly freezes the frame rate,
+   * but gets a rejoining player back into the live game far sooner.
+   */
+  public instantCatchUp(): void {
+    this.worker.instantCatchUp();
+  }
+
   public update(gu: GameUpdateViewData) {
     // Unit set/ownership changes below; rebuild the owner index on demand.
     this._unitsByOwnerStale = true;

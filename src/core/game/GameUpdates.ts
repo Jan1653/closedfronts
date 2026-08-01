@@ -98,6 +98,9 @@ export enum GameUpdateType {
   GamePaused,
   DonateEvent,
   NaturalDisaster,
+  NonAggressionPactRequest,
+  NonAggressionPactReply,
+  NonAggressionPactBroken,
 }
 
 export type GameUpdate =
@@ -124,7 +127,50 @@ export type GameUpdate =
   | SpawnPhaseEndUpdate
   | GamePausedUpdate
   | DonateEventUpdate
-  | NaturalDisasterUpdate;
+  | NaturalDisasterUpdate
+  | NonAggressionPactRequestUpdate
+  | NonAggressionPactReplyUpdate
+  | NonAggressionPactBrokenUpdate;
+
+/** Someone offered a non-aggression pact, with the penalty they propose. */
+export interface NonAggressionPactRequestUpdate {
+  type: GameUpdateType.NonAggressionPactRequest;
+  requestorID: number;
+  recipientID: number;
+  penalty: Gold;
+  createdAt: Tick;
+}
+
+/** The offer above was accepted or rejected. */
+export interface NonAggressionPactReplyUpdate {
+  type: GameUpdateType.NonAggressionPactReply;
+  requestorID: number;
+  recipientID: number;
+  penalty: Gold;
+  accepted: boolean;
+}
+
+/** A pact was broken; `penaltyPaid` is what the breaker could actually pay. */
+export interface NonAggressionPactBrokenUpdate {
+  type: GameUpdateType.NonAggressionPactBroken;
+  breakerID: number;
+  betrayedID: number;
+  penaltyPaid: Gold;
+}
+
+/** A live pact as mirrored to the client. */
+export interface NonAggressionPactView {
+  id: number;
+  other: PlayerID;
+  penalty: Gold;
+  createdAt: Tick;
+}
+
+/** A pending pact offer as mirrored to the client. */
+export interface NonAggressionPactRequestView {
+  recipient: PlayerID;
+  penalty: Gold;
+}
 
 /**
  * Natural-disaster lifecycle for the HUD banner + map overlay. Sent once per
@@ -262,6 +308,8 @@ export interface PlayerUpdate {
   incomingAttacks?: AttackUpdate[];
   outgoingAllianceRequests?: PlayerID[];
   alliances?: AllianceView[];
+  nonAggressionPacts?: NonAggressionPactView[];
+  outgoingPactRequests?: NonAggressionPactRequestView[];
   hasSpawned?: boolean;
   spawnTile?: TileRef;
   betrayals?: number;

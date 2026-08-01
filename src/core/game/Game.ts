@@ -27,6 +27,37 @@ export type PlayerID = string;
 export type Tick = number;
 export type Gold = bigint;
 
+/**
+ * A non-aggression pact between two players.
+ *
+ * Unlike an alliance it grants nothing — no shared vision, no ally status, no
+ * "friendly" relation. It only forbids taking the other side's LAND. Ships,
+ * trade and sea structures stay completely fair game, which is the whole point:
+ * you can agree to leave each other's borders alone while still fighting over
+ * the ocean.
+ *
+ * Both sides agreed on a `penalty` up front. Whoever breaks the pact pays that
+ * much gold to the other side — so it has teeth without needing a betrayal
+ * debuff.
+ */
+export interface NonAggressionPact {
+  id(): number;
+  other(player: Player): Player;
+  /** Gold the breaker owes the other side. */
+  penalty(): Gold;
+  createdAt(): Tick;
+}
+
+/** A pending pact offer, waiting for the recipient to accept or reject. */
+export interface NonAggressionPactRequest {
+  requestor(): Player;
+  recipient(): Player;
+  penalty(): Gold;
+  createdAt(): Tick;
+  accept(): void;
+  reject(): void;
+}
+
 export type WarshipState = {
   state: "patrolling" | "retreating" | "docked";
   patrolTile?: TileRef;
@@ -810,6 +841,17 @@ export interface Player {
   createAllianceRequest(recipient: Player): AllianceRequest | null;
   betrayals(): number;
 
+  // Non-aggression pacts — a lighter promise than an alliance: neither side may
+  // take the other's LAND, but ships and sea structures stay fair game, there is
+  // no shared vision and no ally status. Breaking one costs the agreed penalty.
+  nonAggressionPacts(): NonAggressionPact[];
+  nonAggressionPactWith(other: Player): NonAggressionPact | null;
+  hasNonAggressionPactWith(other: Player): boolean;
+  incomingPactRequests(): NonAggressionPactRequest[];
+  outgoingPactRequests(): NonAggressionPactRequest[];
+  canSendPactRequest(other: Player): boolean;
+  breakNonAggressionPact(pact: NonAggressionPact): void;
+
   // Targeting
   canTarget(other: Player): boolean;
   target(other: Player): void;
@@ -847,6 +889,8 @@ export interface Player {
   // Attacking.
   canAttack(tile: TileRef): boolean;
   canAttackPlayer(player: Player, treatAFKFriendly?: boolean): boolean;
+  /** canAttackPlayer plus the non-aggression-pact check (land only). */
+  canAttackLandOf(player: Player): boolean;
   isImmune(): boolean;
 
   createAttack(

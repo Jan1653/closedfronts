@@ -128,7 +128,8 @@ export class AttackExecution implements Execution {
       }
     }
 
-    if (this.target.isPlayer() && !this._owner.canAttackPlayer(this.target)) {
+    // Land grab — a non-aggression pact forbids exactly this.
+    if (this.target.isPlayer() && !this._owner.canAttackLandOf(this.target)) {
       this.active = false;
       return;
     }
