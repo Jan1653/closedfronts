@@ -366,7 +366,7 @@ export class WarshipExecution implements Execution {
     );
 
     // Trade-ship-specific state, lazily computed.
-    let hasPort: boolean | undefined;
+    let hasReachablePort: boolean | undefined;
     let patrolTile: number | undefined;
     let patrolRangeSquared: number | undefined;
     let warshipComponent: number | null | undefined = undefined;
@@ -413,21 +413,32 @@ export class WarshipExecution implements Execution {
       }
 
       if (includeTradeShips && type === UnitType.TradeShip) {
-        if (hasPort === undefined) {
-          hasPort = owner.unitCount(UnitType.Port) > 0;
+        if (warshipComponent === undefined) {
+          warshipComponent = mg.getWaterComponent(this.warship.tile());
+          // Piracy needs a port the prize can actually be sailed to: a port on
+          // a different body of water is no use, so it doesn't unlock raiding
+          // here.
+          hasReachablePort =
+            warshipComponent !== null &&
+            owner
+              .units(UnitType.Port)
+              .some(
+                (port) =>
+                  port.isActive() &&
+                  !port.isMarkedForDeletion() &&
+                  !port.isUnderConstruction() &&
+                  mg.hasWaterComponent(port.tile(), warshipComponent!),
+              );
           patrolTile = this.warship.warshipState().patrolTile;
           patrolRangeSquared = config.warshipPatrolRange() ** 2;
         }
         if (
-          !hasPort ||
+          !hasReachablePort ||
           unit.isSafeFromPirates() ||
           unit.targetUnit()?.owner() === owner ||
           unit.targetUnit()?.owner().isFriendly(owner)
         ) {
           continue;
-        }
-        if (warshipComponent === undefined) {
-          warshipComponent = mg.getWaterComponent(this.warship.tile());
         }
         if (
           warshipComponent !== null &&
@@ -1017,7 +1028,12 @@ export class WarshipExecution implements Execution {
     const warshipComponent = this.mg.getWaterComponent(this.warship.tile());
 
     const patrolTile = this.warship.warshipState().patrolTile;
-    if (patrolTile === undefined) {
+    // A non-integer or out-of-range patrolTile makes mg.x()/mg.y() return
+    // undefined, so every candidate coordinate below is NaN, isValidCoord is
+    // always false, and the loop's out-of-bounds `continue` (which does not
+    // advance expandCount) spins forever, hanging the whole synchronous sim.
+    // Bail out instead of trusting patrolTile is a valid tile.
+    if (patrolTile === undefined || !this.mg.isValidRef(patrolTile)) {
       return undefined;
     }
 

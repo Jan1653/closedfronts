@@ -94,6 +94,16 @@ export class MirvExecution implements Execution {
         MessageType.MIRV_INBOUND,
         this.targetPlayer.id(),
       );
+
+      // Launching a MIRV puts its silo on cooldown, exactly like every other
+      // bomb — otherwise a single silo could fire a MIRV and a nuke back to
+      // back.
+      const silo = this.player
+        .units(UnitType.MissileSilo, UnitType.AtomicSubmarine)
+        .find((s) => s.tile() === spawn);
+      if (silo) {
+        silo.launch();
+      }
     }
 
     const result = this.pathFinder.next(

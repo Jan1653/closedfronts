@@ -474,13 +474,13 @@ export const AttackIntentSchema = z.object({
 
 export const SpawnIntentSchema = z.object({
   type: z.literal("spawn"),
-  tile: z.number(),
+  tile: z.number().int().nonnegative(),
 });
 
 export const BoatAttackIntentSchema = z.object({
   type: z.literal("boat"),
   troops: z.number().nonnegative(),
-  dst: z.number(),
+  dst: z.number().int().nonnegative(),
 });
 
 export const AllianceRequestIntentSchema = z.object({
@@ -561,7 +561,7 @@ export const DonateOilIntentSchema = z.object({
 export const BuildUnitIntentSchema = z.object({
   type: z.literal("build_unit"),
   unit: z.enum(UnitType),
-  tile: z.number(),
+  tile: z.number().int().nonnegative(),
   rocketDirectionUp: z.boolean().optional(),
   // Warship hull class (small/normal/large/ultra) picked in the ships tab.
   shipClass: z.enum(["small", "normal", "large", "ultra"]).optional(),
@@ -572,13 +572,13 @@ export const BuildUnitIntentSchema = z.object({
   // Wall drag-build: when set (walls only), build a wall LINE from tile2 (the
   // drag start) to `tile` (the drag end). The two endpoints are charged, the
   // interior is free filler. Ignored for non-wall units.
-  tile2: z.number().optional(),
+  tile2: z.number().int().nonnegative().optional(),
 });
 
 export const UpgradeStructureIntentSchema = z.object({
   type: z.literal("upgrade_structure"),
   unit: z.enum(UnitType),
-  unitId: z.number(),
+  unitId: z.number().int().nonnegative(),
 });
 
 export const CancelAttackIntentSchema = z.object({
@@ -588,20 +588,20 @@ export const CancelAttackIntentSchema = z.object({
 
 export const CancelBoatIntentSchema = z.object({
   type: z.literal("cancel_boat"),
-  unitID: z.number(),
+  unitID: z.number().int().nonnegative(),
 });
 
 export const MoveWarshipIntentSchema = z.object({
   type: z.literal("move_warship"),
   unitIds: z.array(z.number().int()).nonempty(),
-  tile: z.number(),
+  tile: z.number().int().nonnegative(),
   // Enemy water structure to capture (explicit warship capture order).
   targetUnitId: z.number().int().optional(),
 });
 
 export const DeleteUnitIntentSchema = z.object({
   type: z.literal("delete_unit"),
-  unitId: z.number(),
+  unitId: z.number().int().nonnegative(),
 });
 
 export const QuickChatIntentSchema = z.object({

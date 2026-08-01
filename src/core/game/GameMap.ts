@@ -167,7 +167,12 @@ export class GameMapImpl implements GameMap {
   }
 
   isValidRef(ref: TileRef): boolean {
-    return ref >= 0 && ref < this.width_ * this.height_;
+    // The integer check matters: a fractional ref passes a pure range test but
+    // corrupts anything that indexes typed arrays or iterates from it, so a
+    // single crafted intent could freeze the simulation on every client.
+    return (
+      Number.isInteger(ref) && ref >= 0 && ref < this.width_ * this.height_
+    );
   }
 
   x(ref: TileRef): number {
