@@ -120,9 +120,13 @@ export class NationWarshipBehavior {
   }
 
   /**
-   * Best hull class the nation can comfortably afford: it must be able to pay
-   * for the hull AND still have that much again in the bank, so buying a big
-   * ship never leaves it broke. Capped per difficulty.
+   * Best hull class the nation can comfortably afford.
+   *
+   * A big hull needs a margin — twice its price in the bank — so splurging on
+   * one never leaves the nation broke. The CHEAPEST hull has no such margin:
+   * requiring one there just locked nations out of having a navy at all, since
+   * a hull already costs several times what a mid-game nation is sitting on.
+   * Capped per difficulty.
    */
   private pickHullClass(): ShipClass {
     const config = this.game.config();
@@ -130,7 +134,7 @@ export class NationWarshipBehavior {
     const cap = HULL_LADDER.indexOf(MAX_HULL_BY_DIFFICULTY[difficulty]);
     const gold = this.player.gold();
     let best: ShipClass = HULL_LADDER[0];
-    for (let i = 0; i <= cap; i++) {
+    for (let i = 1; i <= cap; i++) {
       const hull = HULL_LADDER[i];
       if (gold >= config.warshipClassCost(hull, this.player) * 2n) {
         best = hull;
