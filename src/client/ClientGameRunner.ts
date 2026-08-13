@@ -167,6 +167,17 @@ export function joinLobby(
 
   let currentGameRunner: ClientGameRunner | null = null;
 
+  // The server closed us for good — most often "Game not found" after a server
+  // restart wiped the running games. Reconnecting is pointless (the transport
+  // already stopped trying), so stop the simulation and offer the way out
+  // instead of leaving the player staring at a frozen map.
+  transport.onTerminated = (reason: string) => {
+    console.log(`server ended the session: ${reason || "no reason given"}`);
+    currentGameRunner?.stop();
+    currentGameRunner = null;
+    showSessionEndedModal(reason);
+  };
+
   const onconnect = async () => {
     // Drop the tag if the ownership check failed; the server re-checks anyway.
     if (lobbyConfig.clanTagCheck !== undefined) {
@@ -1408,6 +1419,14 @@ export class ClientGameRunner {
     if (this.transport.isLocal) {
       return;
     }
+    if (this.transport.isTerminated) {
+      // The server said this session is over; retrying just spins.
+      if (this.connectionCheckInterval) {
+        clearInterval(this.connectionCheckInterval);
+        this.connectionCheckInterval = null;
+      }
+      return;
+    }
     const now = Date.now();
     const timeSinceLastMessage = now - this.lastMessageTime;
     if (timeSinceLastMessage > 5000) {
@@ -1418,6 +1437,74 @@ export class ClientGameRunner {
       this.transport.reconnect();
     }
   }
+}
+
+/**
+ * The server ended the session and no reconnect can bring it back (a restart
+ * wiped the running games, the lobby is gone, we're not allowed in). Says so in
+ * plain words and offers the only useful action — back to the main menu.
+ */
+function showSessionEndedModal(reason: string) {
+  if (document.querySelector("#session-ended-modal")) {
+    return;
+  }
+  // A crash modal is already explaining something worse; don't stack on it.
+  if (document.querySelector("#error-modal")) {
+    return;
+  }
+
+  const gameGone = /game not found|lobby not found/i.test(reason);
+  const overlay = document.createElement("div");
+  overlay.id = "session-ended-modal";
+  overlay.className =
+    "fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4";
+
+  const box = document.createElement("div");
+  box.className =
+    "w-full max-w-md rounded-xl border border-gray-600 bg-gray-800 p-5 text-center text-white shadow-2xl";
+
+  const title = document.createElement("div");
+  title.className = "text-lg font-bold";
+  title.textContent = translateText("error_modal.session_ended.title");
+
+  const text = document.createElement("p");
+  text.className = "mt-2 text-sm text-white/80";
+  text.textContent = translateText(
+    gameGone
+      ? "error_modal.session_ended.game_gone"
+      : "error_modal.session_ended.generic",
+  );
+
+  box.appendChild(title);
+  box.appendChild(text);
+
+  if (!gameGone && reason) {
+    const detail = document.createElement("p");
+    detail.className = "mt-1 text-xs text-white/50";
+    detail.textContent = reason;
+    box.appendChild(detail);
+  }
+
+  const button = document.createElement("button");
+  // Buttons don't inherit the box's text colour (UA stylesheet wins), so spell
+  // it out — blue on black would be barely readable.
+  button.className =
+    "mt-4 rounded-md bg-blue-600 px-4 py-2 font-bold text-white hover:bg-blue-500 cursor-pointer";
+  button.textContent = translateText("error_modal.session_ended.back_to_menu");
+  button.addEventListener("click", () => {
+    overlay.remove();
+    document.dispatchEvent(
+      new CustomEvent("leave-lobby", {
+        detail: { lobby: null, cause: "session-ended" },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  });
+  box.appendChild(button);
+
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
 }
 
 function showErrorModal(

@@ -515,6 +515,12 @@
     "desync_notice": "You are desynced from other players. What you see might differ from other players.",
     "failed_copy": "Failed to copy",
     "paste_discord": "Please paste the following in your bug report in Discord:",
+    "session_ended": {
+      "back_to_menu": "Back to main menu",
+      "game_gone": "This game no longer exists on the server — it was most likely restarted. There is nothing left to reconnect to.",
+      "generic": "The server closed the connection and it can't be resumed.",
+      "title": "Connection ended"
+    },
     "spawn_failed": {
       "description": "Automatic spawn selection failed. You can't play this game.",
       "title": "Spawn failed"

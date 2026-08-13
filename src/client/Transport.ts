@@ -242,6 +242,28 @@ export class Transport {
   private pingInterval: number | null = null;
   public readonly isLocal: boolean;
 
+  // Set once the server closed us with a protocol error (1002): the game is
+  // gone, we're not allowed in, etc. Reconnecting can only earn the same close
+  // again, so every reconnect path stops here — otherwise a server restart puts
+  // the client in an endless connect → "Game not found" → reconnect loop.
+  private terminated: boolean = false;
+
+  // Backoff for automatic reconnects. A server that is down or restarting used
+  // to produce a tight close → connect → close loop.
+  private reconnectAttempts: number = 0;
+  private reconnectTimeout: number | null = null;
+
+  /**
+   * Called once when the server ends the session for good. Set by the owner of
+   * the transport so it can tear the game down and tell the player, instead of
+   * the client silently hammering a socket that will never come back.
+   */
+  public onTerminated: ((reason: string) => void) | null = null;
+
+  public get isTerminated(): boolean {
+    return this.terminated;
+  }
+
   constructor(
     private lobbyConfig: LobbyConfig,
     private eventBus: EventBus,
@@ -395,6 +417,14 @@ export class Transport {
     onconnect: () => void,
     onmessage: (message: ServerMessage) => void,
   ) {
+    if (this.terminated) {
+      // Session is over; opening another socket would just loop.
+      return;
+    }
+    if (this.reconnectTimeout !== null) {
+      window.clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
     this.startPing();
     this.killExistingSocket();
     const wsHost = window.location.host;
@@ -405,6 +435,7 @@ export class Transport {
     this.onmessage = onmessage;
     this.socket.onopen = () => {
       console.log("Connected to game server!");
+      this.reconnectAttempts = 0;
       if (this.socket === null) {
         console.error("socket is null");
         return;
@@ -445,13 +476,33 @@ export class Transport {
         `WebSocket closed. Code: ${event.code}, Reason: ${event.reason}`,
       );
       if (event.code === 1002) {
-        // TODO: make this a modal
-        alert(`connection refused: ${event.reason}`);
+        this.terminated = true;
+        this.stopPing();
+        if (this.onTerminated !== null) {
+          this.onTerminated(event.reason);
+        } else {
+          alert(`connection refused: ${event.reason}`);
+        }
       } else if (event.code !== 1000) {
-        console.log(`received error code ${event.code}, reconnecting`);
-        this.reconnect();
+        this.scheduleReconnect(event.code);
       }
     };
+  }
+
+  /**
+   * Reconnect with a growing delay (0.5s → 8s). An unreachable server answers
+   * instantly, so retrying straight from onclose spun as fast as the network
+   * stack allowed and buried the console in connect/close pairs.
+   */
+  private scheduleReconnect(code: number) {
+    if (this.terminated || this.reconnectTimeout !== null) return;
+    const delay = Math.min(500 * 2 ** this.reconnectAttempts, 8000);
+    this.reconnectAttempts++;
+    console.log(`received error code ${code}, reconnecting in ${delay} ms`);
+    this.reconnectTimeout = window.setTimeout(() => {
+      this.reconnectTimeout = null;
+      this.reconnect();
+    }, delay);
   }
 
   public reconnect() {
@@ -496,15 +547,14 @@ export class Transport {
     if (this.socket === null) return;
     if (this.socket.readyState === WebSocket.OPEN) {
       console.log("on stop: leaving game");
-      this.killExistingSocket();
     } else {
+      // Nothing is being retried here — we're leaving; just drop the socket.
       console.log(
-        "WebSocket is not open. Current state:",
+        "on stop: socket already closed, state:",
         this.socket.readyState,
       );
-      console.error("attempting reconnect");
-      this.killExistingSocket();
     }
+    this.killExistingSocket();
   }
 
   private onSendAllianceRequest(event: SendAllianceRequestIntentEvent) {

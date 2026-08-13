@@ -13,6 +13,18 @@ const PERSISTENT_ID_KEY = "player_persistent_id";
 let __jwt: string | null = null;
 let __refreshPromise: Promise<void> | null = null;
 let __expiresAt: number = 0;
+// Guests have no session cookie, so /auth/refresh answers 401 every single
+// time. Remember that for a while: without it every auth check (each socket
+// (re)connect does one) fires another pointless request and another console
+// error, which buried the real errors during a reconnect storm.
+let __refreshBlockedUntil: number = 0;
+const REFRESH_BACKOFF_MS = 60 * 1000;
+
+// Called whenever a login may have created a session cookie, so the next auth
+// check actually asks the server again instead of waiting out the backoff.
+function clearRefreshBackoff() {
+  __refreshBlockedUntil = 0;
+}
 
 export function discordLogin() {
   const redirectUri = encodeURIComponent(window.location.href);
@@ -67,6 +79,7 @@ export async function tempTokenLogin(token: string): Promise<string | null> {
   }
   const json = await response.json();
   const { email } = json;
+  clearRefreshBackoff(); // a session cookie exists now
   return email;
 }
 
@@ -98,6 +111,7 @@ export async function logOut(allSessions: boolean = false): Promise<boolean> {
     return false;
   } finally {
     __jwt = null;
+    clearRefreshBackoff(); // a later login must not wait out the backoff
     localStorage.removeItem(PERSISTENT_ID_KEY);
     new UserSettings().clearFlag();
     new UserSettings().setSelectedPatternName(undefined);
@@ -116,10 +130,11 @@ export async function userAuth(
     const jwt = __jwt;
     if (!jwt) {
       if (!shouldRefresh) {
-        console.warn("No JWT found and shouldRefresh is false");
+        // Normal state for a guest — nothing to warn about.
+        console.debug("No JWT found and shouldRefresh is false");
         return false;
       }
-      console.log("No JWT found");
+      console.debug("No JWT found");
       await refreshJwt();
       return userAuth(false);
     }
@@ -180,6 +195,10 @@ async function refreshJwt(): Promise<void> {
   if (__refreshPromise) {
     return __refreshPromise;
   }
+  if (Date.now() < __refreshBlockedUntil) {
+    // Known to have no session; skip the round trip.
+    return;
+  }
   __refreshPromise = doRefreshJwt();
   try {
     await __refreshPromise;
@@ -190,11 +209,18 @@ async function refreshJwt(): Promise<void> {
 
 async function doRefreshJwt(): Promise<void> {
   try {
-    console.log("Refreshing jwt");
+    console.debug("Refreshing jwt");
     const response = await fetch(getApiBase() + "/auth/refresh", {
       method: "POST",
       credentials: "include",
     });
+    if (response.status === 401) {
+      // Not logged in — the expected answer for a guest, not a failure.
+      __jwt = null;
+      __refreshBlockedUntil = Date.now() + REFRESH_BACKOFF_MS;
+      console.debug("No session to refresh (guest)");
+      return;
+    }
     if (response.status !== 200) {
       // A failed refresh just means there is no valid session — a guest with no
       // session cookie (localapi returns 401 every time), or an expired one.
@@ -302,6 +328,7 @@ async function authRequest(
       __expiresAt =
         Date.now() + (typeof expiresIn === "number" ? expiresIn : 3600) * 1000;
     }
+    clearRefreshBackoff(); // a session cookie exists now
     invalidateUserMe();
     return { ok: true };
   } catch (e) {

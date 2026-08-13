@@ -1484,7 +1484,13 @@
       "title": "Spawn fehlgeschlagen",
       "description": "Automatische Spawn-Auswahl fehlgeschlagen. Du kannst dieses Spiel nicht spielen."
     },
-    "desync_notice": "Du wurdest von anderen Spielern desynchronisiert. Was du siehst, könnte sich von anderen Spielern unterscheiden."
+    "desync_notice": "Du wurdest von anderen Spielern desynchronisiert. Was du siehst, könnte sich von anderen Spielern unterscheiden.",
+    "session_ended": {
+      "title": "Verbindung beendet",
+      "game_gone": "Dieses Spiel gibt es auf dem Server nicht mehr — vermutlich wurde er neu gestartet. Es ist nichts mehr da, womit sich der Client verbinden könnte.",
+      "generic": "Der Server hat die Verbindung getrennt; sie lässt sich nicht wiederherstellen.",
+      "back_to_menu": "Zum Hauptmenü"
+    }
   },
   "performance_overlay": {
     "reset": "Zurücksetzen",
