@@ -508,8 +508,20 @@ export class ControlPanel extends LitElement implements Controller {
 
   // Oil value as a plain integer so it visibly ticks up/down every second (the
   // K-rounded renderNumber barely changed at oil-tank sizes → looked frozen).
+  // Past a million that no longer fits the bar — the readout overflowed and the
+  // leading digit got clipped — so it switches to "12.34M" (still 10k steps, so
+  // it keeps moving). Both halves of "x / y" follow the tank size, so the pair
+  // never mixes formats.
   private oilAmount(n: number): string {
-    return Math.max(0, Math.round(n)).toString();
+    const v = Math.max(0, Math.round(n));
+    const scale = Math.max(this._maxOil, v);
+    if (scale >= 1_000_000_000) {
+      return `${(Math.floor(v / 10_000_000) / 100).toFixed(2)}B`;
+    }
+    if (scale >= 1_000_000) {
+      return `${(Math.floor(v / 10_000) / 100).toFixed(2)}M`;
+    }
+    return v.toString();
   }
 
   // Small green/red "+N/s" chip showing net oil per second. Rendered INLINE
