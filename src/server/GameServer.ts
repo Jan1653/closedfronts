@@ -93,7 +93,13 @@ export class GameServer {
 
   private intentRateLimiter = new ClientMsgRateLimiter();
 
-  private maxGameDuration = 3 * 60 * 60 * 1000; // 3 hours
+  private maxGameDuration = 8 * 60 * 60 * 1000; // 8 hours
+
+  // How long a started game survives with nobody connected. A disconnect drops
+  // the client from activeClients immediately, so a short window meant a
+  // network blip deleted a game that had been running for hours — the player
+  // came back to "Game not found".
+  private static readonly ORPHAN_GRACE_MS = 120 * 1000; // 2 minutes
 
   private disconnectedTimeout = 1 * 30 * 1000; // 30 seconds
 
@@ -1390,7 +1396,8 @@ export class GameServer {
       return GamePhase.Finished;
     }
 
-    const noRecentPings = now > this.lastPingUpdate + 20 * 1000;
+    const noRecentPings =
+      now > this.lastPingUpdate + GameServer.ORPHAN_GRACE_MS;
     const noActive = this.activeClients.length === 0;
 
     const lessThanLifetime = this.startsAt ? Date.now() < this.startsAt : true;
