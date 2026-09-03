@@ -1328,9 +1328,8 @@ export class Config {
   // Oil burned per tile conquered. Makes actively growing cost fuel on top of
   // the passive size upkeep, so a war machine has to keep pumping to keep
   // advancing. Rolling over unowned wilderness is cheaper; taking land from
-  // another player (nation, bot or human) burns much more. Both rates grow
-  // with the conqueror's size (1 + tiles/25k), so a huge empire pays several
-  // times as much per tile as a fresh one — attacking late-game is thirsty.
+  // another player (nation, bot or human) burns much more. Both rates scale
+  // with the army doing the conquering — see oilExpansionSizeFactor.
   oilExpansionCostWilderness(player?: Player): number {
     return 4 * this.oilExpansionSizeFactor(player);
   }
@@ -1339,9 +1338,30 @@ export class Config {
     return 10 * this.oilExpansionSizeFactor(player);
   }
 
+  // Troops every player has from the start, army or not: maxTroops' constant
+  // term (2 * 50_000). Expansion oil is measured from here, so a freshly
+  // spawned player really does sit at the bottom of the scale.
+  private static readonly EXPANSION_TROOP_FLOOR = 100_000;
+  // Troops above that floor per +1 on the factor. Small enough that a
+  // late-game army pushes the rate past the old flat scaling.
+  private static readonly EXPANSION_TROOPS_PER_STEP = 500_000;
+
+  /**
+   * How thirsty attacking is, measured on the ARMY rather than the empire.
+   *
+   * Starts at a third of the old rate, so early fighting barely touches the
+   * tank, and climbs with troop count from there: it passes the old rate at
+   * roughly 430k troops and keeps going, so a late-game power with a huge army
+   * pays more per tile than it ever did before. Only expansion is affected —
+   * passive upkeep is still sized by territory (oilConsumptionRate).
+   */
   private oilExpansionSizeFactor(player?: Player): number {
     if (player === undefined) return 1;
-    return 1 + player.numTilesOwned() / 25_000;
+    const overFloor = Math.max(
+      0,
+      player.troops() - Config.EXPANSION_TROOP_FLOOR,
+    );
+    return 1 / 3 + overFloor / Config.EXPANSION_TROOPS_PER_STEP;
   }
 
   // A little fuel is burned each time a ship (transport/warship/trade) is
@@ -1414,10 +1434,19 @@ export class Config {
     return 0.12;
   }
 
+  // Hard ceiling for oilPumpRadius(). Without it a heavily stacked pump blows a
+  // crater the size of the whole map — and the crater loop walks r² tiles, so a
+  // runaway radius also stalls the tick. Sits below the hydrogen bomb's outer
+  // radius of 100 so no pump ever out-blasts the biggest weapon in the game.
+  maxOilPumpRadius(): number {
+    return 60;
+  }
+
   // The radius an oil pump "pumps" over — also the radius of its explosion when
-  // the pump is hit by a bomb. Grows as the pump is stacked/levelled up.
+  // the pump is hit by a bomb. Grows as the pump is stacked/levelled up, capped
+  // at maxOilPumpRadius() (reached at level 9).
   oilPumpRadius(level: number = 1): number {
-    return 15 + level * 5;
+    return Math.min(this.maxOilPumpRadius(), 15 + level * 5);
   }
 
   // Ticks a sea-build transport ship must hold position on the target tile
