@@ -765,11 +765,34 @@ export class GameServer {
         }
         const parsed = ClientMessageSchema.safeParse(json);
         if (!parsed.success) {
-          this.log.warn(`Failed to parse client message, kicking`, {
-            clientID: client.clientID,
-            error: z.prettifyError(parsed.error),
-          });
-          this.kickClient(client.clientID, KICK_REASON_INVALID_MESSAGE);
+          // A malformed INTENT is nearly always a client bug carrying a bad
+          // payload (an out-of-range username from the lobby rename box, say),
+          // and kicking its sender threw the HOST out of their own lobby over a
+          // typo. Drop those and let the rate limiter handle a client that
+          // floods them; anything else is still a kick.
+          const isIntent =
+            typeof json === "object" &&
+            json !== null &&
+            (json as { type?: unknown }).type === "intent";
+          this.log.warn(
+            `Failed to parse client message, ${isIntent ? "dropping" : "kicking"}`,
+            {
+              clientID: client.clientID,
+              error: z.prettifyError(parsed.error),
+            },
+          );
+          if (!isIntent) {
+            this.kickClient(client.clientID, KICK_REASON_INVALID_MESSAGE);
+            return;
+          }
+          const dropRate = this.intentRateLimiter.check(
+            client.clientID,
+            "intent",
+            Buffer.byteLength(message, "utf8"),
+          );
+          if (dropRate === "kick") {
+            this.kickClient(client.clientID, KICK_REASON_TOO_MUCH_DATA);
+          }
           return;
         }
         const clientMsg = parsed.data;

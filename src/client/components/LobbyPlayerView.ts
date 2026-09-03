@@ -16,6 +16,7 @@ import { assignTeamsLobbyPreview } from "../../core/game/TeamAssignment";
 import { UserSettings } from "../../core/game/UserSettings";
 import { ClientInfo, TeamCountConfig } from "../../core/Schemas";
 import { createRandomName, formatPlayerDisplayName } from "../../core/Util";
+import { validateUsername } from "../../core/validations/username";
 import { Theme, themeProvider } from "../theme/ThemeProvider";
 import { getTranslatedPlayerTeamLabel, translateText } from "../Utils";
 
@@ -47,6 +48,8 @@ export class LobbyTeamView extends LitElement {
   ) => void;
   @state() private editingClientID: string | null = null;
   @state() private editValue: string = "";
+  // Why the last rename attempt was refused, shown under the edit box.
+  @state() private renameError: string = "";
   @property({ type: Function }) onKickPlayer?: (clientID: string) => void;
   @property({ type: Function }) onToggleNameReveal?: (clientID: string) => void;
   @property({ type: Array }) nameReveals: string[] = [];
@@ -220,35 +223,59 @@ export class LobbyTeamView extends LitElement {
   private startRename(client: ClientInfo) {
     this.editingClientID = client.clientID;
     this.editValue = client.username;
+    this.renameError = "";
   }
 
   private cancelRename() {
     this.editingClientID = null;
+    this.renameError = "";
   }
 
   private commitRename(clientID: string) {
     // Enter and blur can both fire; only the first (which clears editing) acts.
     if (this.editingClientID !== clientID) return;
     const name = this.editValue.trim();
+    // The server validates the username while PARSING the websocket message,
+    // and a message that fails to parse gets its sender kicked
+    // (kick_reason.invalid_message) — so sending a name the schema rejects
+    // threw the host out of their own lobby. Check first and keep the box open
+    // with the reason instead; Escape still cancels.
+    const result = validateUsername(name);
+    if (!result.isValid) {
+      this.renameError = result.error ?? "";
+      return;
+    }
     this.editingClientID = null;
-    if (name.length > 0) this.onRenamePlayer?.(clientID, name);
+    this.renameError = "";
+    this.onRenamePlayer?.(clientID, name);
   }
 
   // The player name, or an inline edit box while the host is renaming them.
   private renderPlayerName(client: ClientInfo, displayName: string) {
     if (this.onRenamePlayer && this.editingClientID === client.clientID) {
       return html`<input
-        class="min-w-0 flex-1 px-1 py-0.5 rounded-sm bg-gray-900 text-white text-xs border border-sky-500/60"
-        .value=${this.editValue}
-        @click=${(e: Event) => e.stopPropagation()}
-        @input=${(e: Event) =>
-          (this.editValue = (e.target as HTMLInputElement).value)}
-        @keydown=${(e: KeyboardEvent) => {
-          if (e.key === "Enter") this.commitRename(client.clientID);
-          else if (e.key === "Escape") this.cancelRename();
-        }}
-        @blur=${() => this.commitRename(client.clientID)}
-      />`;
+          class="min-w-0 flex-1 px-1 py-0.5 rounded-sm bg-gray-900 text-white text-xs border ${this
+            .renameError
+            ? "border-red-500"
+            : "border-sky-500/60"}"
+          .value=${this.editValue}
+          title=${this.renameError}
+          @click=${(e: Event) => e.stopPropagation()}
+          @input=${(e: Event) => {
+            this.editValue = (e.target as HTMLInputElement).value;
+            this.renameError = "";
+          }}
+          @keydown=${(e: KeyboardEvent) => {
+            if (e.key === "Enter") this.commitRename(client.clientID);
+            else if (e.key === "Escape") this.cancelRename();
+          }}
+          @blur=${() => this.commitRename(client.clientID)}
+        />
+        ${this.renameError
+          ? html`<span class="text-red-400 text-[10px] leading-tight"
+              >${this.renameError}</span
+            >`
+          : ""}`;
     }
     return html`<span class="truncate text-white">${displayName}</span>`;
   }
