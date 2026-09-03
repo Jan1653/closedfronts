@@ -49,16 +49,61 @@ export interface AdditionalNation {
   name: string;
 }
 
+/**
+ * Longest map edge the renderer can hand the GPU as a single texture.
+ *
+ * The map is uploaded as width × height textures (terrain, territory, trails,
+ * heat…). A texture longer than the device's MAX_TEXTURE_SIZE fails silently,
+ * and the map draws BLACK — which is what happens on phones, where the cap is
+ * commonly 4096 while desktop GPUs allow 16384.
+ *
+ * So a handful of full-resolution maps are simply too long for a phone. They
+ * are played at half resolution instead, which fits everywhere. The limit is a
+ * FIXED number, never the device's own MAX_TEXTURE_SIZE: every client
+ * simulates the map it loads, so they all have to load the same one.
+ */
+export const MAX_RENDERABLE_MAP_EDGE = 4096;
+
+/**
+ * The size a map is actually loaded at: the requested one, unless full
+ * resolution would be too long for a phone GPU (see MAX_RENDERABLE_MAP_EDGE),
+ * in which case it drops to Compact. Deterministic — it depends only on the
+ * map's own dimensions.
+ */
+export function renderableMapSize(
+  manifest: MapManifest,
+  requested: GameMapSize,
+): GameMapSize {
+  if (requested === GameMapSize.Compact) return requested;
+  const longestEdge = Math.max(manifest.map.width, manifest.map.height);
+  return longestEdge > MAX_RENDERABLE_MAP_EDGE
+    ? GameMapSize.Compact
+    : requested;
+}
+
 export async function loadTerrainMap(
   map: GameMapType,
-  mapSize: GameMapSize,
+  requestedSize: GameMapSize,
   terrainMapFileLoader: GameMapLoader,
 ): Promise<TerrainMapData> {
-  const cacheKey = `${map}:${mapSize}`;
-  const cached = loadedMaps.get(cacheKey);
+  const requestedKey = `${map}:${requestedSize}`;
+  const cached = loadedMaps.get(requestedKey);
   if (cached !== undefined) return cached;
   const mapFiles = terrainMapFileLoader.getMapData(map);
   const manifest = await mapFiles.manifest();
+
+  const mapSize = renderableMapSize(manifest, requestedSize);
+  const cacheKey = `${map}:${mapSize}`;
+  if (cacheKey !== requestedKey) {
+    console.warn(
+      `Map ${map} is ${manifest.map.width}x${manifest.map.height} at full resolution, longer than the ${MAX_RENDERABLE_MAP_EDGE}px a phone GPU can texture — loading it at half resolution instead.`,
+    );
+    const already = loadedMaps.get(cacheKey);
+    if (already !== undefined) {
+      loadedMaps.set(requestedKey, already);
+      return already;
+    }
+  }
 
   const gameMap =
     mapSize === GameMapSize.Normal
@@ -115,6 +160,7 @@ export async function loadTerrainMap(
     teamGameSpawnAreas,
   };
   loadedMaps.set(cacheKey, result);
+  if (cacheKey !== requestedKey) loadedMaps.set(requestedKey, result);
   return result;
 }
 

@@ -14,6 +14,7 @@ import {
   NaturalDisasterType,
   UnitType,
 } from "../core/game/Game";
+import { renderableMapSize } from "../core/game/TerrainMapLoader";
 import { TeamCountConfig } from "../core/Schemas";
 import { generateID } from "../core/Util";
 import { hasLinkedAccount } from "./Api";
@@ -130,6 +131,9 @@ export class SinglePlayerModal extends BaseModal {
   @state() private infiniteGold: boolean = DEFAULT_OPTIONS.infiniteGold;
   @state() private infiniteTroops: boolean = DEFAULT_OPTIONS.infiniteTroops;
   @state() private compactMap: boolean = DEFAULT_OPTIONS.compactMap;
+  // True when the selected map only fits a phone GPU at half
+  // resolution, so Compact is forced regardless of the toggle.
+  @state() private mapForcedCompact: boolean = false;
   @state() private maxTimer: boolean = DEFAULT_OPTIONS.maxTimer;
   @state() private maxTimerValue: number | undefined =
     DEFAULT_OPTIONS.maxTimerValue;
@@ -515,7 +519,7 @@ export class SinglePlayerModal extends BaseModal {
                   },
                   {
                     labelKey: "single_modal.compact_map",
-                    checked: this.compactMap,
+                    checked: this.compactMap || this.mapForcedCompact,
                   },
                   {
                     labelKey: "single_modal.disable_alliances",
@@ -1093,6 +1097,12 @@ export class SinglePlayerModal extends BaseModal {
         this.nations = this.compactMap
           ? Math.max(0, Math.floor(manifest.nations.length * 0.25))
           : manifest.nations.length;
+        // A map too long for a phone GPU is always played at half resolution
+        // (see renderableMapSize), so show the toggle as on rather than
+        // promising a full-resolution game we won't deliver.
+        this.mapForcedCompact =
+          renderableMapSize(manifest, GameMapSize.Normal) ===
+          GameMapSize.Compact;
       }
     } catch (error) {
       console.warn("Failed to load nation count", error);
