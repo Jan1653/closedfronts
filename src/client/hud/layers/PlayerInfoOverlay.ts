@@ -263,8 +263,26 @@ export class PlayerInfoOverlay extends LitElement implements Controller {
     </span>`;
   }
 
+  /**
+   * Where this player stands in the leaderboard: the number of living players
+   * holding more land, plus one — the same ordering <leader-board> uses by
+   * default. Counted here rather than read off that element, which only
+   * refreshes while it is open. Ties share a place.
+   */
+  private leaderboardRank(player: PlayerView): number | null {
+    if (!player.isAlive()) return null;
+    const tiles = player.numTilesOwned();
+    let ahead = 0;
+    for (const other of this.game.players()) {
+      if (other === player || !other.isAlive()) continue;
+      if (other.numTilesOwned() > tiles) ahead++;
+    }
+    return ahead + 1;
+  }
+
   private renderPlayerInfo(player: PlayerView) {
     const myPlayer = this.game.myPlayer();
+    const rank = this.leaderboardRank(player);
     const isFriendly = myPlayer?.isFriendly(player);
     const isAllied = myPlayer?.isAlliedWith(player);
     let allianceHtml: TemplateResult | null = null;
@@ -348,6 +366,14 @@ export class PlayerInfoOverlay extends LitElement implements Controller {
               isFriendly ?? false,
             )}"
           >
+            ${rank !== null
+              ? html`<span
+                  class="shrink-0 text-gray-400 text-xs font-normal tabular-nums"
+                  title=${translateText("leaderboard.rank")}
+                  translate="no"
+                  >#${rank}</span
+                >`
+              : ""}
             ${player.cosmetics.flag
               ? html`<img
                   class="h-6 object-contain"
