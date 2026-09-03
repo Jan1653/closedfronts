@@ -1428,6 +1428,7 @@ export class PlayerImpl implements Player {
     type: T,
     spawnTile: TileRef,
     params: UnitParams<T>,
+    knownCost: Gold | null = null,
   ): Unit {
     if (this.mg.config().isUnitDisabled(type)) {
       throw new Error(
@@ -1435,7 +1436,7 @@ export class PlayerImpl implements Player {
       );
     }
 
-    let cost = this.mg.unitInfo(type).cost(this.mg, this);
+    let cost = knownCost ?? this.mg.unitInfo(type).cost(this.mg, this);
     // Rücksender: launching a captured bomb spends a stockpile credit instead
     // of gold. The cost function already returns 0 while a credit is held (see
     // Config.nukeCost); consume exactly one here as the bomb is built.
@@ -1499,7 +1500,13 @@ export class PlayerImpl implements Player {
     if (this.mg.config().isUnitDisabled(unitType)) {
       return false;
     }
-    const cost = knownCost ?? this.mg.unitInfo(unitType).cost(this.mg, this);
+    let cost = knownCost ?? this.mg.unitInfo(unitType).cost(this.mg, this);
+    // A warship is always bought as a hull class, so what matters here is
+    // whether ANY hull is affordable — see cheapestWarshipClassCost.
+    if (unitType === UnitType.Warship && knownCost === null) {
+      const cheapestHull = this.mg.config().cheapestWarshipClassCost(this);
+      if (cheapestHull < cost) cost = cheapestHull;
+    }
     if (this._gold < cost) {
       return false;
     }
@@ -1607,8 +1614,9 @@ export class PlayerImpl implements Player {
     unitType: UnitType,
     targetTile: TileRef,
     validTiles: TileRef[] | null = null,
+    knownCost: Gold | null = null,
   ): TileRef | false {
-    if (!this.canBuildUnitType(unitType)) {
+    if (!this.canBuildUnitType(unitType, knownCost)) {
       return false;
     }
 

@@ -800,11 +800,18 @@ export interface Player {
     type: UnitType,
     targetTile: TileRef,
     validTiles?: TileRef[] | null,
+    // Price to check against instead of the type's standard cost — see
+    // buildUnit's knownCost.
+    knownCost?: Gold | null,
   ): TileRef | false;
   buildUnit<T extends UnitType>(
     type: T,
     spawnTile: TileRef,
     params: UnitParams<T>,
+    // Price to charge instead of the type's standard cost. Warship hull
+    // classes carry their own flat price, which can sit below the base
+    // warship price the type itself reports.
+    knownCost?: Gold | null,
   ): Unit;
 
   // Returns the existing unit that can be upgraded,

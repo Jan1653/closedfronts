@@ -88,10 +88,11 @@ export class MobileBuildBar extends LitElement implements Controller {
   // Arming a build has no tile yet, so gate by affordability + prerequisites
   // (mirrors the desktop <unit-display>) — NOT the sim's tile-dependent
   // `canBuild`, which is always false without a tile and greyed everything out.
-  private canBuild(type: UnitType): boolean {
+  private canBuild(type: UnitType, knownCost?: Gold): boolean {
     if (this.game?.config().isUnitDisabled(type)) return false;
     const player = this.game?.myPlayer();
     const gold = player?.gold() ?? 0n;
+    const price = knownCost ?? this.cost(type);
     switch (type) {
       case UnitType.AtomBomb:
       case UnitType.HydrogenBomb:
@@ -99,7 +100,7 @@ export class MobileBuildBar extends LitElement implements Controller {
       case UnitType.MIRV:
         // Only a FINISHED silo enables bombs — greyed while it's still building.
         return (
-          this.cost(type) <= gold &&
+          price <= gold &&
           (player
             ?.units(UnitType.MissileSilo)
             .some((u) => !u.isUnderConstruction()) ??
@@ -114,12 +115,12 @@ export class MobileBuildBar extends LitElement implements Controller {
         // All ships and the toll station need a FINISHED port (ships launch
         // from one), so grey them out until a port is built.
         return (
-          this.cost(type) <= gold &&
+          price <= gold &&
           (player?.units(UnitType.Port).some((u) => !u.isUnderConstruction()) ??
             false)
         );
       default:
-        return this.cost(type) <= gold;
+        return price <= gold;
     }
   }
 
@@ -135,11 +136,7 @@ export class MobileBuildBar extends LitElement implements Controller {
   }
 
   private canBuildShip(entry: (typeof SHIPS)[number]): boolean {
-    const player = this.game?.myPlayer();
-    return (
-      this.canBuild(entry.type) &&
-      this.shipCost(entry) <= (player?.gold() ?? 0n)
-    );
+    return this.canBuild(entry.type, this.shipCost(entry));
   }
 
   private onTap(type: PlayerBuildableUnitType) {

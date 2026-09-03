@@ -1098,6 +1098,20 @@ export class Config {
     }
   }
 
+  // The lowest hull price on offer. Used to decide whether a warship is
+  // buyable AT ALL: the base warship price climbs with fleet size and can pass
+  // the flat small-hull price, and gating on it locked the cheap hull out with
+  // plenty of gold in the bank. The class actually picked is priced (and paid
+  // for) in WarshipExecution.
+  cheapestWarshipClassCost(player: Player | PlayerView): Gold {
+    let cheapest = this.warshipClassCost("small", player);
+    for (const shipClass of ["normal", "large", "ultra"] as const) {
+      const price = this.warshipClassCost(shipClass, player);
+      if (price < cheapest) cheapest = price;
+    }
+    return cheapest;
+  }
+
   // Gold a fishing boat earns each payout, and how often (ticks). Deliberately
   // small — a single boat is a trickle, a whole fleet is an economy.
   fishingBoatIncome(): Gold {

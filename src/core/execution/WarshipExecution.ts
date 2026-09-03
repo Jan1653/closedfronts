@@ -57,26 +57,33 @@ export class WarshipExecution implements Execution {
     } else {
       const owner = this.input.owner;
       const shipClass = this.input.shipClass ?? "normal";
-      // The hull class has its own full price; buildUnit charges the base
-      // warship price, the difference is collected here. Refuse the build if
-      // the full class price isn't affordable.
+      // The hull class has its own flat price, which is what the player is
+      // charged and checked against — the base warship price the unit type
+      // reports rises with the size of the fleet, and gating the cheap hull on
+      // that made it unbuildable long before its own price was out of reach.
       const classCost = mg.config().warshipClassCost(shipClass, owner);
-      const baseCost = mg.config().unitInfo(UnitType.Warship).cost(mg, owner);
       if (owner.gold() < classCost) {
         console.warn(`cannot afford ${shipClass} warship`);
         return;
       }
-      const spawn = owner.canBuild(UnitType.Warship, this.input.patrolTile);
+      const spawn = owner.canBuild(
+        UnitType.Warship,
+        this.input.patrolTile,
+        null,
+        classCost,
+      );
       if (spawn === false) {
         console.warn(
           `Failed to spawn warship for ${owner.name()} at ${this.input.patrolTile}`,
         );
         return;
       }
-      this.warship = owner.buildUnit(UnitType.Warship, spawn, this.input);
-      if (classCost > baseCost) {
-        owner.removeGold(classCost - baseCost);
-      }
+      this.warship = owner.buildUnit(
+        UnitType.Warship,
+        spawn,
+        this.input,
+        classCost,
+      );
       // Launching a warship burns a little fuel.
       owner.useOil(mg.config().oilCostPerShipLaunch());
     }
