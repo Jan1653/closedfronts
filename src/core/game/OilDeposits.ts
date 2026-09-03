@@ -8,8 +8,10 @@
  * Fields are FEW but VERY LARGE, like real underground oil basins: the map is
  * diced into coarse cells, a sparse subset of which anchor a field. A field is
  * the UNION of two overlapping lobes (a big main lobe plus an offset smaller
- * one), giving a lopsided "peanut" silhouette, with a lumpy per-block edge
- * wobble so the outline is ragged rather than smooth.
+ * one), giving a lopsided "peanut" silhouette. Each lobe is an ELLIPSE, not a
+ * disc — squashed along one axis by a per-field amount — and its radius is
+ * bent by three scales of smooth noise, so the outline waves in and out in
+ * bays and headlands the way a real basin does instead of reading as a circle.
  *
  * Every deposit tile also carries a GRADE from 1 to 5: a field is richest at
  * its core and thins out toward the rim until it stops entirely. Grade 3 is the
@@ -62,15 +64,15 @@ export function oilDepositGradeAt(x: number, y: number): number {
   const cx0 = Math.floor(x / CELL);
   const cy0 = Math.floor(y / CELL);
 
-  // A lumpy edge shared across 3×3 tile blocks (so it isn't grainy) makes the
-  // outline ragged, not a clean circle. Computed once — it only depends on the
-  // tile, not on which field we are testing.
-  let e =
-    (Math.imul(Math.floor(x / 3), 668265263) ^
-      Math.imul(Math.floor(y / 3), 2246822519)) >>>
-    0;
-  e = (e ^ (e >>> 15)) >>> 0;
-  const wobble = (e % 13) - 6; // −6..+6
+  // Edge wobble, three scales added together: the coarse one bends the outline
+  // into bays and headlands over ~40 tiles, the middle one ripples it, the fine
+  // one keeps it from looking machined. It shifts the RADIUS, so every grade
+  // ring moves with it and the five-step gradient stays exactly as it was.
+  // Depends only on the tile, not on which field we are testing.
+  const wobble =
+    smoothNoise(x, y, 57, 30, 0x9e3779b1) +
+    smoothNoise(x, y, 19, 13, 0x85ebca6b) +
+    smoothNoise(x, y, 3, 3, 0xc2b2ae35);
 
   let best = 0;
   for (let gy = cy0 - 1; gy <= cy0 + 1; gy++) {
@@ -85,12 +87,23 @@ export function oilDepositGradeAt(x: number, y: number): number {
       const centerX = gx * CELL + (h % CELL);
       const centerY = gy * CELL + ((h >>> 8) % CELL);
 
-      // Main lobe: base radius 55–99 varies per field. Several times the old
-      // size, so a single basin covers a serious chunk of a continent.
-      const baseR = 55 + ((h >>> 16) % 45);
+      // Main lobe: base radius 69–125 varies per field. Several times the old
+      // size, so a single basin covers a serious chunk of a continent. The
+      // range is ~1.26x what a round field used the squash below costs an
+      // ellipse roughly a third of a disc's area, and the map should hold as
+      // much oil as it did when fields were circles.
+      const baseR = 69 + ((h >>> 16) % 57);
+
+      // Squash the lobe along one axis (sixteenths) so the field is an
+      // elongated basin rather than a disc. Which axis, and how much, is fixed
+      // per field.
+      const squash = 16 + ((h >>> 10) % 20); // 16..35 => up to ~2.2:1
+      const alongX = ((h >>> 9) & 1) === 1;
+      const sx = alongX ? 16 : squash;
+      const sy = alongX ? squash : 16;
 
       const r = baseR + wobble;
-      const g = gradeInLobe(x - centerX, y - centerY, r);
+      const g = gradeInLobe(x - centerX, y - centerY, r, sx, sy);
       if (g > best) best = g;
       if (best === OIL_GRADE_MAX) return best;
 
@@ -106,6 +119,8 @@ export function oilDepositGradeAt(x: number, y: number): number {
           x - (centerX + dir[0] * step),
           y - (centerY + dir[1] * step),
           r2,
+          sx,
+          sy,
         );
         if (g2 > best) best = g2;
         if (best === OIL_GRADE_MAX) return best;
@@ -116,13 +131,63 @@ export function oilDepositGradeAt(x: number, y: number): number {
 }
 
 /**
+ * Smooth integer value noise in −amp..+amp.
+ *
+ * Hashed values on a lattice of `cell`-sized squares, bilinearly interpolated
+ * between the four corners, so it varies gradually across a field instead of
+ * stepping from block to block. Everything is integer arithmetic on exact
+ * values, so it stays cross-platform deterministic.
+ */
+function smoothNoise(
+  x: number,
+  y: number,
+  cell: number,
+  amp: number,
+  seed: number,
+): number {
+  const gx = Math.floor(x / cell);
+  const gy = Math.floor(y / cell);
+  const fx = x - gx * cell; // 0..cell-1
+  const fy = y - gy * cell;
+  const n00 = latticeValue(gx, gy, seed);
+  const n10 = latticeValue(gx + 1, gy, seed);
+  const n01 = latticeValue(gx, gy + 1, seed);
+  const n11 = latticeValue(gx + 1, gy + 1, seed);
+  // Bilinear blend, kept in integer space by scaling with `cell`.
+  const top = n00 * (cell - fx) + n10 * fx;
+  const bottom = n01 * (cell - fx) + n11 * fx;
+  const blended = top * (cell - fy) + bottom * fy; // 0..255*cell*cell
+  const unit = Math.floor(blended / (cell * cell)); // 0..255
+  return Math.floor(((unit - 128) * amp) / 128);
+}
+
+/** Hashed lattice corner value, 0..255. */
+function latticeValue(gx: number, gy: number, seed: number): number {
+  let h = (Math.imul(gx, 374761393) ^ Math.imul(gy, 668265263) ^ seed) >>> 0;
+  h = (h ^ (h >>> 13)) >>> 0;
+  h = Math.imul(h, 1274126177) >>> 0;
+  return (h ^ (h >>> 16)) & 255;
+}
+
+/**
  * Grade of the point (dx, dy) relative to a lobe of radius `r`: 5 inside the
  * innermost fifth, dropping one level per fifth of the radius, 0 outside.
- * Pure squared-distance comparisons — no sqrt, no floats.
+ * `stretchX`/`stretchY` are sixteenths applied to the offsets before the
+ * distance test, which turns the lobe into an ellipse — 16 leaves that axis at
+ * full length, larger values pull it in. Pure squared-distance comparisons —
+ * no sqrt, no floats.
  */
-function gradeInLobe(dx: number, dy: number, r: number): number {
+function gradeInLobe(
+  dx: number,
+  dy: number,
+  r: number,
+  stretchX: number = 16,
+  stretchY: number = 16,
+): number {
   if (r <= 0) return 0;
-  const d2 = dx * dx + dy * dy;
+  const ex = Math.floor((dx * stretchX) / 16);
+  const ey = Math.floor((dy * stretchY) / 16);
+  const d2 = ex * ex + ey * ey;
   const r2 = r * r;
   // Ring k (k = 1..5) ends at radius r·k/5 ⟺ d²·25 ≤ r²·k².
   const scaled = d2 * 25;
