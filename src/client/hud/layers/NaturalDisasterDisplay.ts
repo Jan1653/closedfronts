@@ -27,14 +27,18 @@ export class NaturalDisasterDisplay extends LitElement implements Controller {
   private current: NaturalDisasterUpdate | null = null;
 
   createRenderRoot() {
-    this.style.position = "fixed";
-    this.style.top = "14px";
-    this.style.left = "50%";
-    this.style.transform = "translateX(-50%)";
-    this.style.zIndex = "1100";
-    this.style.pointerEvents = "none";
-    this.style.maxWidth = "min(92vw, 420px)";
-    this.style.width = "max-content";
+    // Top-center by default, but <player-info-overlay> — the box naming the
+    // country you clicked — sits in exactly the same spot (500px wide, centred
+    // from sm up) and the banner covered it. Once the viewport is wide enough
+    // to hold both, the banner steps to the right of that box instead of on
+    // top of it; below that width there is no room beside it, so it stays
+    // centred.
+    this.className = [
+      "fixed top-[14px] z-[1100] pointer-events-none w-max",
+      "left-1/2 -translate-x-1/2 max-w-[min(92vw,420px)]",
+      "min-[950px]:left-[calc(50%_+_262px)] min-[950px]:translate-x-0",
+      "min-[950px]:max-w-[min(420px,calc(50vw_-_274px))]",
+    ].join(" ");
     return this;
   }
 
@@ -71,9 +75,9 @@ export class NaturalDisasterDisplay extends LitElement implements Controller {
     const warning = d.phase === "warning";
     return html`
       <div
-        class="flex flex-col gap-1 px-4 py-2 rounded-xl border backdrop-blur-md shadow-lg ${warning
-          ? "bg-amber-950/80 border-amber-400/40"
-          : "bg-red-950/80 border-red-400/40"}"
+        class="flex flex-col gap-1 px-4 py-2 rounded-xl border shadow-lg [text-shadow:0_1px_2px_rgba(0,0,0,0.95)] ${warning
+          ? "bg-amber-950/55 border-amber-400/50"
+          : "bg-red-950/55 border-red-400/50"}"
       >
         <div class="flex items-center gap-2 text-white">
           <span class="text-lg leading-none">${style.emoji}</span>
