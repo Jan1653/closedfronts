@@ -1423,7 +1423,8 @@
     "pvp_immunity": "PVP immunity duration",
     "starting_gold": "Starting Gold",
     "title": "Join Lobby",
-    "version_mismatch": "This game was created with a different version. Cannot join."
+    "version_mismatch": "This game was created with a different version. Cannot join.",
+    "you_are_host": "The host left, so this lobby is yours now — you can start it and manage the players."
   },
   "public_game_modifier": {
     "compact_map": "Compact Map",

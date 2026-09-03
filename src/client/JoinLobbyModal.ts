@@ -73,6 +73,49 @@ export class JoinLobbyModal extends BaseModal {
     return this.gameConfig?.gameType === GameType.Private;
   }
 
+  /**
+   * True once the server handed this lobby to us: the original host left for
+   * good and we inherited their rights (start, kick, rename). We stay in the
+   * join view rather than switching to the host modal — the settings stay as
+   * whoever built the lobby left them; only running it moves over.
+   */
+  private isLobbyHost(): boolean {
+    return (
+      this.isPrivateLobby() &&
+      this.currentClientID !== "" &&
+      this.lobbyCreatorClientID === this.currentClientID
+    );
+  }
+
+  private kickPlayer(clientID: string) {
+    this.dispatchEvent(
+      new CustomEvent("kick-player", {
+        detail: { target: clientID },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+
+  private renamePlayer(clientID: string, username: string) {
+    this.dispatchEvent(
+      new CustomEvent("rename-player", {
+        detail: { target: clientID, username },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+
+  private toggleGameStartTimer() {
+    this.dispatchEvent(
+      new CustomEvent("toggle_game_start_timer", {
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+
   private readonly handleLobbyInfo = (event: LobbyInfoEvent) => {
     const lobby = event.lobby;
     this.currentClientID = event.myClientID;
@@ -134,6 +177,15 @@ export class JoinLobbyModal extends BaseModal {
     const hostClientID = this.isPrivateLobby()
       ? (this.lobbyCreatorClientID ?? "")
       : "";
+    const isHost = this.isLobbyHost();
+    const startLabel =
+      secondsRemaining === null
+        ? playerCount < 2
+          ? translateText("host_modal.waiting")
+          : translateText("host_modal.start")
+        : translateText("host_modal.starting_in", {
+            time: renderDuration(secondsRemaining),
+          });
     return html`
       <div class="flex flex-col h-full">
         <div class="flex-1 custom-scrollbar p-6 space-y-4 mr-1">
@@ -151,6 +203,13 @@ export class JoinLobbyModal extends BaseModal {
                 </div>
               `
             : html`
+                ${isHost
+                  ? html`<div
+                      class="px-4 py-3 rounded-xl border border-amber-400/40 bg-amber-500/10 text-amber-100 text-sm"
+                    >
+                      ${translateText("private_lobby.you_are_host")}
+                    </div>`
+                  : ""}
                 ${this.gameConfig ? this.renderGameConfig() : html``}
                 ${this.players.length > 0
                   ? html`
@@ -175,6 +234,13 @@ export class JoinLobbyModal extends BaseModal {
                           this.gameConfig?.nations ?? "default",
                           this.nationCount,
                         )}
+                        .onKickPlayer=${isHost
+                          ? (clientID: string) => this.kickPlayer(clientID)
+                          : undefined}
+                        .onRenamePlayer=${isHost
+                          ? (clientID: string, username: string) =>
+                              this.renamePlayer(clientID, username)
+                          : undefined}
                       ></lobby-player-view>
                     `
                   : ""}
@@ -214,6 +280,15 @@ export class JoinLobbyModal extends BaseModal {
                   `
                 : html``}
             </div>
+            ${isHost
+              ? html`<o-button
+                  class="mt-3 block"
+                  width="block"
+                  .title=${startLabel}
+                  ?disable=${this.lobbyStartAt === null && playerCount < 2}
+                  @click=${this.toggleGameStartTimer}
+                ></o-button>`
+              : ""}
           </div>
         `}
       </div>

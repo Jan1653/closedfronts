@@ -940,16 +940,14 @@ export class GameServer {
     }
     // Remove persistentId if the game has not started to prevent going over max players
     this.persistentIdToClientId.delete(client.persistentID);
-    // Close lobby when host leaves before game starts: without a host it can
-    // never start, and a listed one would haunt the lobby browser and hold
-    // the creator's one-listing quota. phase() reports Finished once ended,
-    // so GameManager's next tick prunes it.
+    // Host leaves before the game starts: hand the lobby to somebody else
+    // rather than tearing it down, since a lobby without a host can never
+    // start. Only a lobby nobody is left in gets closed; phase() reports
+    // Finished once ended, so GameManager's next tick prunes it.
     //
     // With a GRACE PERIOD: a host socket can close transiently (network blip,
-    // page refresh, or an old client that reconnects to apply a rename).
-    // Tearing the lobby down instantly on that kicked every player with
-    // "host left" the moment the host renamed themselves. Only close if the
-    // host hasn't come back after the grace window.
+    // page refresh, or an old client that reconnects to apply a rename), and
+    // handing the lobby over on that would demote a host who never left.
     if (!this.isPublic() && client.persistentID === this.creatorPersistentID) {
       this.hostLeftTimer ??= setTimeout(() => {
         this.hostLeftTimer = null;
@@ -962,15 +960,44 @@ export class GameServer {
         if (hostIsBack) {
           return;
         }
-        this.log.info("Host left, closing lobby", {
-          gameID: this.id,
-        });
-        for (const c of [...this.activeClients]) {
-          this.kickClient(c.clientID, KICK_REASON_HOST_LEFT);
-        }
-        this._hasEnded = true;
+        this.promoteNewHost();
       }, GameServer.HOST_LEFT_GRACE_MS);
     }
+  }
+
+  /**
+   * The host is gone for good: pass the lobby to whoever has been waiting
+   * longest (activeClients is in join order). The successor inherits every
+   * right the server checks against the lobby creator — start, kick, rename,
+   * config, late-join force — because all of them resolve through
+   * creatorPersistentID. An empty lobby has nobody to hand it to and is closed.
+   */
+  private promoteNewHost(): void {
+    const successor = this.activeClients.find(
+      (c) => c.persistentID !== this.creatorPersistentID,
+    );
+    if (successor === undefined) {
+      this.log.info("Host left an empty lobby, closing it", {
+        gameID: this.id,
+      });
+      for (const c of [...this.activeClients]) {
+        this.kickClient(c.clientID, KICK_REASON_HOST_LEFT);
+      }
+      this._hasEnded = true;
+      return;
+    }
+    this.log.info("Host left, handing the lobby to another player", {
+      gameID: this.id,
+      newHost: successor.clientID,
+    });
+    this.creatorPersistentID = successor.persistentID;
+    // Host cheats are granted to whoever IS the lobby creator when the game
+    // starts, so leaving them in place would hand the successor an advantage
+    // they never chose and cannot switch off. Clear them on handover.
+    if (this.gameConfig.hostCheats !== undefined) {
+      this.gameConfig.hostCheats = undefined;
+    }
+    this.broadcastLobbyInfo();
   }
 
   public setStartsAt(startsAt: number) {

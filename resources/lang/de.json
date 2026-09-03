@@ -792,7 +792,8 @@
     "no_open_lobbies": "Gerade keine offenen Lobbys",
     "open_lobbies": "Offene Lobbys",
     "pvp_immunity": "PVP-Immunitätsdauer",
-    "starting_gold": "Startgold"
+    "starting_gold": "Startgold",
+    "you_are_host": "Der Host hat die Lobby verlassen — sie gehört jetzt dir. Du kannst starten und die Spieler verwalten."
   },
   "public_lobby": {
     "join": "Nächstem Spiel beitreten",
