@@ -152,6 +152,38 @@ function set(c, x, y, on) {
     c.data[i + 3] = 0;
   } // punch hole
 }
+
+// Anti-aliased fill for CURVED glyphs. Axis-aligned rect() shapes look fine
+// with a hard edge, but a hand-rastered curve turns into visible stair steps
+// once the map zooms the 64px cell up. `inside(x, y)` is a point test in SVG
+// space; each destination pixel takes SS x SS samples and stores the coverage
+// as alpha, which the structure shader already blends smoothly (it multiplies
+// by iconSample.a, no cutoff). RGB stays white everywhere it writes so the
+// LINEAR atlas filter can't pull a dark fringe out of unpainted pixels.
+const SS = 4;
+function shape(c, inside, on = true) {
+  for (let py = 0; py < CELL; py++) {
+    for (let px = 0; px < CELL; px++) {
+      let hits = 0;
+      for (let sy = 0; sy < SS; sy++) {
+        for (let sx = 0; sx < SS; sx++) {
+          if (inside((px + (sx + 0.5) / SS) / S, (py + (sy + 0.5) / SS) / S)) {
+            hits++;
+          }
+        }
+      }
+      if (hits === 0) continue;
+      const cov = Math.round((hits / (SS * SS)) * 255);
+      const i = (py * CELL + px) * 4;
+      c.data[i] = 255;
+      c.data[i + 1] = 255;
+      c.data[i + 2] = 255;
+      c.data[i + 3] = on
+        ? Math.max(c.data[i + 3], cov)
+        : Math.min(c.data[i + 3], 255 - cov);
+    }
+  }
+}
 // SVG-space rect (x,y,w,h) -> fill/hole
 function rect(c, x, y, w, h, on) {
   const x0 = Math.round(x * S),
@@ -190,35 +222,26 @@ function drawOilPump() {
   // A smooth teardrop (matches resources/images/OilPumpIconWhite.svg): a round
   // bulb at the bottom whose sides curve up to a point, so it reads as an oil
   // drop rather than a cone. A tiny hole punches the SVG's inner "shine" detail.
+  // Both go through the anti-aliased shape() — a binary fill left the curved
+  // flanks visibly jagged on the map.
   const c = cell();
   const cx = 12,
     apexY = 2.5,
     cyr = 15,
     r = 6.2;
-  for (let py = 0; py < CELL; py++) {
-    for (let px = 0; px < CELL; px++) {
-      const sx = (px + 0.5) / S,
-        sy = (py + 0.5) / S; // back to SVG space
-      let on = false;
-      if ((sx - cx) ** 2 + (sy - cyr) ** 2 <= r * r) {
-        on = true; // bottom bulb
-      } else if (sy >= apexY && sy <= cyr) {
-        // Curved taper from the apex down to the bulb (bulging shoulders).
-        const t = (sy - apexY) / (cyr - apexY); // 0 at apex … 1 at bulb centre
-        const halfW = r * Math.pow(t, 0.62);
-        if (Math.abs(sx - cx) <= halfW) on = true;
-      }
-      if (on) set(c, px, py, true);
+  shape(c, (sx, sy) => {
+    if ((sx - cx) ** 2 + (sy - cyr) ** 2 <= r * r) {
+      return true; // bottom bulb
     }
-  }
+    if (sy >= apexY && sy <= cyr) {
+      // Curved taper from the apex down to the bulb (bulging shoulders).
+      const t = (sy - apexY) / (cyr - apexY); // 0 at apex … 1 at bulb centre
+      return Math.abs(sx - cx) <= r * Math.pow(t, 0.62);
+    }
+    return false;
+  });
   // Inner "shine" cut (like the SVG's curved highlight) — a small hole.
-  for (let py = 0; py < CELL; py++) {
-    for (let px = 0; px < CELL; px++) {
-      const sx = (px + 0.5) / S,
-        sy = (py + 0.5) / S;
-      if ((sx - 10) ** 2 + (sy - 15.5) ** 2 <= 1.3 * 1.3) set(c, px, py, false);
-    }
-  }
+  shape(c, (sx, sy) => (sx - 10) ** 2 + (sy - 15.5) ** 2 <= 1.3 * 1.3, false);
   return c;
 }
 // A storage tank: rounded body with two band separators and a lid nub on top
