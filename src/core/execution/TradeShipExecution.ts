@@ -2,6 +2,7 @@ import { renderNumber } from "../../client/Utils";
 import {
   Execution,
   Game,
+  Gold,
   MessageType,
   Player,
   Unit,
@@ -14,7 +15,7 @@ import {
 } from "../game/TollStationUtils";
 import { WaterPathFinder } from "../pathfinding/PathFinder";
 import { PathStatus } from "../pathfinding/types";
-import { findClosestBy } from "../Util";
+import { findClosestBy, toInt } from "../Util";
 
 export class TradeShipExecution implements Execution {
   private active = true;
@@ -246,12 +247,37 @@ export class TradeShipExecution implements Execution {
     return remaining;
   }
 
+  /**
+   * Take what rail has stacked up at the destination port and put it on this
+   * ship. That freight bonus is the payoff for the whole mine → factory → port
+   * chain: goods delivered by train are worth more once they actually sail.
+   * Nothing is stocked (and nothing is paid) while the resource economy is off.
+   */
+  private loadPortFreight(): Gold {
+    const config = this.mg.config();
+    if (!config.resourceEconomy()) return 0n;
+    const port = this._dstPort;
+    const stock = port.freight();
+    if (stock === null || stock.amount <= 0) return 0n;
+    const taken = port.takeFreight(stock.type, stock.amount);
+    if (taken <= 0) return 0n;
+    return toInt(
+      Math.floor(
+        taken *
+          config.portFreightShipBonusPerUnit() *
+          config.freightShipBonusMultiplier(stock.type),
+      ),
+    );
+  }
+
   private complete() {
     this.active = false;
     this.tradeShip!.delete(false);
-    const gold = this.mg
-      .config()
-      .tradeShipGold(this.tilesTraveled, this.tradeShip!.owner());
+    const gold =
+      this.mg
+        .config()
+        .tradeShipGold(this.tilesTraveled, this.tradeShip!.owner()) +
+      this.loadPortFreight();
 
     if (this.wasCaptured) {
       // A prize crew brings home less than an honest run.

@@ -27,6 +27,11 @@ import {
   OIL_GRADE_PERCENT,
   oilDepositGradeAt,
 } from "../game/OilDeposits";
+import {
+  RESOURCE_GRADE_PERCENT,
+  resourceAt,
+  ResourceType,
+} from "../game/ResourceDeposits";
 import { UserSettings } from "../game/UserSettings";
 import { GameConfig, TeamCountConfig } from "../Schemas";
 import { NukeType } from "../StatsSchemas";
@@ -284,6 +289,9 @@ export class Config {
   }
 
   isUnitDisabled(unitType: UnitType): boolean {
+    // Without the resource economy there is nothing to dig, so the mine drops
+    // out of the build bar entirely rather than sitting there unbuildable.
+    if (unitType === UnitType.Mine && !this.resourceEconomy()) return true;
     return this._gameConfig.disabledUnits?.includes(unitType) ?? false;
   }
 
@@ -646,6 +654,18 @@ export class Config {
             UnitType.EmergencyStation,
           ),
           constructionDuration: this.instantBuild() ? 0 : 3 * 10,
+        };
+        break;
+      case UnitType.Mine:
+        info = {
+          cost: this.costWrapper(
+            (numUnits: number) => Math.min(1_500_000, (numUnits + 1) * 250_000),
+            UnitType.Mine,
+          ),
+          constructionDuration: this.instantBuild() ? 0 : 4 * 10,
+          // Stackable: each level digs faster (and burns through the seam
+          // faster with it).
+          upgradable: true,
         };
         break;
       default:
@@ -1407,6 +1427,163 @@ export class Config {
   // troopIncreaseRate).
   cityOilConsumption(): number {
     return 3;
+  }
+
+  /**
+   * Is the mining economy (coal / ore / diamond, mines, freight-only train
+   * revenue) switched on? The host can turn it off at game creation to play by
+   * the old rules, where trains earned on every run and there was nothing to
+   * dig up. Defaults to ON.
+   */
+  resourceEconomy(): boolean {
+    return this._gameConfig.resourceEconomy ?? true;
+  }
+
+  /**
+   * What can be mined at `tile`, or null. Reads the same terrain byte the
+   * client uploads to the GPU, so the overlay and the simulation cannot drift
+   * apart. Always null while the resource economy is off.
+   */
+  resourceAtTile(
+    mg: Game,
+    tile: TileRef,
+  ): { type: ResourceType; grade: number } | null {
+    if (!this.resourceEconomy()) return null;
+    return resourceAt(mg.terrainByte(tile), mg.x(tile), mg.y(tile), mg.ticks());
+  }
+
+  /**
+   * How much a seam holds in total before it is worked out — the whole point
+   * of the three resources being different.
+   *
+   * Coal is effectively a lifetime supply: a rich seam runs for hours of real
+   * time, which is what "wears out, but very very slowly" means at 10 ticks a
+   * second. Ore and diamond are a rush — worth a lot per unit, gone soon, and
+   * new pockets keep surfacing elsewhere to chase.
+   */
+  resourceTileCapacity(type: ResourceType, grade: number): number {
+    const percent = RESOURCE_GRADE_PERCENT[grade] ?? 0;
+    let base: number;
+    switch (type) {
+      case ResourceType.Coal:
+        base = 600_000;
+        break;
+      case ResourceType.Ore:
+        base = 9_000;
+        break;
+      case ResourceType.Diamond:
+        base = 3_500;
+        break;
+    }
+    return Math.floor((base * percent) / 100);
+  }
+
+  /** Units dug per tick by ONE LEVEL of a mine standing on this seam. */
+  mineProductionPerLevel(type: ResourceType, grade: number): number {
+    const percent = RESOURCE_GRADE_PERCENT[grade] ?? 0;
+    let base: number;
+    switch (type) {
+      case ResourceType.Coal:
+        base = 40;
+        break;
+      case ResourceType.Ore:
+        base = 6;
+        break;
+      case ResourceType.Diamond:
+        base = 3;
+        break;
+    }
+    return Math.max(1, Math.floor((base * percent) / 100));
+  }
+
+  /**
+   * Gold a train stop pays per unit of freight, by resource. Coal is the bulk
+   * good — plentiful and cheap per unit; a diamond car is worth a fortune.
+   */
+  freightGoldPerUnit(type: ResourceType): number {
+    switch (type) {
+      case ResourceType.Coal:
+        return 90;
+      case ResourceType.Ore:
+        return 900;
+      case ResourceType.Diamond:
+        return 4_000;
+    }
+  }
+
+  /** Most freight units a single train can carry out of a factory. */
+  trainFreightCapacity(): number {
+    return 600;
+  }
+
+  /**
+   * What a loaded train is paid at a city or port. Replaces trainGold entirely
+   * while the resource economy is on: the fare is the value of the cargo, still
+   * shaped by who owns the station and how many stops the train has already
+   * milked. An empty train never gets here — the caller pays it nothing.
+   */
+  trainFreightGold(
+    rel: "self" | "team" | "ally" | "other",
+    stopsVisited: number,
+    type: ResourceType,
+    amount: number,
+    player: Player | PlayerView,
+  ): Gold {
+    const value = this.freightGoldPerUnit(type) * amount;
+    // Selling to yourself is worth least; a foreign buyer pays best. Integer
+    // percentages, matching trainGold's old spread.
+    let percent: number;
+    switch (rel) {
+      case "ally":
+        percent = 130;
+        break;
+      case "team":
+      case "other":
+        percent = 100;
+        break;
+      case "self":
+        percent = 45;
+        break;
+    }
+    // Same "first 10 stops are free" grace as trainGold, then each further
+    // stop shaves 8% off, down to a third of the fare.
+    const overGrace = Math.max(0, stopsVisited - 9);
+    percent = Math.max(
+      Math.floor(percent / 3),
+      percent - overGrace * Math.floor(percent / 12),
+    );
+    const gold = Math.floor((value * percent) / 100);
+    return toInt(gold * this.goldMultiplierFor(player));
+  }
+
+  /**
+   * Extra gold a trade ship pays on arrival, per unit of freight the port has
+   * been fed by rail. Freight delivered to a port is not just sold there — it
+   * is loaded onto ships, which is what makes the mine → factory → port chain
+   * worth building.
+   */
+  portFreightShipBonusPerUnit(): number {
+    return 55;
+  }
+
+  /** Cap on the freight bonus a single port can hold waiting for ships. */
+  portFreightStockLimit(): number {
+    return 4_000;
+  }
+
+  /**
+   * How much more a rare cargo is worth once it leaves by sea. Coal is the
+   * baseline the port bonus is priced against; ore and diamond multiply it.
+   */
+  freightShipBonusMultiplier(type: ResourceType): number {
+    switch (type) {
+      case ResourceType.Coal:
+        return 1;
+      case ResourceType.Ore:
+        return 8;
+      case ResourceType.Diamond:
+        return 30;
+    }
   }
 
   // Oil pumps can only sit on an oil deposit. The deposit map is a shared,

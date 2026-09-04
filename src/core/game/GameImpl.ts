@@ -617,6 +617,29 @@ export class GameImpl implements Game {
     return this._ticks;
   }
 
+  /**
+   * How much has been dug out of each tile so far. Sparse on purpose — only
+   * tiles that have actually been mined ever appear here, which is a handful
+   * per player rather than anything map-sized.
+   */
+  private minedResource = new Map<TileRef, number>();
+
+  remainingResourceAt(tile: TileRef): number {
+    const seam = this.config().resourceAtTile(this, tile);
+    if (seam === null) return 0;
+    const capacity = this.config().resourceTileCapacity(seam.type, seam.grade);
+    return Math.max(0, capacity - (this.minedResource.get(tile) ?? 0));
+  }
+
+  extractResourceAt(tile: TileRef, amount: number): number {
+    if (amount <= 0) return 0;
+    const remaining = this.remainingResourceAt(tile);
+    if (remaining <= 0) return 0;
+    const taken = Math.min(remaining, amount);
+    this.minedResource.set(tile, (this.minedResource.get(tile) ?? 0) + taken);
+    return taken;
+  }
+
   // Drought (natural disaster): while active, updateOil produces nothing.
   private _droughtActive = false;
 

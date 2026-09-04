@@ -307,6 +307,9 @@ export class GameServer {
     if (gameConfig.oilDeposits !== undefined) {
       this.gameConfig.oilDeposits = gameConfig.oilDeposits;
     }
+    if (gameConfig.resourceEconomy !== undefined) {
+      this.gameConfig.resourceEconomy = gameConfig.resourceEconomy;
+    }
     if (gameConfig.allianceDuration !== undefined) {
       this.gameConfig.allianceDuration =
         gameConfig.allianceDuration ?? undefined;

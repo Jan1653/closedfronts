@@ -108,6 +108,9 @@ export class HostLobbyModal extends BaseModal {
   @state() private allianceDurationMinutes: number | undefined = 5;
   // How much oil the map holds (scales every deposit field).
   @state() private oilDeposits: OilDepositAmount = "normal";
+  // Mining economy (coal/ore/diamond + freight-only train revenue). On by
+  // default; turning it off plays by the old rules.
+  @state() private resourceEconomy: boolean = true;
   // Late join: on by default for private lobbies — friends turn up late.
   @state() private allowLateJoin = true;
   @state() private doomsdayClock: boolean = false;
@@ -641,6 +644,10 @@ export class HostLobbyModal extends BaseModal {
                     checked: this.compactMap || this.mapForcedCompact,
                   },
                   {
+                    labelKey: "host_modal.resource_economy",
+                    checked: this.resourceEconomy,
+                  },
+                  {
                     labelKey: "host_modal.disable_alliances",
                     checked: this.disableAlliances,
                   },
@@ -1067,6 +1074,10 @@ export class HostLobbyModal extends BaseModal {
         break;
       case "host_modal.compact_map":
         this.handleCompactMapChange(checked);
+        break;
+      case "host_modal.resource_economy":
+        this.resourceEconomy = checked;
+        this.putGameConfig();
         break;
       case "host_modal.disable_alliances":
         this.disableAlliances = checked;
@@ -1566,6 +1577,7 @@ export class HostLobbyModal extends BaseModal {
             // and the server merge would keep a stale value otherwise.
             disabledDisasters: [...this.disabledDisasters],
             oilDeposits: this.oilDeposits,
+            resourceEconomy: this.resourceEconomy,
             allianceDuration: this.allianceDurationMinutes ?? null,
             allowLateJoin: this.allowLateJoin,
             // Send {enabled:false} (not undefined) when off: undefined is dropped

@@ -168,6 +168,9 @@ export class SinglePlayerModal extends BaseModal {
   @state() private allianceDurationMinutes: number | undefined = 5;
   // How much oil the map holds (scales every deposit field).
   @state() private oilDeposits: OilDepositAmount = "normal";
+  // Mining economy (coal/ore/diamond + freight-only train revenue). On by
+  // default; turning it off plays by the old rules.
+  @state() private resourceEconomy: boolean = true;
   @state() private waterNukes: boolean = DEFAULT_OPTIONS.waterNukes;
   @state() private doomsdayClock: boolean = DEFAULT_OPTIONS.doomsdayClock;
   @state() private doomsdayClockSpeed: DoomsdayClockSpeed =
@@ -538,6 +541,10 @@ export class SinglePlayerModal extends BaseModal {
                     checked: this.compactMap || this.mapForcedCompact,
                   },
                   {
+                    labelKey: "single_modal.resource_economy",
+                    checked: this.resourceEconomy,
+                  },
+                  {
                     labelKey: "single_modal.disable_alliances",
                     checked: this.disableAlliances,
                   },
@@ -774,6 +781,9 @@ export class SinglePlayerModal extends BaseModal {
         break;
       case "single_modal.compact_map":
         this.handleCompactMapChange(checked);
+        break;
+      case "single_modal.resource_economy":
+        this.resourceEconomy = checked;
         break;
       case "single_modal.disable_alliances":
         this.disableAlliances = checked;
@@ -1080,6 +1090,7 @@ export class SinglePlayerModal extends BaseModal {
               ...(this.oilDeposits !== "normal"
                 ? { oilDeposits: this.oilDeposits }
                 : {}),
+              ...(this.resourceEconomy ? {} : { resourceEconomy: false }),
               ...(this.allianceDurationMinutes !== undefined &&
               this.allianceDurationMinutes !== 5
                 ? { allianceDuration: this.allianceDurationMinutes }

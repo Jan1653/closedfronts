@@ -12,6 +12,7 @@ import {
 } from "./GameUpdates";
 import { MotionPlanRecord } from "./MotionPlans";
 import { RailNetwork } from "./RailNetwork";
+import { ResourceType } from "./ResourceDeposits";
 import { Stats } from "./Stats";
 import { ReadonlyTileSet } from "./TileSet";
 import { UnitPredicate } from "./UnitGrid";
@@ -256,6 +257,11 @@ export enum UnitType {
   // submarines like a patrol boat and slowly heals own boats in range. Built
   // on water it can be captured by warships like oil pumps / toll stations.
   Lighthouse = "Lighthouse",
+  // Digs whatever the tile under it holds — coal, ore or diamond (see
+  // ResourceDeposits). Acts as a rail station, so a factory linked to it can
+  // load the output onto trains. The seam runs out eventually: coal takes an
+  // age, ore and diamond go quickly.
+  Mine = "Mine",
 }
 
 // Warship hull classes: one UnitType, different size/strength/price. The class
@@ -348,6 +354,7 @@ export const Structures = unitTypeGroup([
   UnitType.OilStorage,
   UnitType.EmergencyStation,
   UnitType.Lighthouse,
+  UnitType.Mine,
 ] as const);
 
 export const BuildMenus = unitTypeGroup([
@@ -451,6 +458,8 @@ export interface UnitParamsMap {
   [UnitType.EmergencyStation]: Record<string, never>;
 
   [UnitType.Lighthouse]: Record<string, never>;
+
+  [UnitType.Mine]: Record<string, never>;
 
   [UnitType.MIRV]: {
     targetTile?: number;
@@ -710,6 +719,21 @@ export interface Unit {
 
   // Upgradable Structures
   level(): number;
+
+  /**
+   * Mined goods piled up on this unit. A mine fills it as it digs; a factory's
+   * departing train empties the mines it is linked to; a port holds what rail
+   * has delivered, which then sweetens arriving trade ships. One resource at a
+   * time per unit — mixing coal into a diamond pile would only lose the
+   * distinction that makes them worth different money.
+   */
+  freight(): { type: ResourceType; amount: number } | null;
+
+  /** Add to the pile. A different resource replaces a pile it outvalues. */
+  addFreight(type: ResourceType, amount: number): void;
+
+  /** Take up to `max` units of `type`; returns how much was actually there. */
+  takeFreight(type: ResourceType, max: number): number;
   increaseLevel(): void;
   decreaseLevel(destroyer?: Player): void;
 }
@@ -974,6 +998,21 @@ export interface Game extends GameMap {
 
   // Game State
   ticks(): Tick;
+
+  /**
+   * Units of coal / ore / diamond still in the ground at `tile` — capacity for
+   * that seam minus everything mined out of it so far. 0 once it is worked out
+   * (and for tiles that never held anything). Persisting this per TILE, not per
+   * mine, is what stops a player from rebuilding on an exhausted seam to reset
+   * it.
+   */
+  remainingResourceAt(tile: TileRef): number;
+
+  /**
+   * Take up to `amount` units out of `tile`, returning how much was actually
+   * there. Extends the tile's mined total, so the seam thins out for good.
+   */
+  extractResourceAt(tile: TileRef, amount: number): number;
   inSpawnPhase(): boolean;
   endSpawnPhase(): void;
   executeNextTick(): GameUpdates;

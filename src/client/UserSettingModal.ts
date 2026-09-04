@@ -411,6 +411,16 @@ export class UserSettingModal extends BaseModal {
       ></setting-keybind>
 
       <setting-keybind
+        action="resourceDepositView"
+        label=${translateText("user_setting.resource_deposit_view")}
+        description=${translateText("user_setting.resource_deposit_view_desc")}
+        defaultKey=${this.defaultKeybinds.resourceDepositView}
+        .value=${this.getKeyValue("resourceDepositView")}
+        .display=${this.getKeyChar("resourceDepositView")}
+        @change=${this.handleKeybindChange}
+      ></setting-keybind>
+
+      <setting-keybind
         action="altKey"
         label=${translateText("user_setting.graphics_refresh_modifier")}
         description=${translateText(
@@ -609,6 +619,16 @@ export class UserSettingModal extends BaseModal {
         defaultKey=${this.defaultKeybinds.buildLighthouse}
         .value=${this.getKeyValue("buildLighthouse")}
         .display=${this.getKeyChar("buildLighthouse")}
+        @change=${this.handleKeybindChange}
+      ></setting-keybind>
+
+      <setting-keybind
+        action="buildMine"
+        label=${translateText("user_setting.build_mine")}
+        description=${translateText("user_setting.build_mine_desc")}
+        defaultKey=${this.defaultKeybinds.buildMine}
+        .value=${this.getKeyValue("buildMine")}
+        .display=${this.getKeyChar("buildMine")}
         @change=${this.handleKeybindChange}
       ></setting-keybind>
 

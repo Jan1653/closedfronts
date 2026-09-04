@@ -46,6 +46,7 @@ import { OilDepositPass } from "./passes/OilDepositPass";
 import { PointLightPass } from "./passes/PointLightPass";
 import { RailroadPass } from "./passes/RailroadPass";
 import { RangeCirclePass } from "./passes/RangeCirclePass";
+import { ResourceDepositPass } from "./passes/ResourceDepositPass";
 import { SAMRadiusPass } from "./passes/SamRadiusPass";
 import { SelectionBoxPass } from "./passes/SelectionBoxPass";
 import { SkinAtlasArray } from "./passes/SkinAtlasArray";
@@ -145,6 +146,9 @@ export class GPURenderer {
   private affiliationPalette: AffiliationPalette;
   private coordinateGridPass: CoordinateGridPass;
   private oilDepositPass: OilDepositPass;
+  private resourceDepositPass: ResourceDepositPass;
+  private resourceDepositView = false;
+  private lastGameTick = 0;
   private oilDepositView = false;
   private spawnOverlayPass: SpawnOverlayPass;
   private inSpawnPhase = false;
@@ -606,6 +610,13 @@ export class GPURenderer {
       mapH,
       config.oilDepositScale(),
     );
+    this.resourceDepositPass = new ResourceDepositPass(
+      gl,
+      mapW,
+      mapH,
+      terrainSource,
+      config.resourceEconomy(),
+    );
     this.coordinateGridPass = new CoordinateGridPass(
       gl,
       mapW,
@@ -849,6 +860,9 @@ export class GPURenderer {
 
   updateUnits(units: Map<number, UnitState>, gameTick: number): void {
     this.lastUnits = units;
+    // The resource overlay's ore/diamond fields surface over time, so the pass
+    // needs to know what tick the simulation is on.
+    this.lastGameTick = gameTick;
     this.frameTick++;
     this.unitPass.updateUnits(units, this.frameTick);
     this.barPass.updateBars(units, this.lastStructures, gameTick);
@@ -1087,6 +1101,11 @@ export class GPURenderer {
     this.oilDepositPass.setEnabled(active);
   }
 
+  setResourceDepositView(active: boolean): void {
+    this.resourceDepositView = active;
+    this.resourceDepositPass.setEnabled(active);
+  }
+
   setGridView(active: boolean): void {
     this.gridView = active;
     try {
@@ -1309,6 +1328,9 @@ export class GPURenderer {
     // Grid shows on either trigger; names hide only under alt-view (space
     // hold), not under the persistent M-key gridView toggle.
     if (this.oilDepositView) this.oilDepositPass.draw(cam);
+    if (this.resourceDepositView) {
+      this.resourceDepositPass.draw(cam, this.lastGameTick);
+    }
     if (this.gridView || this.altView) this.coordinateGridPass.draw(cam, zoom);
     if (pe.name && !this.altView)
       this.namePass.draw(cam, this.nightCompositePass.getAmbient());
@@ -1342,6 +1364,7 @@ export class GPURenderer {
     this.affiliationPalette.dispose();
     this.coordinateGridPass.dispose();
     this.oilDepositPass.dispose();
+    this.resourceDepositPass.dispose();
     this.spawnOverlayPass.dispose();
     this.railroadPass.dispose();
     this.rangeCirclePass.dispose();

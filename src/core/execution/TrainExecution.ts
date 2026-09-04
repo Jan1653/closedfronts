@@ -10,7 +10,9 @@ import { TileRef } from "../game/GameMap";
 import { MotionPlanRecord } from "../game/MotionPlans";
 import { RailNetwork } from "../game/RailNetwork";
 import { getOrientedRailroad, OrientedRailroad } from "../game/Railroad";
+import { ResourceType } from "../game/ResourceDeposits";
 import { TrainStation } from "../game/TrainStation";
+import { loadFreightFromCluster } from "./MineExecution";
 
 export class TrainExecution implements Execution {
   private active = true;
@@ -25,6 +27,10 @@ export class TrainExecution implements Execution {
   private currentRailroad: OrientedRailroad | null = null;
   private speed: number = 2;
   private _tradeStopsVisited: number = 0;
+  // What this train is hauling, loaded once from the mines linked to the
+  // departure factory. Null means an empty run — which, with the resource
+  // economy on, earns nothing at all.
+  private _freight: { type: ResourceType; amount: number } | null = null;
 
   constructor(
     private railNetwork: RailNetwork,
@@ -40,6 +46,17 @@ export class TrainExecution implements Execution {
 
   public tradeStopsVisited(): number {
     return this._tradeStopsVisited;
+  }
+
+  public freight(): { type: ResourceType; amount: number } | null {
+    return this._freight;
+  }
+
+  /** Hand the whole load over (a port takes it for its trade ships). */
+  public unloadFreight(): { type: ResourceType; amount: number } | null {
+    const freight = this._freight;
+    this._freight = null;
+    return freight;
   }
 
   init(mg: Game, ticks: number): void {
@@ -70,6 +87,15 @@ export class TrainExecution implements Execution {
       this.active = false;
       return;
     }
+    // Pick up whatever the mines wired into this factory have dug. Done before
+    // the units exist so the carriages can show themselves as loaded.
+    if (mg.config().resourceEconomy()) {
+      this._freight = loadFreightFromCluster(mg, this.source.unit);
+      if (this._freight !== null) {
+        this.hasCargo = true;
+      }
+    }
+
     this.train = this.createTrainUnits(spawn);
 
     const carUnitIds = this.cars.map((c) => c.id());

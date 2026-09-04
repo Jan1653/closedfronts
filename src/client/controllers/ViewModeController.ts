@@ -13,6 +13,7 @@ import {
   AlternateViewEvent,
   ToggleCoordinateGridEvent,
   ToggleOilDepositViewEvent,
+  ToggleResourceDepositViewEvent,
 } from "../InputHandler";
 import { MapRenderer } from "../render/gl";
 
@@ -20,6 +21,8 @@ export class ViewModeController implements Controller {
   // Oil-deposit overlay is a pure toggle: this controller owns the on/off state
   // so any emitter (keybind or HUD oil readout) just flips it.
   private oilDepositView = false;
+  // Same deal for the mining overlay (coal / ore / diamond).
+  private resourceDepositView = false;
 
   constructor(
     private eventBus: EventBus,
@@ -36,6 +39,10 @@ export class ViewModeController implements Controller {
     this.eventBus.on(ToggleOilDepositViewEvent, () => {
       this.oilDepositView = !this.oilDepositView;
       this.view.setOilDepositView(this.oilDepositView);
+    });
+    this.eventBus.on(ToggleResourceDepositViewEvent, () => {
+      this.resourceDepositView = !this.resourceDepositView;
+      this.view.setResourceDepositView(this.resourceDepositView);
     });
   }
 }

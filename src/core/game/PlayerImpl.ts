@@ -1674,6 +1674,8 @@ export class PlayerImpl implements Player {
         return this.landBasedStructureSpawn(targetTile, validTiles);
       case UnitType.Lighthouse:
         return this.lighthouseSpawn(targetTile, validTiles);
+      case UnitType.Mine:
+        return this.mineSpawn(targetTile);
       default:
         assertNever(unitType);
     }
@@ -1818,6 +1820,24 @@ export class PlayerImpl implements Player {
   // deposit is built out at sea (via a transport ship, like the toll station)
   // so it needs no land ownership. Multiple may share a spot, so there is no
   // spacing or dedupe requirement.
+  /**
+   * A mine sits on own land that actually holds something (coal, ore or
+   * diamond — see ResourceDeposits) and whose seam is not already worked out.
+   * Unlike an oil pump there is no sea variant: everything mineable is inland.
+   */
+  mineSpawn(tile: TileRef): TileRef | false {
+    const mg = this.mg;
+    if (!mg.isValidRef(tile)) return false;
+    if (!mg.config().resourceEconomy()) return false;
+    if (!mg.isLand(tile) || mg.isImpassable(tile)) return false;
+    if (mg.owner(tile) !== this) return false;
+    if (mg.config().resourceAtTile(mg, tile) === null) return false;
+    if (mg.remainingResourceAt(tile) <= 0) return false;
+    // One mine per seam: no stacking them on top of each other.
+    if (mg.nearbyUnits(tile, 3, [UnitType.Mine]).length > 0) return false;
+    return tile;
+  }
+
   oilPumpSpawn(tile: TileRef): TileRef | false {
     const mg = this.mg;
     if (!mg.isValidRef(tile)) return false;

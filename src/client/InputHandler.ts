@@ -203,6 +203,9 @@ export class ToggleCoordinateGridEvent implements GameEvent {
 /** Toggle the oil-deposit overlay (keybind or the HUD oil readout). */
 export class ToggleOilDepositViewEvent implements GameEvent {}
 
+/** Coal / ore / diamond overlay (the mining map). */
+export class ToggleResourceDepositViewEvent implements GameEvent {}
+
 export class TickMetricsEvent implements GameEvent {
   constructor(
     public readonly tickExecutionDuration?: number,
@@ -595,6 +598,14 @@ export class InputHandler {
       ) {
         e.preventDefault();
         this.eventBus.emit(new ToggleOilDepositViewEvent());
+      }
+
+      if (
+        this.keybindMatchesEvent(e, this.keybinds.resourceDepositView) &&
+        !e.repeat
+      ) {
+        e.preventDefault();
+        this.eventBus.emit(new ToggleResourceDepositViewEvent());
       }
 
       if (e.code === "Escape") {
@@ -1143,6 +1154,7 @@ export class InputHandler {
       { key: "buildWaterTollStation", type: UnitType.WaterTollStation },
       { key: "buildEmergencyStation", type: UnitType.EmergencyStation },
       { key: "buildLighthouse", type: UnitType.Lighthouse },
+      { key: "buildMine", type: UnitType.Mine },
     ];
     for (const { key, type } of buildKeybinds) {
       if (this.keybindMatchesEvent({ code, shiftKey }, this.keybinds[key]))

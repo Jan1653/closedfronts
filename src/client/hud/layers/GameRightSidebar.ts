@@ -9,6 +9,7 @@ import { crazyGamesSDK } from "../../CrazyGamesSDK";
 import {
   ToggleOilDepositViewEvent,
   TogglePauseIntentEvent,
+  ToggleResourceDepositViewEvent,
 } from "../../InputHandler";
 import { PauseGameIntentEvent, SendWinnerEvent } from "../../Transport";
 import { translateText } from "../../Utils";
@@ -23,6 +24,7 @@ const pauseIcon = assetUrl("images/PauseIconWhite.svg");
 const playIcon = assetUrl("images/PlayIconWhite.svg");
 const settingsIcon = assetUrl("images/SettingIconWhite.svg");
 const oilIcon = assetUrl("images/OilPumpIconWhite.svg");
+const mineIcon = assetUrl("images/MineIconWhite.svg");
 const fullscreenIcon = assetUrl("images/FullscreenIconWhite.svg");
 const exitFullscreenIcon = assetUrl("images/ExitFullscreenIconWhite.svg");
 
@@ -49,6 +51,7 @@ export class GameRightSidebar extends LitElement implements Controller {
   // while picking a start position.
   @state()
   private _oilMapOn: boolean = false;
+  private _resourceMapOn: boolean = false;
 
   @state()
   private isFullscreen: boolean = false;
@@ -93,6 +96,11 @@ export class GameRightSidebar extends LitElement implements Controller {
 
     this.eventBus.on(ToggleOilDepositViewEvent, () => {
       this._oilMapOn = !this._oilMapOn;
+      this.requestUpdate();
+    });
+
+    this.eventBus.on(ToggleResourceDepositViewEvent, () => {
+      this._resourceMapOn = !this._resourceMapOn;
       this.requestUpdate();
     });
 
@@ -221,6 +229,10 @@ export class GameRightSidebar extends LitElement implements Controller {
     window.location.href = "/";
   }
 
+  private onResourceMapButtonClick() {
+    this.eventBus.emit(new ToggleResourceDepositViewEvent());
+  }
+
   private onOilMapButtonClick() {
     this.eventBus.emit(new ToggleOilDepositViewEvent());
   }
@@ -276,6 +288,20 @@ export class GameRightSidebar extends LitElement implements Controller {
         >
           <img src=${oilIcon} alt="oil map" width="20" height="20" />
         </div>
+
+        <!-- Mining map: coal / ore / diamond. Hidden when the host turned the
+             resource economy off, since there would be nothing to show. -->
+        ${this.game?.config().resourceEconomy()
+          ? html`<div
+              class="cursor-pointer rounded p-0.5 ${this._resourceMapOn
+                ? "bg-sky-400/30 ring-1 ring-sky-300"
+                : ""}"
+              @click=${this.onResourceMapButtonClick}
+              title=${translateText("control_panel.resource_map")}
+            >
+              <img src=${mineIcon} alt="resource map" width="20" height="20" />
+            </div>`
+          : null}
 
         <div class="cursor-pointer" @click=${this.onSettingsButtonClick}>
           <img src=${settingsIcon} alt="settings" width="20" height="20" />

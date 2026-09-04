@@ -14,6 +14,7 @@ import { EmergencyStationExecution } from "./EmergencyStationExecution";
 import { FactoryExecution } from "./FactoryExecution";
 import { FishingBoatExecution } from "./FishingBoatExecution";
 import { LighthouseExecution } from "./LighthouseExecution";
+import { MineExecution } from "./MineExecution";
 import { MirvExecution } from "./MIRVExecution";
 import { MissileSiloExecution } from "./MissileSiloExecution";
 import { NukeExecution } from "./NukeExecution";
@@ -226,6 +227,9 @@ export class ConstructionExecution implements Execution {
         break;
       case UnitType.Lighthouse:
         this.mg.addExecution(new LighthouseExecution(this.structure!));
+        break;
+      case UnitType.Mine:
+        this.mg.addExecution(new MineExecution(this.structure!));
         break;
       default:
         console.warn(

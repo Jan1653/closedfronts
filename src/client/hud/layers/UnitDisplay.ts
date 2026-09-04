@@ -38,6 +38,7 @@ const oilPumpIcon = assetUrl("images/OilPumpIconWhite.svg");
 const tollStationIcon = assetUrl("images/TollStationIconWhite.svg");
 const emergencyStationIcon = assetUrl("images/EmergencyStationIconWhite.svg");
 const lighthouseIcon = assetUrl("images/LighthouseIconWhite.svg");
+const mineIcon = assetUrl("images/MineIconWhite.svg");
 
 @customElement("unit-display")
 export class UnitDisplay extends LitElement implements Controller {
@@ -59,6 +60,7 @@ export class UnitDisplay extends LitElement implements Controller {
   private _waterTollStation = 0;
   private _emergencyStation = 0;
   private _lighthouse = 0;
+  private _mine = 0;
   private allDisabled = false;
   private _hoveredUnit: PlayerBuildableUnitType | null = null;
   private _hoveredBomb: PlayerBuildableUnitType | null = null;
@@ -150,6 +152,18 @@ export class UnitDisplay extends LitElement implements Controller {
     return this.buildBlockReason(item, knownCost) === null;
   }
 
+  /**
+   * A placement rule worth stating even when the item is buildable — the mine
+   * only goes on a seam, and a click anywhere else quietly does nothing. Kept
+   * apart from buildBlockReason so it never greys the button out.
+   */
+  private buildPlacementHint(item: UnitType): string | null {
+    if (item === UnitType.Mine) {
+      return translateText("build_menu.blocked.no_resource");
+    }
+    return null;
+  }
+
   /** Red footer line in a tooltip naming why the item can't be built. */
   private renderBlockReason(reason: string | null) {
     if (reason === null) return null;
@@ -157,6 +171,16 @@ export class UnitDisplay extends LitElement implements Controller {
       class="mt-1 px-2 py-1 text-[10px] text-red-300 border-t border-white/10"
     >
       ${reason}
+    </div>`;
+  }
+
+  /** Same footer, in a neutral colour — a rule, not a refusal. */
+  private renderPlacementHint(hint: string | null) {
+    if (hint === null) return null;
+    return html`<div
+      class="mt-1 px-2 py-1 text-[10px] text-cyan-300 border-t border-white/10"
+    >
+      ${hint}
     </div>`;
   }
 
@@ -195,6 +219,7 @@ export class UnitDisplay extends LitElement implements Controller {
     this._waterTollStation = player.totalUnitLevels(UnitType.WaterTollStation);
     this._emergencyStation = player.totalUnitLevels(UnitType.EmergencyStation);
     this._lighthouse = player.totalUnitLevels(UnitType.Lighthouse);
+    this._mine = player.totalUnitLevels(UnitType.Mine);
     // Close a fly-out once something outside it gets armed elsewhere (bar
     // click, hotkey, build menu). Only a CHANGE counts: testing the ghost as it
     // stands ran every tick, so opening the ships or bombs fly-out while some
@@ -315,6 +340,13 @@ export class UnitDisplay extends LitElement implements Controller {
             "lighthouse",
             this.hotkeyLabel("buildLighthouse", "Shift+L"),
           )}
+          ${this.renderUnitItem(
+            mineIcon,
+            this._mine,
+            UnitType.Mine,
+            "mine",
+            this.hotkeyLabel("buildMine", "Shift+M"),
+          )}
         </div>
       </div>
     `;
@@ -376,6 +408,7 @@ export class UnitDisplay extends LitElement implements Controller {
                   >
                 </div>
                 ${this.renderBlockReason(this.buildBlockReason(unitType))}
+                ${this.renderPlacementHint(this.buildPlacementHint(unitType))}
               </div>
             `
           : null}

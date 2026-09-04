@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white">
+  <!-- Crossed pick and hammer over a spoil heap: the universal mine glyph. -->
+  <path d="M4.6 3.2l16.2 16.2-2.1 2.1L2.5 5.3z" />
+  <path d="M19.4 3.2L3.2 19.4l2.1 2.1L21.5 5.3z" />
+  <path
+    d="M12 11.2a2.1 2.1 0 0 1 0 4.2 2.1 2.1 0 0 1 0-4.2z"
+    fill="#0a1628"
+  />
+</svg>

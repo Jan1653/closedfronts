@@ -39,6 +39,9 @@ describe("TrainStation", () => {
     game = {
       ticks: vi.fn().mockReturnValue(123),
       config: vi.fn().mockReturnValue({
+        // These cases cover the classic (pre-mining) train economy, so the
+        // resource economy is off and trainGold still decides the fare.
+        resourceEconomy: () => false,
         trainGold: (rel: string, _tradeStopsVisited: number) =>
           rel !== "other" ? BigInt(1000) : BigInt(500),
       }),
@@ -131,6 +134,7 @@ describe("TrainStation", () => {
     unit.type.mockReturnValue(UnitType.City);
     const trainGoldSpy = vi.fn().mockReturnValue(500n);
     (game.config as any).mockReturnValue({
+      resourceEconomy: () => false,
       trainGold: trainGoldSpy,
     });
     (trainExecution as any).tradeStopsVisited = vi.fn().mockReturnValue(3);

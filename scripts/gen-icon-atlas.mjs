@@ -282,6 +282,33 @@ function drawLighthouse() {
   return c;
 }
 
+// A mine: two crossed tool shafts (pick and hammer) with a dark hub punched
+// where they meet, mirroring resources/images/MineIconWhite.svg. Anti-aliased
+// like the oil drop — diagonals are exactly where a binary raster shows its
+// stair steps worst.
+function drawMine() {
+  const c = cell();
+  const bar = (x0, y0, x1, y1, halfW) => {
+    const dx = x1 - x0,
+      dy = y1 - y0;
+    const len2 = dx * dx + dy * dy;
+    return (sx, sy) => {
+      // Distance from the point to the segment, in SVG units.
+      let t = ((sx - x0) * dx + (sy - y0) * dy) / len2;
+      t = Math.max(0, Math.min(1, t));
+      const px = x0 + t * dx,
+        py = y0 + t * dy;
+      return (sx - px) ** 2 + (sy - py) ** 2 <= halfW * halfW;
+    };
+  };
+  const a = bar(4.2, 4.2, 19.8, 19.8, 1.5);
+  const b = bar(19.8, 4.2, 4.2, 19.8, 1.5);
+  shape(c, (sx, sy) => a(sx, sy) || b(sx, sy));
+  // Dark hub where the two shafts cross, so they read as two tools not an X.
+  shape(c, (sx, sy) => (sx - 12) ** 2 + (sy - 12) ** 2 <= 2.1 * 2.1, false);
+  return c;
+}
+
 function asciiPreview(img, cols) {
   const step = 4; // downsample 64 -> 16
   for (let col = 0; col < cols; col++) {
@@ -313,6 +340,7 @@ const glyphs = [
   drawOilStorage(),
   drawEmergencyStation(),
   drawLighthouse(),
+  drawMine(),
 ];
 const newCols = BASE_COLS + glyphs.length;
 const W = newCols * CELL,

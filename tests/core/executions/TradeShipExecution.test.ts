@@ -85,6 +85,10 @@ describe("TradeShipExecution", () => {
 
     dstPort = {
       id: vi.fn(() => 102),
+      // Ports hold rail-delivered freight for arriving trade ships
+      // (the mining economy); this one never receives any.
+      freight: vi.fn(() => null),
+      takeFreight: vi.fn(() => 0),
       tile: vi.fn(() => 100),
       owner: vi.fn(() => dstOwner),
       isActive: vi.fn(() => true),

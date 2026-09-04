@@ -44,6 +44,7 @@ const oilPumpIcon = assetUrl("images/OilPumpIconWhite.svg");
 const oilStorageIcon = assetUrl("images/OilStorageIconWhite.svg");
 const emergencyStationIcon = assetUrl("images/EmergencyStationIconWhite.svg");
 const lighthouseIcon = assetUrl("images/LighthouseIconWhite.svg");
+const mineIcon = assetUrl("images/MineIconWhite.svg");
 
 export interface BuildItemDisplay {
   unitType: PlayerBuildableUnitType;
@@ -174,6 +175,13 @@ export const buildTable: BuildItemDisplay[][] = [
       icon: lighthouseIcon,
       description: "build_menu.desc.lighthouse",
       key: "unit_type.lighthouse",
+      countable: true,
+    },
+    {
+      unitType: UnitType.Mine,
+      icon: mineIcon,
+      description: "build_menu.desc.mine",
+      key: "unit_type.mine",
       countable: true,
     },
   ],

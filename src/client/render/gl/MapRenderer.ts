@@ -288,6 +288,9 @@ export class MapRenderer {
   setOilDepositView(active: boolean): void {
     this.renderer?.setOilDepositView(active);
   }
+  setResourceDepositView(active: boolean): void {
+    this.renderer?.setResourceDepositView(active);
+  }
   setShowPatterns(active: boolean): void {
     this.renderer?.setShowPatterns(active);
   }

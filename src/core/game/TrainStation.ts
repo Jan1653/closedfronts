@@ -1,6 +1,6 @@
 import { TrainExecution } from "../execution/TrainExecution";
 import { PseudoRandom } from "../PseudoRandom";
-import { Game, Player, Unit, UnitType } from "./Game";
+import { Game, Gold, Player, Unit, UnitType } from "./Game";
 import { TileRef } from "./GameMap";
 import { GameUpdateType } from "./GameUpdates";
 import { Railroad } from "./Railroad";
@@ -20,13 +20,43 @@ class TradeStationStopHandler implements TrainStopHandler {
   ): void {
     const stationOwner = station.unit.owner();
     const trainOwner = trainExecution.owner();
-    const gold = mg
-      .config()
-      .trainGold(
-        rel(trainOwner, stationOwner),
-        trainExecution.tradeStopsVisited(),
+    const config = mg.config();
+    const stopsVisited = trainExecution.tradeStopsVisited();
+    const relation = rel(trainOwner, stationOwner);
+
+    let gold: Gold;
+    if (config.resourceEconomy()) {
+      // Freight is the whole business now: an empty train is a train running
+      // for nothing. What it is hauling — and how much of it — sets the fare.
+      const freight = trainExecution.freight();
+      if (freight === null || freight.amount <= 0) return;
+      gold = config.trainFreightGold(
+        relation,
+        stopsVisited,
+        freight.type,
+        freight.amount,
         trainOwner,
       );
+      // A port doesn't just buy the load, it ships it: the goods pile up there
+      // and every trade ship that arrives afterwards is worth more.
+      if (station.unit.type() === UnitType.Port) {
+        const unloaded = trainExecution.unloadFreight();
+        if (unloaded !== null) {
+          const room =
+            config.portFreightStockLimit() -
+            (station.unit.freight()?.amount ?? 0);
+          if (room > 0) {
+            station.unit.addFreight(
+              unloaded.type,
+              Math.min(room, unloaded.amount),
+            );
+          }
+        }
+      }
+    } else {
+      gold = config.trainGold(relation, stopsVisited, trainOwner);
+    }
+
     // Share revenue with the station owner if it's not the current player
     if (trainOwner !== stationOwner) {
       stationOwner.addGold(gold, station.tile());

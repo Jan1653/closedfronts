@@ -17,6 +17,7 @@ import { GameImpl } from "./GameImpl";
 import { TileRef } from "./GameMap";
 import { GameUpdateType, UnitUpdate } from "./GameUpdates";
 import { PlayerImpl } from "./PlayerImpl";
+import { ResourceType } from "./ResourceDeposits";
 import { maxHealthWithVeterancy } from "./Veterancy";
 
 export class UnitImpl implements Unit {
@@ -52,6 +53,10 @@ export class UnitImpl implements Unit {
   private _captureProgress: number = 0;
   // Submarine spotting: targetable until this tick after a patrol ping.
   private _spottedUntilTick: number = 0;
+  // Mined goods sitting on this unit (mine output, port stock). One resource
+  // at a time — see addFreight.
+  private _freightType: ResourceType | undefined;
+  private _freightAmount: number = 0;
 
   constructor(
     private _type: UnitType,
@@ -614,6 +619,48 @@ export class UnitImpl implements Unit {
 
   level(): number {
     return this._level;
+  }
+
+  freight(): { type: ResourceType; amount: number } | null {
+    if (this._freightType === undefined || this._freightAmount <= 0) {
+      return null;
+    }
+    return { type: this._freightType, amount: this._freightAmount };
+  }
+
+  addFreight(type: ResourceType, amount: number): void {
+    if (amount <= 0) return;
+    if (this._freightType === type) {
+      this._freightAmount += amount;
+      this.mg.addUpdate(this.toUpdate());
+      return;
+    }
+    // A unit holds one kind at a time. A more valuable delivery takes the
+    // pile over; a cheaper one is turned away rather than diluting it.
+    if (
+      this._freightType === undefined ||
+      this._freightAmount <= 0 ||
+      this.mg.config().freightGoldPerUnit(type) >
+        this.mg.config().freightGoldPerUnit(this._freightType)
+    ) {
+      this._freightType = type;
+      this._freightAmount = amount;
+      this.mg.addUpdate(this.toUpdate());
+    }
+  }
+
+  takeFreight(type: ResourceType, max: number): number {
+    if (max <= 0 || this._freightType !== type || this._freightAmount <= 0) {
+      return 0;
+    }
+    const taken = Math.min(this._freightAmount, max);
+    this._freightAmount -= taken;
+    if (this._freightAmount <= 0) {
+      this._freightAmount = 0;
+      this._freightType = undefined;
+    }
+    this.mg.addUpdate(this.toUpdate());
+    return taken;
   }
 
   veterancy(): number {
