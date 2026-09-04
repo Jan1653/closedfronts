@@ -493,6 +493,7 @@
     "tsunami": "Tsunami"
   },
   "single_modal": {
+    "oil_deposits": "Ölvorkommen",
     "title": "Einzelspieler",
     "custom_map_active": "Eigene Karte „{name}“ gewählt — die offizielle Karte unten wird ignoriert.",
     "alliance_duration": "Allianzdauer (Minuten)",
@@ -795,6 +796,12 @@
     "starting_gold": "Startgold",
     "you_are_host": "Der Host hat die Lobby verlassen — sie gehört jetzt dir. Du kannst starten und die Spieler verwalten."
   },
+  "oil_deposits": {
+    "abundant": "Sehr viel",
+    "normal": "Normal",
+    "rich": "Viel",
+    "scarce": "Wenig"
+  },
   "public_lobby": {
     "join": "Nächstem Spiel beitreten",
     "waiting": "wartende Spieler",
@@ -841,6 +848,7 @@
     "name_taken": "Ein anderer Spieler hat diesen Namen bereits."
   },
   "host_modal": {
+    "oil_deposits": "Ölvorkommen",
     "title": "Private Lobby",
     "create_failed": "Lobby konnte nicht erstellt werden. Bitte versuche es erneut.",
     "alliance_duration": "Allianzdauer (Minuten)",

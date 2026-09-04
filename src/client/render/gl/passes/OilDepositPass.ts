@@ -37,7 +37,12 @@ export class OilDepositPass {
   private mapH: number;
   private enabled = false;
 
-  constructor(gl: WebGL2RenderingContext, mapW: number, mapH: number) {
+  constructor(
+    gl: WebGL2RenderingContext,
+    mapW: number,
+    mapH: number,
+    oilScale: number,
+  ) {
     this.gl = gl;
     this.mapW = mapW;
     this.mapH = mapH;
@@ -49,7 +54,7 @@ export class OilDepositPass {
     for (let y = 0; y < mapH; y++) {
       const row = y * mapW;
       for (let x = 0; x < mapW; x++) {
-        mask[row + x] = oilDepositGradeAt(x, y);
+        mask[row + x] = oilDepositGradeAt(x, y, oilScale);
       }
     }
     // 1 byte per texel (R8UI): rows aren't 4-byte aligned when mapW isn't a

@@ -57,10 +57,37 @@ export const OIL_GRADE_PERCENT: readonly number[] = [
 const CELL = 160;
 
 /**
+ * How much oil a game holds, as SIXTEENTHS of the normal field radius. The host
+ * picks one of these when creating the game (GameConfig.oilDeposits); the size
+ * of the fields is what moves, so the five grade rings inside each field stay
+ * exactly as they are — a scarce map has the same rich cores, just less of
+ * everything around them. Area goes with the square of these, so `abundant`
+ * holds roughly two and a half times the oil of `normal`.
+ */
+export const OIL_DEPOSIT_SCALES = {
+  scarce: 11,
+  normal: 16,
+  rich: 21,
+  abundant: 26,
+} as const;
+
+export type OilDepositAmount = keyof typeof OIL_DEPOSIT_SCALES;
+
+export const DEFAULT_OIL_DEPOSIT_SCALE = OIL_DEPOSIT_SCALES.normal;
+
+/**
  * Strength of the oil deposit at (x, y): 0 when there is none, otherwise 1..5
  * with 5 at the heart of a field. Overlapping fields/lobes keep the best grade.
+ *
+ * `scale` is the per-game field size in sixteenths (see OIL_DEPOSIT_SCALES).
+ * Every caller — simulation and the client's overlay alike — has to pass the
+ * same one, or they disagree about where the oil is.
  */
-export function oilDepositGradeAt(x: number, y: number): number {
+export function oilDepositGradeAt(
+  x: number,
+  y: number,
+  scale: number = DEFAULT_OIL_DEPOSIT_SCALE,
+): number {
   const cx0 = Math.floor(x / CELL);
   const cy0 = Math.floor(y / CELL);
 
@@ -92,7 +119,7 @@ export function oilDepositGradeAt(x: number, y: number): number {
       // range is ~1.26x what a round field used the squash below costs an
       // ellipse roughly a third of a disc's area, and the map should hold as
       // much oil as it did when fields were circles.
-      const baseR = 69 + ((h >>> 16) % 57);
+      const baseR = Math.floor(((69 + ((h >>> 16) % 57)) * scale) / 16);
 
       // Squash the lobe along one axis (sixteenths) so the field is an
       // elongated basin rather than a disc. Which axis, and how much, is fixed
@@ -199,6 +226,10 @@ function gradeInLobe(
   return 1;
 }
 
-export function isOilDepositAt(x: number, y: number): boolean {
-  return oilDepositGradeAt(x, y) > 0;
+export function isOilDepositAt(
+  x: number,
+  y: number,
+  scale: number = DEFAULT_OIL_DEPOSIT_SCALE,
+): boolean {
+  return oilDepositGradeAt(x, y, scale) > 0;
 }

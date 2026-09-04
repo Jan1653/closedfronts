@@ -304,6 +304,9 @@ export class GameServer {
     if (gameConfig.disabledDisasters !== undefined) {
       this.gameConfig.disabledDisasters = gameConfig.disabledDisasters;
     }
+    if (gameConfig.oilDeposits !== undefined) {
+      this.gameConfig.oilDeposits = gameConfig.oilDeposits;
+    }
     if (gameConfig.allianceDuration !== undefined) {
       this.gameConfig.allianceDuration =
         gameConfig.allianceDuration ?? undefined;

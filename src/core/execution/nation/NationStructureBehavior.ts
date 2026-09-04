@@ -423,8 +423,9 @@ export class NationStructureBehavior {
     );
     let bestTile: TileRef | null = null;
     let bestGrade = 0;
+    const oilScale = this.game.config().oilDepositScale();
     for (const t of tiles) {
-      const grade = oilDepositGradeAt(this.game.x(t), this.game.y(t));
+      const grade = oilDepositGradeAt(this.game.x(t), this.game.y(t), oilScale);
       if (grade <= bestGrade) continue;
       if (!this.player.canBuild(UnitType.OilPump, t)) continue;
       bestTile = t;

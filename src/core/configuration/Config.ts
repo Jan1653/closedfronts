@@ -21,7 +21,9 @@ import {
 } from "../game/Game";
 import { TileRef } from "../game/GameMap";
 import {
+  DEFAULT_OIL_DEPOSIT_SCALE,
   isOilDepositAt,
+  OIL_DEPOSIT_SCALES,
   OIL_GRADE_PERCENT,
   oilDepositGradeAt,
 } from "../game/OilDeposits";
@@ -1304,12 +1306,23 @@ export class Config {
    * baseline, grade 5 pumps twice as much, grade 1 only half. Integer percent
    * math keeps this deterministic.
    */
+  /**
+   * Field size for this game's oil deposits, in sixteenths — the host's
+   * "oil deposits" rule. Everything that asks where the oil is has to go
+   * through here, client overlay included, or the two disagree.
+   */
+  oilDepositScale(): number {
+    const amount = this._gameConfig.oilDeposits;
+    if (amount === undefined) return DEFAULT_OIL_DEPOSIT_SCALE;
+    return OIL_DEPOSIT_SCALES[amount] ?? DEFAULT_OIL_DEPOSIT_SCALE;
+  }
+
   oilProductionForPumpAt(
     player: Player | PlayerView,
     x: number,
     y: number,
   ): number {
-    const grade = oilDepositGradeAt(x, y);
+    const grade = oilDepositGradeAt(x, y, this.oilDepositScale());
     const percent = OIL_GRADE_PERCENT[grade] ?? 0;
     return Math.floor((this.oilProductionPerPump(player) * percent) / 100);
   }
@@ -1400,7 +1413,7 @@ export class Config {
   // deterministic function of coordinates (see OilDeposits.isOilDepositAt) so
   // the client's overlay and the simulation always agree.
   isOilDeposit(mg: Game, tile: TileRef): boolean {
-    return isOilDepositAt(mg.x(tile), mg.y(tile));
+    return isOilDepositAt(mg.x(tile), mg.y(tile), this.oilDepositScale());
   }
 
   // Base tank size with no oil storage built. Deliberately small so a pump

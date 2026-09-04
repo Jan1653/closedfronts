@@ -598,7 +598,14 @@ export class GPURenderer {
     this.unitPass.setAffiliationTex(affTex);
     this.structurePass.setAffiliationTex(affTex);
     this.trailPass.setAffiliationTex(affTex);
-    this.oilDepositPass = new OilDepositPass(gl, mapW, mapH);
+    // The deposit overlay bakes the same integer field map the simulation
+    // uses, so it has to bake it at the game's configured field size too.
+    this.oilDepositPass = new OilDepositPass(
+      gl,
+      mapW,
+      mapH,
+      config.oilDepositScale(),
+    );
     this.coordinateGridPass = new CoordinateGridPass(
       gl,
       mapW,

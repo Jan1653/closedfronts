@@ -402,6 +402,9 @@ export const GameConfigSchema = z.object({
   allowLateJoin: z.boolean().optional(),
   // Natural disasters the host turned off (all are on by default).
   disabledDisasters: z.enum(NaturalDisasterType).array().optional(),
+  // How much oil the map holds — scales the size of every deposit field.
+  // Absent = "normal". See OIL_DEPOSIT_SCALES.
+  oilDeposits: z.enum(["scarce", "normal", "rich", "abundant"]).optional(),
   spawnImmunityDuration: z.number().int().min(0).nullable().optional(), // In ticks
   disabledUnits: z.enum(UnitType).array().optional(),
   playerTeams: TeamCountConfigSchema.optional(),

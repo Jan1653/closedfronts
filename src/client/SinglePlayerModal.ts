@@ -14,6 +14,7 @@ import {
   NaturalDisasterType,
   UnitType,
 } from "../core/game/Game";
+import { OilDepositAmount } from "../core/game/OilDeposits";
 import { renderableMapSize } from "../core/game/TerrainMapLoader";
 import { TeamCountConfig } from "../core/Schemas";
 import { generateID } from "../core/Util";
@@ -23,9 +24,11 @@ import "./components/baseComponents/Modal";
 import { BaseModal } from "./components/BaseModal";
 import "./components/GameConfigSettings";
 import "./components/InputCard";
+import { OIL_DEPOSIT_OPTIONS } from "./components/LobbyRuleOptions";
 import { CustomMap, listCustomMaps } from "./components/map/CustomMapStore";
 import "./components/map/CustomMapThumb";
 import { MEDAL_ORDER, medalIcon } from "./components/map/Medals";
+import "./components/SelectCard";
 import "./components/ToggleInputCard";
 import { modalHeader } from "./components/ui/ModalHeader";
 import { getPlayerCosmetics } from "./Cosmetics";
@@ -163,6 +166,8 @@ export class SinglePlayerModal extends BaseModal {
   @state() private disabledDisasters: NaturalDisasterType[] = [];
   // Alliance lifetime in minutes (default 5).
   @state() private allianceDurationMinutes: number | undefined = 5;
+  // How much oil the map holds (scales every deposit field).
+  @state() private oilDeposits: OilDepositAmount = "normal";
   @state() private waterNukes: boolean = DEFAULT_OPTIONS.waterNukes;
   @state() private doomsdayClock: boolean = DEFAULT_OPTIONS.doomsdayClock;
   @state() private doomsdayClockSpeed: DoomsdayClockSpeed =
@@ -408,6 +413,17 @@ export class SinglePlayerModal extends BaseModal {
         .onChange=${this.handleAllianceDurationChanges}
         .onKeyDown=${this.handleAllianceDurationKeyDown}
       ></input-card>`,
+      html`<select-card
+        .labelKey=${"single_modal.oil_deposits"}
+        .selectId=${"oil-deposits-value"}
+        .options=${OIL_DEPOSIT_OPTIONS}
+        .value=${this.oilDeposits}
+        .defaultValue=${"normal"}
+        .selectAriaLabel=${translateText("single_modal.oil_deposits")}
+        .onSelect=${(value: string) => {
+          this.oilDeposits = value as OilDepositAmount;
+        }}
+      ></select-card>`,
       html`<toggle-input-card
         .labelKey=${"single_modal.max_timer"}
         .checked=${this.maxTimer}
@@ -1060,6 +1076,9 @@ export class SinglePlayerModal extends BaseModal {
               ...(this.disableAlliances ? { disableAlliances: true } : {}),
               ...(this.disabledDisasters.length > 0
                 ? { disabledDisasters: [...this.disabledDisasters] }
+                : {}),
+              ...(this.oilDeposits !== "normal"
+                ? { oilDeposits: this.oilDeposits }
                 : {}),
               ...(this.allianceDurationMinutes !== undefined &&
               this.allianceDurationMinutes !== 5

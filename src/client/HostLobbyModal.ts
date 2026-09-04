@@ -20,6 +20,7 @@ import {
   NaturalDisasterType,
   UnitType,
 } from "../core/game/Game";
+import { OilDepositAmount } from "../core/game/OilDeposits";
 import { renderableMapSize } from "../core/game/TerrainMapLoader";
 import { UserSettings } from "../core/game/UserSettings";
 import {
@@ -40,8 +41,10 @@ import "./components/GameConfigSettings";
 import "./components/InputCard";
 import "./components/LobbyNameEditor";
 import "./components/LobbyPlayerView";
+import { OIL_DEPOSIT_OPTIONS } from "./components/LobbyRuleOptions";
 import { CustomMap, listCustomMaps } from "./components/map/CustomMapStore";
 import "./components/map/CustomMapThumb";
+import "./components/SelectCard";
 import "./components/ToggleInputCard";
 import { modalHeader } from "./components/ui/ModalHeader";
 import { crazyGamesSDK } from "./CrazyGamesSDK";
@@ -103,6 +106,8 @@ export class HostLobbyModal extends BaseModal {
   @state() private disabledDisasters: NaturalDisasterType[] = [];
   // Alliance lifetime in minutes (default 5).
   @state() private allianceDurationMinutes: number | undefined = 5;
+  // How much oil the map holds (scales every deposit field).
+  @state() private oilDeposits: OilDepositAmount = "normal";
   // Late join: on by default for private lobbies — friends turn up late.
   @state() private allowLateJoin = true;
   @state() private doomsdayClock: boolean = false;
@@ -413,6 +418,18 @@ export class HostLobbyModal extends BaseModal {
         .onChange=${this.handleAllianceDurationChanges}
         .onKeyDown=${this.handleAllianceDurationKeyDown}
       ></input-card>`,
+      html`<select-card
+        .labelKey=${"host_modal.oil_deposits"}
+        .selectId=${"oil-deposits-value"}
+        .options=${OIL_DEPOSIT_OPTIONS}
+        .value=${this.oilDeposits}
+        .defaultValue=${"normal"}
+        .selectAriaLabel=${translateText("host_modal.oil_deposits")}
+        .onSelect=${(value: string) => {
+          this.oilDeposits = value as OilDepositAmount;
+          void this.putGameConfig();
+        }}
+      ></select-card>`,
       html`<toggle-input-card
         .labelKey=${"host_modal.max_timer"}
         .checked=${this.maxTimer}
@@ -1548,6 +1565,7 @@ export class HostLobbyModal extends BaseModal {
             // Always sent (never undefined): JSON.stringify drops undefined,
             // and the server merge would keep a stale value otherwise.
             disabledDisasters: [...this.disabledDisasters],
+            oilDeposits: this.oilDeposits,
             allianceDuration: this.allianceDurationMinutes ?? null,
             allowLateJoin: this.allowLateJoin,
             // Send {enabled:false} (not undefined) when off: undefined is dropped

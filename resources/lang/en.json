@@ -863,6 +863,7 @@
     "name_taken": "Another player already has that name."
   },
   "host_modal": {
+    "oil_deposits": "Oil deposits",
     "alliance_duration": "Alliance duration (minutes)",
     "anonymous_players": "Anonymous players",
     "assigned_teams": "Assigned Teams",
@@ -1454,6 +1455,12 @@
     "water_nukes": "Water Nukes",
     "water_nukes_label": "Water Nukes"
   },
+  "oil_deposits": {
+    "abundant": "Abundant",
+    "normal": "Normal",
+    "rich": "Rich",
+    "scarce": "Scarce"
+  },
   "public_lobby": {
     "connecting": "Connecting to lobby...",
     "join_timeout": "You didn't enter the game in time.",
@@ -1507,6 +1514,7 @@
     "title_with_name": "Send Troops to {name}"
   },
   "single_modal": {
+    "oil_deposits": "Oil deposits",
     "alliance_duration": "Alliance duration (minutes)",
     "bots": "Tribes: ",
     "bots_disabled": "Disabled",
