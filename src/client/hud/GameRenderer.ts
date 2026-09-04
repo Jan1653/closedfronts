@@ -68,6 +68,7 @@ export function createRenderer(
     mobilePlacementTile: null,
     mobileSelectMode: false,
     wallDragStart: null,
+    selectedStructures: [],
   };
 
   //hide when the game renders
@@ -340,7 +341,13 @@ export function createRenderer(
   inGamePromo.game = game;
 
   const layers: Controller[] = [
-    new WarshipSelectionController(game, eventBus, transformHandler, view),
+    new WarshipSelectionController(
+      game,
+      eventBus,
+      transformHandler,
+      view,
+      uiState,
+    ),
     new BuildPreviewController(
       game,
       eventBus,

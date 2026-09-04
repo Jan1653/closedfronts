@@ -23,4 +23,8 @@ export interface UIState {
   // line. While set, the next map click/confirm builds the whole line from here
   // to the cursor. null when no wall drag is in progress.
   wallDragStart: TileRef | null;
+  // Structures picked with a Shift+drag box (or Shift+click), by unit id. They
+  // stay selected until cleared with a right-click / plain Shift-click, and a
+  // batch of ships is spread across the ports among them.
+  selectedStructures: number[];
 }

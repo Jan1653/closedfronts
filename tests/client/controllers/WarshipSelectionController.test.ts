@@ -6,6 +6,7 @@ describe("WarshipSelectionController", () => {
   let eventBus: any;
   let transformHandler: any;
   let view: any;
+  let uiState: any;
 
   beforeEach(() => {
     game = {
@@ -28,6 +29,7 @@ describe("WarshipSelectionController", () => {
     eventBus = { on: vi.fn() };
     transformHandler = {};
     view = { setSelectedUnits: vi.fn() };
+    uiState = { selectedStructures: [] };
   });
 
   it("tracks the selected unit on single-unit selection (rendering is WebGL)", () => {
@@ -36,6 +38,7 @@ describe("WarshipSelectionController", () => {
       eventBus,
       transformHandler,
       view,
+      uiState,
     );
     const unit = {
       id: () => 1,
@@ -58,6 +61,7 @@ describe("WarshipSelectionController", () => {
       eventBus,
       transformHandler,
       view,
+      uiState,
     );
     const unit = {
       id: () => 1,
@@ -80,6 +84,7 @@ describe("WarshipSelectionController", () => {
       eventBus,
       transformHandler,
       view,
+      uiState,
     );
     const units = [
       { id: () => 1, isActive: () => true },

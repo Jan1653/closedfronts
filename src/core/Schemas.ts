@@ -604,6 +604,10 @@ export const BuildUnitIntentSchema = z.object({
   // drag start) to `tile` (the drag end). The two endpoints are charged, the
   // interior is free filler. Ignored for non-wall units.
   tile2: z.number().int().nonnegative().optional(),
+  // Ships only: launch from THIS port rather than the one nearest the click.
+  // Set when a batch is spread over several selected ports; ignored (and
+  // re-validated in the sim) when it doesn't name a usable port.
+  srcTile: z.number().int().nonnegative().optional(),
 });
 
 export const UpgradeStructureIntentSchema = z.object({

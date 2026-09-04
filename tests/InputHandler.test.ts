@@ -68,6 +68,7 @@ describe("InputHandler AutoUpgrade", () => {
         rocketDirectionUp: true,
         buildQuantity: 1,
         mobilePlacementTile: null,
+        selectedStructures: [],
         mobileSelectMode: false,
         wallDragStart: null,
       },

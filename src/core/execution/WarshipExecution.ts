@@ -16,6 +16,7 @@ import { PseudoRandom } from "../PseudoRandom";
 import { findMinimumBy } from "../Util";
 import { lighthouseSpeedBonus } from "./LighthouseExecution";
 import { ShellExecution } from "./ShellExecution";
+import { requestedPortSpawn } from "./ShipSpawn";
 import { CAPTURE_RANGE } from "./StructureCapture";
 import { seizeLandTile } from "./SubmarineExecution";
 
@@ -46,6 +47,9 @@ export class WarshipExecution implements Execution {
 
   constructor(
     private input: (UnitParams<UnitType.Warship> & OwnerComp) | Unit,
+    // Launch from this port instead of the nearest one — set when a batch is
+    // spread across several selected ports. See requestedPortSpawn.
+    private requestedPort?: TileRef,
   ) {}
 
   init(mg: Game, ticks: number): void {
@@ -80,7 +84,12 @@ export class WarshipExecution implements Execution {
       }
       this.warship = owner.buildUnit(
         UnitType.Warship,
-        spawn,
+        requestedPortSpawn(
+          mg,
+          owner,
+          this.requestedPort,
+          this.input.patrolTile,
+        ) ?? spawn,
         this.input,
         classCost,
       );

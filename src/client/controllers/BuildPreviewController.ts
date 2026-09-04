@@ -103,6 +103,16 @@ function wallLineTiles(game: GameView, a: TileRef, b: TileRef): TileRef[] {
   return tiles;
 }
 
+// Builds that launch from a port, and so can be spread over a multi-port
+// selection. Structures ignore it — they go where the click went.
+const SHIP_BUILD_TYPES: ReadonlySet<UnitType> = new Set<UnitType>([
+  UnitType.Warship,
+  UnitType.FishingBoat,
+  UnitType.PatrolBoat,
+  UnitType.Submarine,
+  UnitType.AtomicSubmarine,
+]);
+
 export class BuildPreviewController implements Controller {
   /** Current ghost (null when no build type is active). */
   private ghostUnit: { buildableUnit: BuildableUnit } | null = null;
@@ -705,6 +715,32 @@ export class BuildPreviewController implements Controller {
     this.view.updateWallPreview(null);
   }
 
+  /**
+   * Tiles of the player's currently selected, finished ports — but only when a
+   * SHIP is being built, since that is the one build a port choice applies to.
+   * Empty when nothing (or nothing usable) is selected.
+   */
+  private selectedPortTiles(unitType: UnitType): TileRef[] {
+    if (!SHIP_BUILD_TYPES.has(unitType)) return [];
+    const myPlayer = this.game.myPlayer();
+    if (!myPlayer) return [];
+    const tiles: TileRef[] = [];
+    for (const id of this.uiState.selectedStructures) {
+      const unit = this.game.unit(id);
+      if (
+        unit === undefined ||
+        unit.type() !== UnitType.Port ||
+        !unit.isActive() ||
+        unit.isUnderConstruction() ||
+        unit.owner() !== myPlayer
+      ) {
+        continue;
+      }
+      tiles.push(unit.tile());
+    }
+    return tiles;
+  }
+
   private createStructure(e: MouseUpEvent) {
     if (!this.ghostUnit) return;
     if (
@@ -743,16 +779,35 @@ export class BuildPreviewController implements Controller {
         unitType === UnitType.Warship
           ? (this.uiState.ghostShipClass ?? undefined)
           : undefined;
-      this.eventBus.emit(
-        new BuildUnitIntentEvent(
-          unitType,
-          tileRef,
-          rocketDirectionUp,
-          count,
-          undefined,
-          shipClass,
-        ),
-      );
+      // With several ports selected (Shift+drag), a batch of ships is dealt out
+      // over them one by one instead of all pouring out of the nearest port.
+      const ports = this.selectedPortTiles(unitType);
+      if (ports.length > 1 && count > 1) {
+        for (let i = 0; i < count; i++) {
+          this.eventBus.emit(
+            new BuildUnitIntentEvent(
+              unitType,
+              tileRef,
+              rocketDirectionUp,
+              1,
+              undefined,
+              shipClass,
+              ports[i % ports.length],
+            ),
+          );
+        }
+      } else {
+        this.eventBus.emit(
+          new BuildUnitIntentEvent(
+            unitType,
+            tileRef,
+            rocketDirectionUp,
+            count,
+            undefined,
+            shipClass,
+          ),
+        );
+      }
       if (!shouldPreserveGhostAfterBuild(unitType)) {
         this.removeGhostStructure();
       }

@@ -15,6 +15,7 @@ import { PathStatus } from "../pathfinding/types";
 import { PseudoRandom } from "../PseudoRandom";
 import { ShellExecution } from "./ShellExecution";
 import { ShipPatrol } from "./ShipPatrol";
+import { requestedPortSpawn } from "./ShipSpawn";
 import { startWar } from "./StructureCapture";
 
 /**
@@ -42,6 +43,9 @@ export class SubmarineExecution implements Execution {
   constructor(
     private subType: UnitType.Submarine | UnitType.AtomicSubmarine,
     private input: (UnitParams<UnitType.Submarine> & OwnerComp) | Unit,
+    // Launch from this port instead of the nearest one — set when a batch is
+    // spread across several selected ports. See requestedPortSpawn.
+    private requestedPort?: TileRef,
   ) {}
 
   init(mg: Game, ticks: number): void {
@@ -57,7 +61,16 @@ export class SubmarineExecution implements Execution {
         console.warn(`Failed to spawn ${this.subType}`);
         return;
       }
-      this.sub = this.input.owner.buildUnit(this.subType, spawn, this.input);
+      this.sub = this.input.owner.buildUnit(
+        this.subType,
+        requestedPortSpawn(
+          mg,
+          this.input.owner,
+          this.requestedPort,
+          this.input.patrolTile,
+        ) ?? spawn,
+        this.input,
+      );
       this.input.owner.useOil(mg.config().oilCostPerShipLaunch());
     }
     this.random = new PseudoRandom(mg.ticks() + this.sub.id());

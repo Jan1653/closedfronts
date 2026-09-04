@@ -43,6 +43,9 @@ export class ConstructionExecution implements Execution {
     private stackCount: number = 1,
     // Warship hull class from the ships tab (small/normal/large/ultra).
     private shipClass?: ShipClass,
+    // Ships only: launch from this port instead of the one nearest the click.
+    // Set when the client spreads a batch over several selected ports.
+    private srcTile?: TileRef,
   ) {}
 
   init(mg: Game, ticks: number): void {
@@ -148,30 +151,40 @@ export class ConstructionExecution implements Execution {
         break;
       case UnitType.Warship:
         this.mg.addExecution(
-          new WarshipExecution({
-            owner: player,
-            patrolTile: this.tile,
-            shipClass: this.shipClass,
-          }),
+          new WarshipExecution(
+            {
+              owner: player,
+              patrolTile: this.tile,
+              shipClass: this.shipClass,
+            },
+            this.srcTile,
+          ),
         );
         break;
       case UnitType.FishingBoat:
         this.mg.addExecution(
-          new FishingBoatExecution({ owner: player, patrolTile: this.tile }),
+          new FishingBoatExecution(
+            { owner: player, patrolTile: this.tile },
+            this.srcTile,
+          ),
         );
         break;
       case UnitType.PatrolBoat:
         this.mg.addExecution(
-          new PatrolBoatExecution({ owner: player, patrolTile: this.tile }),
+          new PatrolBoatExecution(
+            { owner: player, patrolTile: this.tile },
+            this.srcTile,
+          ),
         );
         break;
       case UnitType.Submarine:
       case UnitType.AtomicSubmarine:
         this.mg.addExecution(
-          new SubmarineExecution(this.constructionType, {
-            owner: player,
-            patrolTile: this.tile,
-          }),
+          new SubmarineExecution(
+            this.constructionType,
+            { owner: player, patrolTile: this.tile },
+            this.srcTile,
+          ),
         );
         break;
       case UnitType.Port:

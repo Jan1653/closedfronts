@@ -162,6 +162,7 @@ export class Executor {
           intent.rocketDirectionUp,
           intent.count ?? 1,
           intent.shipClass,
+          intent.srcTile,
         );
       }
       case "allianceExtension": {

@@ -7,9 +7,11 @@ import {
   UnitParams,
   UnitType,
 } from "../game/Game";
+import { TileRef } from "../game/GameMap";
 import { WaterPathFinder } from "../pathfinding/PathFinder";
 import { PseudoRandom } from "../PseudoRandom";
 import { ShipPatrol } from "./ShipPatrol";
+import { requestedPortSpawn } from "./ShipSpawn";
 
 /**
  * Patrol boat: an unarmed scout. It wanders its patrol area and "pings"
@@ -25,6 +27,9 @@ export class PatrolBoatExecution implements Execution {
 
   constructor(
     private input: (UnitParams<UnitType.PatrolBoat> & OwnerComp) | Unit,
+    // Launch from this port instead of the nearest one — set when a batch is
+    // spread across several selected ports. See requestedPortSpawn.
+    private requestedPort?: TileRef,
   ) {}
 
   init(mg: Game, ticks: number): void {
@@ -42,7 +47,12 @@ export class PatrolBoatExecution implements Execution {
       }
       this.boat = this.input.owner.buildUnit(
         UnitType.PatrolBoat,
-        spawn,
+        requestedPortSpawn(
+          mg,
+          this.input.owner,
+          this.requestedPort,
+          this.input.patrolTile,
+        ) ?? spawn,
         this.input,
       );
       this.input.owner.useOil(mg.config().oilCostPerShipLaunch());

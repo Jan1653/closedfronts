@@ -18,6 +18,7 @@ import {
 import { MapRenderer } from "../render/gl";
 import { TransformHandler } from "../TransformHandler";
 import { MoveWarshipIntentEvent } from "../Transport";
+import { UIState } from "../UIState";
 import { GameView, UnitView } from "../view";
 
 const WARSHIP_SELECTION_RADIUS = 10;
@@ -32,6 +33,23 @@ const MOVABLE_SHIP_TYPES = [
   UnitType.PatrolBoat,
   UnitType.Submarine,
   UnitType.AtomicSubmarine,
+] as const;
+
+// Own structures a Shift+drag box can pick up. Ports carry the feature that
+// motivates this (spreading a ship batch), the rest come along so the box reads
+// as a general "select my buildings" gesture.
+const SELECTABLE_STRUCTURE_TYPES = [
+  UnitType.Port,
+  UnitType.City,
+  UnitType.Factory,
+  UnitType.DefensePost,
+  UnitType.MissileSilo,
+  UnitType.SAMLauncher,
+  UnitType.OilPump,
+  UnitType.OilStorage,
+  UnitType.EmergencyStation,
+  UnitType.Lighthouse,
+  UnitType.WaterTollStation,
 ] as const;
 
 /** Can this ship be ordered onto a LAND tile (seize one tile)? */
@@ -61,6 +79,11 @@ export class WarshipSelectionController implements Controller {
   private selectedUnit: UnitView | null = null;
   // Currently multi-selected warships (shift+drag box select).
   private multiSelectedWarships: UnitView[] = [];
+  // Own structures caught by the same box. They are kept separately because
+  // they take no move orders — they are a standing selection (ports especially,
+  // which a batch of ships is then spread across) and survive until explicitly
+  // cleared.
+  private multiSelectedStructures: UnitView[] = [];
 
   // Capturable enemy water structure currently hovered while warships are
   // selected — glows (selection box) as a "click to capture" affordance.
@@ -75,6 +98,7 @@ export class WarshipSelectionController implements Controller {
     private eventBus: EventBus,
     private transformHandler: TransformHandler,
     private view: MapRenderer,
+    private uiState: UIState,
   ) {}
 
   tick() {
@@ -84,6 +108,27 @@ export class WarshipSelectionController implements Controller {
     this.multiSelectedWarships = this.multiSelectedWarships.filter((u) =>
       u.isActive(),
     );
+    const structuresBefore = this.multiSelectedStructures.length;
+    this.multiSelectedStructures = this.multiSelectedStructures.filter(
+      (u) => u.isActive() && u.owner() === this.game.myPlayer(),
+    );
+    if (this.multiSelectedStructures.length !== structuresBefore) {
+      this.publishStructureSelection();
+    }
+  }
+
+  private clearStructureSelection(): void {
+    if (this.multiSelectedStructures.length === 0) return;
+    this.multiSelectedStructures = [];
+    this.publishStructureSelection();
+  }
+
+  /** Mirror the structure selection into the shared UI state and the renderer. */
+  private publishStructureSelection(): void {
+    this.uiState.selectedStructures = this.multiSelectedStructures.map((u) =>
+      u.id(),
+    );
+    this.pushSelectionToView();
   }
 
   init() {
@@ -95,8 +140,17 @@ export class WarshipSelectionController implements Controller {
     });
     const clearBox = () => this.hideDragRect();
     this.eventBus.on(WarshipSelectionBoxCompleteEvent, clearBox);
-    this.eventBus.on(WarshipSelectionBoxCancelEvent, clearBox);
-    this.eventBus.on(CloseViewEvent, clearBox);
+    this.eventBus.on(WarshipSelectionBoxCancelEvent, () => {
+      // A Shift-click that never became a drag: treat it as "drop everything".
+      clearBox();
+      this.clearStructureSelection();
+    });
+    this.eventBus.on(CloseViewEvent, () => {
+      clearBox();
+      this.clearStructureSelection();
+    });
+    // Right-click clears the standing structure selection as well.
+    this.eventBus.on(ContextMenuEvent, () => this.clearStructureSelection());
 
     // Warship select/move click flow (previously in the deleted UnitLayer).
     this.eventBus.on(MouseUpEvent, (e) => this.onMouseUp(e));
@@ -171,6 +225,7 @@ export class WarshipSelectionController implements Controller {
     } else if (this.selectedUnit) {
       ids.push(this.selectedUnit.id());
     }
+    for (const u of this.multiSelectedStructures) ids.push(u.id());
     if (
       this.hoveredCaptureTarget !== null &&
       this.hoveredCaptureTarget.isActive() &&
@@ -397,7 +452,7 @@ export class WarshipSelectionController implements Controller {
     const myPlayer = this.game.myPlayer();
     if (!myPlayer) return;
 
-    const selected = this.game.units(UnitType.Warship).filter((unit) => {
+    const inBox = (unit: UnitView): boolean => {
       if (!unit.isActive() || unit.owner() !== myPlayer) return false;
       const screen = this.transformHandler.worldToScreenCoordinates(
         new Cell(this.game.x(unit.tile()), this.game.y(unit.tile())),
@@ -405,7 +460,17 @@ export class WarshipSelectionController implements Controller {
       return (
         screen.x >= x1 && screen.x <= x2 && screen.y >= y1 && screen.y <= y2
       );
-    });
+    };
+
+    const selected = this.game.units(UnitType.Warship).filter(inBox);
+
+    // The same box also grabs own structures. They don't take move orders, so
+    // they live in their own standing selection — a set of ports picked this
+    // way is what a batch of ships gets spread across.
+    this.multiSelectedStructures = this.game
+      .units(...SELECTABLE_STRUCTURE_TYPES)
+      .filter((u) => inBox(u) && !u.isUnderConstruction());
+    this.publishStructureSelection();
 
     // Clear single selection if we got a box selection
     if (selected.length > 0 && this.selectedUnit) {

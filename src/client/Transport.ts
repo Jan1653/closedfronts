@@ -118,6 +118,8 @@ export class BuildUnitIntentEvent implements GameEvent {
     public readonly tile2?: TileRef,
     // Warship hull class picked in the ships tab (small/normal/large/ultra).
     public readonly shipClass?: ShipClass,
+    // Ships only: the port this one should launch from (multi-port batches).
+    public readonly srcTile?: TileRef,
   ) {}
 }
 
@@ -714,6 +716,7 @@ export class Transport {
       count: event.count,
       tile2: event.tile2,
       shipClass: event.shipClass,
+      srcTile: event.srcTile,
     });
   }
 
