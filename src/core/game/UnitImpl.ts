@@ -84,6 +84,12 @@ export class UnitImpl implements Unit {
         veterancyProgress: 0,
       };
     }
+    // Re-read the max now that the hull class is known: maxHealth() scales the
+    // base by SHIP_CLASS_HEALTH, and _warshipState only exists from the block
+    // above. Seeded with the bare base health, a large or ultra warship left
+    // the yard already "damaged" — a permanent health bar sitting over the
+    // port, and a 10M hull that died as fast as a plain one.
+    this._health = toInt(this.maxHealth());
     // Submarines run silent: not targetable until a patrol boat or lighthouse
     // spots them (PatrolScan sets targetable for a while).
     if (

@@ -265,19 +265,25 @@ export type ShipClass = "small" | "normal" | "large" | "ultra";
 // Effective-max-health multiplier per hull class (also used by the client's
 // health bars). The ultra is a floating fortress — and the only surface ship
 // that can seize a land tile.
+//
+// The multipliers have to earn their price tag: the base warship hull is 1000,
+// so an ultra at 4x was 4000 HP for 10M gold while the atomic submarine got
+// 10000 HP for 12M. It died like a slightly tougher warship and cost like a
+// flagship. The ultra now matches the atomic sub's hull — it is the surface
+// counterpart, visible (and therefore easier to focus) but 2M cheaper.
 export const SHIP_CLASS_HEALTH: Record<ShipClass, number> = {
   small: 0.7,
   normal: 1,
-  large: 1.6,
-  ultra: 4,
+  large: 2.4,
+  ultra: 8,
 };
 
 // Shell-damage multiplier per hull class.
 export const SHIP_CLASS_DAMAGE: Record<ShipClass, number> = {
   small: 0.7,
   normal: 1,
-  large: 1.4,
-  ultra: 2.5,
+  large: 1.6,
+  ultra: 3.5,
 };
 
 // Natural disasters: announced ~1 minute ahead, then active for a while.
