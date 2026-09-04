@@ -17,7 +17,11 @@ export class EmojiTable extends LitElement {
 
   initEventBus(eventBus: EventBus) {
     eventBus.on(ShowEmojiMenuEvent, (e) => {
-      this.isVisible = true;
+      // Only OPEN once a recipient is settled. Setting isVisible up front made
+      // an alt-click on open water or unclaimed land pop the table up with no
+      // recipient behind it (the early returns below skip showTable, so
+      // onEmojiClicked stays the empty default) — every emoji you then picked
+      // silently did nothing.
       const cell = this.transformHandler.screenToWorldCoordinates(e.x, e.y);
       if (!this.game.isValidCoord(cell.x, cell.y)) {
         return;
@@ -115,6 +119,9 @@ export class EmojiTable extends LitElement {
 
   hideTable() {
     this.isVisible = false;
+    // Drop the recipient with the table so a stale callback can never fire an
+    // emoji at whoever was targeted last.
+    this.onEmojiClicked = () => {};
     this.requestUpdate();
   }
 
