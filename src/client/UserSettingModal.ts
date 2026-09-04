@@ -548,6 +548,70 @@ export class UserSettingModal extends BaseModal {
         @change=${this.handleKeybindChange}
       ></setting-keybind>
 
+      <setting-keybind
+        action="buildWall"
+        label=${translateText("user_setting.build_wall")}
+        description=${translateText("user_setting.build_wall_desc")}
+        defaultKey=${this.defaultKeybinds.buildWall}
+        .value=${this.getKeyValue("buildWall")}
+        .display=${this.getKeyChar("buildWall")}
+        @change=${this.handleKeybindChange}
+      ></setting-keybind>
+
+      <setting-keybind
+        action="buildOilPump"
+        label=${translateText("user_setting.build_oil_pump")}
+        description=${translateText("user_setting.build_oil_pump_desc")}
+        defaultKey=${this.defaultKeybinds.buildOilPump}
+        .value=${this.getKeyValue("buildOilPump")}
+        .display=${this.getKeyChar("buildOilPump")}
+        @change=${this.handleKeybindChange}
+      ></setting-keybind>
+
+      <setting-keybind
+        action="buildOilStorage"
+        label=${translateText("user_setting.build_oil_storage")}
+        description=${translateText("user_setting.build_oil_storage_desc")}
+        defaultKey=${this.defaultKeybinds.buildOilStorage}
+        .value=${this.getKeyValue("buildOilStorage")}
+        .display=${this.getKeyChar("buildOilStorage")}
+        @change=${this.handleKeybindChange}
+      ></setting-keybind>
+
+      <setting-keybind
+        action="buildWaterTollStation"
+        label=${translateText("user_setting.build_water_toll_station")}
+        description=${translateText(
+          "user_setting.build_water_toll_station_desc",
+        )}
+        defaultKey=${this.defaultKeybinds.buildWaterTollStation}
+        .value=${this.getKeyValue("buildWaterTollStation")}
+        .display=${this.getKeyChar("buildWaterTollStation")}
+        @change=${this.handleKeybindChange}
+      ></setting-keybind>
+
+      <setting-keybind
+        action="buildEmergencyStation"
+        label=${translateText("user_setting.build_emergency_station")}
+        description=${translateText(
+          "user_setting.build_emergency_station_desc",
+        )}
+        defaultKey=${this.defaultKeybinds.buildEmergencyStation}
+        .value=${this.getKeyValue("buildEmergencyStation")}
+        .display=${this.getKeyChar("buildEmergencyStation")}
+        @change=${this.handleKeybindChange}
+      ></setting-keybind>
+
+      <setting-keybind
+        action="buildLighthouse"
+        label=${translateText("user_setting.build_lighthouse")}
+        description=${translateText("user_setting.build_lighthouse_desc")}
+        defaultKey=${this.defaultKeybinds.buildLighthouse}
+        .value=${this.getKeyValue("buildLighthouse")}
+        .display=${this.getKeyChar("buildLighthouse")}
+        @change=${this.handleKeybindChange}
+      ></setting-keybind>
+
       <h2
         class="text-blue-200 text-xl font-bold mt-8 mb-3 border-b border-white/10 pb-2"
       >

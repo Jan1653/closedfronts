@@ -27,6 +27,17 @@ export function getDefaultKeybinds(isMac: boolean): Record<string, string> {
     buildElectricBomb: "KeyI",
     // The "Bombs" tab: same idea as buildShip — arms the last bomb you picked.
     buildBomb: "KeyN",
+    // The structures that don't fit the 1..0 row sit on the free letter keys.
+    // They used to live on a hard-coded Alt+digit layer, which was neither
+    // rebindable nor discoverable (and Alt+6 for the lighthouse was only ever a
+    // label — no code behind it). Shift+L keeps the lighthouse mnemonic; every
+    // plain letter was already taken.
+    buildWall: "KeyH",
+    buildOilPump: "KeyJ",
+    buildOilStorage: "KeyV",
+    buildWaterTollStation: "KeyX",
+    buildEmergencyStation: "KeyZ",
+    buildLighthouse: "Shift+KeyL",
     attackRatioDown: "KeyT",
     attackRatioUp: "KeyY",
     boatAttack: "KeyB",

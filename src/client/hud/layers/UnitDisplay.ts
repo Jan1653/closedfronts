@@ -66,6 +66,9 @@ export class UnitDisplay extends LitElement implements Controller {
   private selectedBomb: PlayerBuildableUnitType = loadSelectedBomb();
   private _hoveredShip: number | null = null;
   private shipsMenuOpen = false;
+  // Ghost armed as of the previous tick, so the fly-outs above can react to a
+  // change instead of to the standing value.
+  private lastSeenGhost: PlayerBuildableUnitType | null = null;
   private selectedShipIdx: number = loadSelectedShipIdx();
 
   createRenderRoot() {
@@ -91,26 +94,36 @@ export class UnitDisplay extends LitElement implements Controller {
     return 0n;
   }
 
-  // `knownCost` overrides the type's own price — warship hull classes are
-  // flat-priced and must not be gated on the (fleet-size-dependent) base
-  // warship price.
-  private canBuild(item: UnitType, knownCost?: Gold): boolean {
-    if (this.game?.config().isUnitDisabled(item)) return false;
+  /**
+   * Why this item is greyed out, as a ready-to-show sentence — or null when it
+   * is buildable. A dimmed button on its own tells the player nothing, so every
+   * tooltip states the actual blocker (and how much gold is still missing).
+   *
+   * `knownCost` overrides the type's own price — warship hull classes are
+   * flat-priced and must not be gated on the (fleet-size-dependent) base
+   * warship price.
+   */
+  private buildBlockReason(item: UnitType, knownCost?: Gold): string | null {
+    if (this.game?.config().isUnitDisabled(item)) {
+      return translateText("build_menu.blocked.disabled");
+    }
     const player = this.game?.myPlayer();
     const price = knownCost ?? this.cost(item);
+    const gold = player?.gold() ?? 0n;
+
+    const needsFinished = (type: UnitType): boolean =>
+      player?.units(type).some((u) => !u.isUnderConstruction()) ?? false;
+
     switch (item) {
       case UnitType.AtomBomb:
       case UnitType.HydrogenBomb:
       case UnitType.ElectricBomb:
       case UnitType.MIRV:
         // Only a FINISHED silo enables bombs — greyed while it's still building.
-        return (
-          price <= (player?.gold() ?? 0n) &&
-          (player
-            ?.units(UnitType.MissileSilo)
-            .some((u) => !u.isUnderConstruction()) ??
-            false)
-        );
+        if (!needsFinished(UnitType.MissileSilo)) {
+          return translateText("build_menu.blocked.needs_silo");
+        }
+        break;
       case UnitType.Warship:
       case UnitType.FishingBoat:
       case UnitType.PatrolBoat:
@@ -119,14 +132,32 @@ export class UnitDisplay extends LitElement implements Controller {
       case UnitType.WaterTollStation:
         // All ships and the toll station need a FINISHED port (ships launch
         // from one), so grey them out until a port is built.
-        return (
-          price <= (player?.gold() ?? 0n) &&
-          (player?.units(UnitType.Port).some((u) => !u.isUnderConstruction()) ??
-            false)
-        );
-      default:
-        return price <= (player?.gold() ?? 0n);
+        if (!needsFinished(UnitType.Port)) {
+          return translateText("build_menu.blocked.needs_port");
+        }
+        break;
     }
+
+    if (price > gold) {
+      return translateText("build_menu.blocked.gold", {
+        missing: renderNumber(price - gold),
+      });
+    }
+    return null;
+  }
+
+  private canBuild(item: UnitType, knownCost?: Gold): boolean {
+    return this.buildBlockReason(item, knownCost) === null;
+  }
+
+  /** Red footer line in a tooltip naming why the item can't be built. */
+  private renderBlockReason(reason: string | null) {
+    if (reason === null) return null;
+    return html`<div
+      class="mt-1 px-2 py-1 text-[10px] text-red-300 border-t border-white/10"
+    >
+      ${reason}
+    </div>`;
   }
 
   // Full price of a ships-tab entry: warship hull classes have their own
@@ -165,13 +196,19 @@ export class UnitDisplay extends LitElement implements Controller {
     this._emergencyStation = player.totalUnitLevels(UnitType.EmergencyStation);
     this._lighthouse = player.totalUnitLevels(UnitType.Lighthouse);
     // Close a fly-out once something outside it gets armed elsewhere (bar
-    // click, hotkey, build menu).
+    // click, hotkey, build menu). Only a CHANGE counts: testing the ghost as it
+    // stands ran every tick, so opening the ships or bombs fly-out while some
+    // other build was already armed slammed it shut on the very next frame.
     const g = this.uiState.ghostStructure;
-    if (this.bombMenuOpen && g !== null && !BOMB_TYPES.has(g)) {
-      this.bombMenuOpen = false;
-    }
-    if (this.shipsMenuOpen && g !== null && !SHIP_TYPES.has(g)) {
-      this.shipsMenuOpen = false;
+    const ghostChanged = g !== this.lastSeenGhost;
+    this.lastSeenGhost = g;
+    if (ghostChanged && g !== null) {
+      if (this.bombMenuOpen && !BOMB_TYPES.has(g)) {
+        this.bombMenuOpen = false;
+      }
+      if (this.shipsMenuOpen && !SHIP_TYPES.has(g)) {
+        this.shipsMenuOpen = false;
+      }
     }
     this.requestUpdate();
   }
@@ -241,42 +278,42 @@ export class UnitDisplay extends LitElement implements Controller {
             this._wall,
             UnitType.Wall,
             "wall",
-            "Alt 1",
+            this.hotkeyLabel("buildWall", "H"),
           )}
           ${this.renderUnitItem(
             oilPumpIcon,
             this._oilPump,
             UnitType.OilPump,
             "oil_pump",
-            "Alt 2",
+            this.hotkeyLabel("buildOilPump", "J"),
           )}
           ${this.renderUnitItem(
             oilStorageIcon,
             this._oilStorage,
             UnitType.OilStorage,
             "oil_storage",
-            "Alt 4",
+            this.hotkeyLabel("buildOilStorage", "V"),
           )}
           ${this.renderUnitItem(
             tollStationIcon,
             this._waterTollStation,
             UnitType.WaterTollStation,
             "water_toll_station",
-            "Alt 3",
+            this.hotkeyLabel("buildWaterTollStation", "X"),
           )}
           ${this.renderUnitItem(
             emergencyStationIcon,
             this._emergencyStation,
             UnitType.EmergencyStation,
             "emergency_station",
-            "Alt 5",
+            this.hotkeyLabel("buildEmergencyStation", "Z"),
           )}
           ${this.renderUnitItem(
             lighthouseIcon,
             this._lighthouse,
             UnitType.Lighthouse,
             "lighthouse",
-            "Alt 6",
+            this.hotkeyLabel("buildLighthouse", "Shift+L"),
           )}
         </div>
       </div>
@@ -338,6 +375,7 @@ export class UnitDisplay extends LitElement implements Controller {
                     >${renderNumber(this.cost(unitType))}</span
                   >
                 </div>
+                ${this.renderBlockReason(this.buildBlockReason(unitType))}
               </div>
             `
           : null}
@@ -418,6 +456,7 @@ export class UnitDisplay extends LitElement implements Controller {
     return (this.keybinds[action]?.key ?? fallback)
       .replace("Digit", "")
       .replace("Key", "")
+      .replace("Shift+", "⇧")
       .toUpperCase();
   }
 
@@ -485,6 +524,9 @@ export class UnitDisplay extends LitElement implements Controller {
                             >${renderNumber(this.shipCost(s))}</span
                           >
                         </div>
+                        ${this.renderBlockReason(
+                          this.buildBlockReason(s.type, this.shipCost(s)),
+                        )}
                       </div>`
                     : null}
                   <button
@@ -589,6 +631,7 @@ export class UnitDisplay extends LitElement implements Controller {
                             >${renderNumber(this.cost(b.type))}</span
                           >
                         </div>
+                        ${this.renderBlockReason(this.buildBlockReason(b.type))}
                       </div>`
                     : null}
                   <button

@@ -1117,24 +1117,11 @@ export class InputHandler {
     shiftKey: boolean,
     altKey: boolean = false,
   ): PlayerBuildableUnitType | null {
+    // Alt no longer carries a build layer of its own — every structure has a
+    // plain, rebindable key below. Alt is the emoji-menu modifier, so an
+    // Alt-held keypress must not arm a build.
     if (altKey) {
-      // Second hotkey layer (Alt+digit) for the structures that no longer fit
-      // the primary 1..0 row. Alt is used instead of Ctrl because browsers
-      // reserve Ctrl+digit for tab switching and won't let the page keep it.
-      switch (this.digitFromKeyCode(code)) {
-        case "1":
-          return UnitType.Wall;
-        case "2":
-          return UnitType.OilPump;
-        case "3":
-          return UnitType.WaterTollStation;
-        case "4":
-          return UnitType.OilStorage;
-        case "5":
-          return UnitType.EmergencyStation;
-        default:
-          return null;
-      }
+      return null;
     }
     const buildKeybinds: ReadonlyArray<{
       key: string;
@@ -1150,6 +1137,12 @@ export class InputHandler {
       { key: "buildHydrogenBomb", type: UnitType.HydrogenBomb },
       { key: "buildElectricBomb", type: UnitType.ElectricBomb },
       { key: "buildMIRV", type: UnitType.MIRV },
+      { key: "buildWall", type: UnitType.Wall },
+      { key: "buildOilPump", type: UnitType.OilPump },
+      { key: "buildOilStorage", type: UnitType.OilStorage },
+      { key: "buildWaterTollStation", type: UnitType.WaterTollStation },
+      { key: "buildEmergencyStation", type: UnitType.EmergencyStation },
+      { key: "buildLighthouse", type: UnitType.Lighthouse },
     ];
     for (const { key, type } of buildKeybinds) {
       if (this.keybindMatchesEvent({ code, shiftKey }, this.keybinds[key]))
