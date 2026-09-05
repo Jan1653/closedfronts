@@ -860,8 +860,8 @@ export class GPURenderer {
 
   updateUnits(units: Map<number, UnitState>, gameTick: number): void {
     this.lastUnits = units;
-    // The resource overlay's ore/diamond fields surface over time, so the pass
-    // needs to know what tick the simulation is on.
+    // The resource overlay's copper/diamond fields surface over time, so the
+    // pass needs to know what tick the simulation is on.
     this.lastGameTick = gameTick;
     this.frameTick++;
     this.unitPass.updateUnits(units, this.frameTick);

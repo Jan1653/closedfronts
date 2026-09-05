@@ -21,7 +21,7 @@ export class ViewModeController implements Controller {
   // Oil-deposit overlay is a pure toggle: this controller owns the on/off state
   // so any emitter (keybind or HUD oil readout) just flips it.
   private oilDepositView = false;
-  // Same deal for the mining overlay (coal / ore / diamond).
+  // Same deal for the mining overlay (coal / copper / diamond).
   private resourceDepositView = false;
 
   constructor(

@@ -80,7 +80,7 @@
       "gold": "{missing} more gold needed",
       "needs_port": "Needs a finished port",
       "needs_silo": "Needs a finished missile silo",
-      "no_resource": "Must stand on coal, ore or diamond"
+      "no_resource": "Must stand on coal, copper or diamond"
     },
     "desc": {
       "atom_bomb": "Small explosion",
@@ -94,7 +94,7 @@
       "fishing_boat": "Cheap boat that fishes its patrol area for a steady trickle of gold",
       "hydrogen_bomb": "Large explosion",
       "lighthouse": "Huge scan radius: reveals submarines and slowly heals your ships; capturable at sea",
-      "mine": "Digs coal, ore or diamond out of the tile it stands on. Link it to a factory by rail so trains can haul the output away.",
+      "mine": "Digs coal, copper or diamond out of the tile it stands on. Link it to a factory by rail so trains can haul the output away.",
       "mirv": "Huge explosion, only targets selected player",
       "missile_silo": "Used to launch nukes",
       "oil_pump": "Produces oil, which keeps your ships and trains fast",
@@ -424,7 +424,7 @@
     "oil_empty": "Out of oil",
     "oil_empty_hint": "Attacks, ships and trains crawl until oil comes back — expanding burns fuel.",
     "oil_map": "Toggle oil deposit map (O)",
-    "resource_map": "Mining map (coal / ore / diamond)",
+    "resource_map": "Mining map (coal / copper / diamond)",
     "teammate_afk_neighbor_info": "You can attack disconnected teammates.",
     "traitor_neighbor_info": "You can betray traitors without becoming a traitor yourself."
   },
@@ -1809,7 +1809,7 @@
     "request_alliance_desc": "Send an alliance request to the player whose tile is under your cursor.",
     "reset": "Reset",
     "resource_deposit_view": "Mining map",
-    "resource_deposit_view_desc": "Show where coal, ore and diamond are.",
+    "resource_deposit_view_desc": "Show where coal, copper and diamond are.",
     "retaliate_attack": "Retaliate",
     "retaliate_attack_desc": "Send a retaliation attack to blunt/negate the force of the most recent active attacker. Only available when you are being attacked.",
     "sound_effects_volume": "Sound Effects Volume",

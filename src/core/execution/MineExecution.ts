@@ -9,9 +9,9 @@ import { TrainStationExecution } from "./TrainStationExecution";
  *
  * The seam is finite and shared with the tile (Game.extractResourceAt), so a
  * worked-out patch stays worked out even if the mine is destroyed and rebuilt.
- * Coal seams are deep enough that this barely matters within one game; ore and
- * diamond pockets run dry fast, which is what makes the newly surfacing ones
- * worth chasing.
+ * Coal seams are deep enough that this barely matters within one game; copper
+ * and diamond pockets run dry fast, which is what makes the newly surfacing
+ * ones worth chasing.
  */
 export class MineExecution implements Execution {
   private active = true;
@@ -94,7 +94,7 @@ export function loadFreightFromCluster(
 
   for (const type of [
     ResourceType.Diamond,
-    ResourceType.Ore,
+    ResourceType.Copper,
     ResourceType.Coal,
   ]) {
     let taken = 0;

@@ -3,7 +3,7 @@ precision highp float;
 precision highp usampler2D;
 
 // R8UI. 0 = nothing, otherwise type * 8 + grade:
-//   type 1 = coal, 2 = ore, 3 = diamond;  grade 1 (thin) .. 5 (rich)
+//   type 1 = coal, 2 = copper, 3 = diamond;  grade 1 (thin) .. 5 (rich)
 uniform usampler2D uResource;
 uniform vec2  uMapSize;
 uniform float uOpacity;
@@ -34,18 +34,24 @@ void main() {
     rim  = vec3(0.42, 0.42, 0.45);
     core = vec3(0.03, 0.03, 0.04);
   } else if (kind == 2u) {
-    // Ore — warm brass to deep gold, so it stands out against the coal.
-    rim  = vec3(0.85, 0.72, 0.32);
-    core = vec3(0.72, 0.48, 0.03);
+    // Copper — bright orange metal to deep oxidised red. Deliberately far
+    // from yellow: gold is the currency, so nothing on the map may read as it.
+    rim  = vec3(1.00, 0.58, 0.30);
+    core = vec3(0.60, 0.18, 0.04);
   } else {
-    // Diamond — icy white-blue, the loudest of the three because it is the
-    // rarest and the player is hunting for it.
-    rim  = vec3(0.82, 0.96, 1.00);
-    core = vec3(0.35, 0.80, 1.00);
+    // Diamond — sky blue to deep sapphire. Blue all the way through, even at
+    // the rim: a pocket is only a few tiles wide, so most of what the player
+    // ever sees IS the rim, and a near-white rim made diamond unrecognisable.
+    rim  = vec3(0.34, 0.66, 1.00);
+    core = vec3(0.02, 0.20, 0.92);
   }
 
-  // The rare two stay bright even at grade 1: a single diamond tile must not
-  // vanish into the map the way a thin coal seam reasonably can.
-  float minAlpha = kind == 1u ? 0.45 : 0.85;
-  fragColor = vec4(mix(rim, core, g), uOpacity * mix(minAlpha, 1.0, g));
+  // Coal is a backdrop and stays translucent. Copper and diamond are what the
+  // player is actually hunting, and a pocket can be two tiles across, so they
+  // ignore the overlay's global opacity and paint near-solid — otherwise the
+  // terrain underneath washes the colour out to nothing.
+  float alpha = kind == 1u
+    ? uOpacity * mix(0.45, 1.0, g)
+    : mix(0.90, 1.0, g);
+  fragColor = vec4(mix(rim, core, g), alpha);
 }

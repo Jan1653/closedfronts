@@ -168,7 +168,7 @@ export class SinglePlayerModal extends BaseModal {
   @state() private allianceDurationMinutes: number | undefined = 5;
   // How much oil the map holds (scales every deposit field).
   @state() private oilDeposits: OilDepositAmount = "normal";
-  // Mining economy (coal/ore/diamond + freight-only train revenue). On by
+  // Mining economy (coal/copper/diamond + freight-only train revenue). On by
   // default; turning it off plays by the old rules.
   @state() private resourceEconomy: boolean = true;
   @state() private waterNukes: boolean = DEFAULT_OPTIONS.waterNukes;

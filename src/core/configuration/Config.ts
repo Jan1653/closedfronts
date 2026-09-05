@@ -1430,7 +1430,7 @@ export class Config {
   }
 
   /**
-   * Is the mining economy (coal / ore / diamond, mines, freight-only train
+   * Is the mining economy (coal / copper / diamond, mines, freight-only train
    * revenue) switched on? The host can turn it off at game creation to play by
    * the old rules, where trains earned on every run and there was nothing to
    * dig up. Defaults to ON.
@@ -1458,8 +1458,8 @@ export class Config {
    *
    * Coal is effectively a lifetime supply: a rich seam runs for hours of real
    * time, which is what "wears out, but very very slowly" means at 10 ticks a
-   * second. Ore and diamond are a rush — worth a lot per unit, gone soon, and
-   * new pockets keep surfacing elsewhere to chase.
+   * second. Copper and diamond are a rush — worth a lot per unit, gone soon,
+   * and new pockets keep surfacing elsewhere to chase.
    */
   resourceTileCapacity(type: ResourceType, grade: number): number {
     const percent = RESOURCE_GRADE_PERCENT[grade] ?? 0;
@@ -1468,7 +1468,7 @@ export class Config {
       case ResourceType.Coal:
         base = 600_000;
         break;
-      case ResourceType.Ore:
+      case ResourceType.Copper:
         base = 9_000;
         break;
       case ResourceType.Diamond:
@@ -1486,7 +1486,7 @@ export class Config {
       case ResourceType.Coal:
         base = 40;
         break;
-      case ResourceType.Ore:
+      case ResourceType.Copper:
         base = 6;
         break;
       case ResourceType.Diamond:
@@ -1504,7 +1504,7 @@ export class Config {
     switch (type) {
       case ResourceType.Coal:
         return 90;
-      case ResourceType.Ore:
+      case ResourceType.Copper:
         return 900;
       case ResourceType.Diamond:
         return 4_000;
@@ -1573,13 +1573,13 @@ export class Config {
 
   /**
    * How much more a rare cargo is worth once it leaves by sea. Coal is the
-   * baseline the port bonus is priced against; ore and diamond multiply it.
+   * baseline the port bonus is priced against; copper and diamond multiply it.
    */
   freightShipBonusMultiplier(type: ResourceType): number {
     switch (type) {
       case ResourceType.Coal:
         return 1;
-      case ResourceType.Ore:
+      case ResourceType.Copper:
         return 8;
       case ResourceType.Diamond:
         return 30;

@@ -289,8 +289,8 @@ export class GameRightSidebar extends LitElement implements Controller {
           <img src=${oilIcon} alt="oil map" width="20" height="20" />
         </div>
 
-        <!-- Mining map: coal / ore / diamond. Hidden when the host turned the
-             resource economy off, since there would be nothing to show. -->
+        <!-- Mining map: coal / copper / diamond. Hidden when the host turned
+             the resource economy off, since there would be nothing to show. -->
         ${this.game?.config().resourceEconomy()
           ? html`<div
               class="cursor-pointer rounded p-0.5 ${this._resourceMapOn

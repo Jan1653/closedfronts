@@ -405,7 +405,7 @@ export const GameConfigSchema = z.object({
   // How much oil the map holds — scales the size of every deposit field.
   // Absent = "normal". See OIL_DEPOSIT_SCALES.
   oilDeposits: z.enum(["scarce", "normal", "rich", "abundant"]).optional(),
-  // Mining economy: coal/ore/diamond seams, the Mine, and trains that only
+  // Mining economy: coal/copper/diamond seams, the Mine, and trains that only
   // earn when they are carrying freight. Absent = on. Turning it off plays by
   // the old rules — no resources to dig, and every train run pays.
   resourceEconomy: z.boolean().optional(),

@@ -10,8 +10,8 @@ export function getDefaultKeybinds(isMac: boolean): Record<string, string> {
     toggleView: "Space",
     coordinateGrid: "KeyM",
     oilDepositView: "KeyO",
-    // Mining overlay (coal / ore / diamond). Plain letters ran out, so the two
-    // remaining map overlays and the mine sit on shifted ones.
+    // Mining overlay (coal / copper / diamond). Plain letters ran out, so the
+    // two remaining map overlays and the mine sit on shifted ones.
     resourceDepositView: "Shift+KeyO",
     buildCity: "Digit1",
     buildFactory: "Digit2",

@@ -203,7 +203,7 @@ export class ToggleCoordinateGridEvent implements GameEvent {
 /** Toggle the oil-deposit overlay (keybind or the HUD oil readout). */
 export class ToggleOilDepositViewEvent implements GameEvent {}
 
-/** Coal / ore / diamond overlay (the mining map). */
+/** Coal / copper / diamond overlay (the mining map). */
 export class ToggleResourceDepositViewEvent implements GameEvent {}
 
 export class TickMetricsEvent implements GameEvent {

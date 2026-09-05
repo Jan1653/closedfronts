@@ -257,10 +257,10 @@ export enum UnitType {
   // submarines like a patrol boat and slowly heals own boats in range. Built
   // on water it can be captured by warships like oil pumps / toll stations.
   Lighthouse = "Lighthouse",
-  // Digs whatever the tile under it holds — coal, ore or diamond (see
+  // Digs whatever the tile under it holds — coal, copper or diamond (see
   // ResourceDeposits). Acts as a rail station, so a factory linked to it can
   // load the output onto trains. The seam runs out eventually: coal takes an
-  // age, ore and diamond go quickly.
+  // age, copper and diamond go quickly.
   Mine = "Mine",
 }
 
@@ -1000,8 +1000,8 @@ export interface Game extends GameMap {
   ticks(): Tick;
 
   /**
-   * Units of coal / ore / diamond still in the ground at `tile` — capacity for
-   * that seam minus everything mined out of it so far. 0 once it is worked out
+   * Units of coal / copper / diamond still in the ground at `tile` — capacity
+   * for that seam minus everything mined out of it so far. 0 once it is worked out
    * (and for tiles that never held anything). Persisting this per TILE, not per
    * mine, is what stops a player from rebuilding on an exhausted seam to reset
    * it.

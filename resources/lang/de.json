@@ -1117,7 +1117,7 @@
     "request_alliance_desc": "Eine Bündnisanfrage an den Spieler senden, dessen Kachel unter deinem Cursor liegt.",
     "reset": "Zurücksetzen",
     "resource_deposit_view": "Rohstoffkarte",
-    "resource_deposit_view_desc": "Zeigt, wo Kohle, Erz und Diamant liegen.",
+    "resource_deposit_view_desc": "Zeigt, wo Kohle, Kupfer und Diamant liegen.",
     "retaliate_attack": "Vergelten",
     "retaliate_attack_desc": "Einen Vergeltungsangriff senden, um die Wucht des letzten aktiven Angreifers zu mindern. Nur verfügbar, wenn du angegriffen wirst.",
     "sound_effects_volume": "Soundeffektlautstärke",
@@ -1240,7 +1240,7 @@
       "gold": "Es fehlen {missing} Gold",
       "needs_port": "Braucht einen fertigen Hafen",
       "needs_silo": "Braucht ein fertiges Raketensilo",
-      "no_resource": "Muss auf Kohle, Erz oder Diamant stehen"
+      "no_resource": "Muss auf Kohle, Kupfer oder Diamant stehen"
     },
     "desc": {
       "atom_bomb": "Kleine Explosion",
@@ -1254,7 +1254,7 @@
       "fishing_boat": "Billiges Boot, das im Patrouillengebiet fischt und stetig etwas Gold bringt",
       "hydrogen_bomb": "Große Explosion",
       "lighthouse": "Riesiger Scan-Radius: deckt U-Boote auf und heilt eigene Schiffe langsam; auf See einnehmbar",
-      "mine": "Fördert Kohle, Erz oder Diamant aus dem Feld, auf dem sie steht. Per Schiene mit einer Fabrik verbinden, damit Züge den Ertrag abtransportieren.",
+      "mine": "Fördert Kohle, Kupfer oder Diamant aus dem Feld, auf dem sie steht. Per Schiene mit einer Fabrik verbinden, damit Züge den Ertrag abtransportieren.",
       "mirv": "Riesige Explosion, trifft nur ausgewählten Spieler",
       "missile_silo": "Ermöglicht den Einsatz von Atomraketen",
       "oil_pump": "Produziert Öl, das deine Schiffe und Züge schnell hält",
@@ -1437,7 +1437,7 @@
     "oil_empty": "Kein Öl",
     "oil_empty_hint": "Angriffe, Schiffe und Züge kriechen, bis wieder Öl da ist — Ausbreiten verbrennt Treibstoff.",
     "oil_map": "Öl-Vorkommen-Karte umschalten (O)",
-    "resource_map": "Rohstoffkarte (Kohle / Erz / Diamant)",
+    "resource_map": "Rohstoffkarte (Kohle / Kupfer / Diamant)",
     "teammate_afk_neighbor_info": "Du kannst getrennte Teamkollegen angreifen.",
     "traitor_neighbor_info": "Du kannst Verräter verraten, ohne selbst zum Verräter zu werden.",
     "troops": "Truppen"

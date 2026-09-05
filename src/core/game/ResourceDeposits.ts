@@ -1,5 +1,5 @@
 /**
- * Shared, deterministic map of MINEABLE resources: coal, ore and diamond.
+ * Shared, deterministic map of MINEABLE resources: coal, copper and diamond.
  *
  * Like OilDeposits this is a pure function — no stored state, no accumulated
  * floating point — so the simulation and the client's overlay always agree on
@@ -10,10 +10,10 @@
  *  - Coal is the workhorse. It is common, scattered in many small seams rather
  *    than a few huge basins, and it favours high ground — mountains are thick
  *    with it, plains hold the odd thin seam.
- *  - Ore is rare and clings to mountains almost exclusively.
- *  - Diamond is rarer still, and both it and ore keep APPEARING as the game
+ *  - Copper is rare and clings to mountains almost exclusively.
+ *  - Diamond is rarer still, and both it and copper keep APPEARING as the game
  *    runs: each field carries a birth epoch, so new pockets surface over time
- *    (diamond faster than ore). Everything already on the map stays put.
+ *    (diamond faster than copper). Everything already on the map stays put.
  *
  * The terrain byte is the same one GameMap stores and the client uploads to the
  * GPU, so both sides can evaluate this without a GameMap instance.
@@ -22,7 +22,7 @@
 /** What a tile holds. 0 = nothing; the values are also the overlay's codes. */
 export enum ResourceType {
   Coal = 1,
-  Ore = 2,
+  Copper = 2,
   Diamond = 3,
 }
 
@@ -63,8 +63,8 @@ function isMineable(terrainByte: number): boolean {
 //
 // Small cells and small radii on purpose: coal should read as many scattered
 // seams across a continent, not as the handful of continent-sized basins oil
-// forms. Ore and diamond use much bigger cells (so fields are far apart) with
-// tiny radii (so each one is a pocket).
+// forms. Copper and diamond use much bigger cells (so fields are far apart)
+// with tiny radii (so each one is a pocket).
 
 interface FieldSpec {
   /** Grid size of the field anchors. Bigger => fewer, further-apart fields. */
@@ -99,7 +99,7 @@ const COAL: FieldSpec = {
   presentAtStartPercent: 100,
 };
 
-const ORE: FieldSpec = {
+const COPPER: FieldSpec = {
   cell: 78,
   oneIn: 3,
   baseRadius: 3,
@@ -120,9 +120,9 @@ const DIAMOND: FieldSpec = {
 };
 
 /**
- * How many ticks one "epoch" of new ore/diamond fields lasts. At 10 ticks per
- * second this is two minutes, so a diamond field surfaces somewhere every few
- * minutes and the map is still filling in late in a long game.
+ * How many ticks one "epoch" of new copper/diamond fields lasts. At 10 ticks
+ * per second this is two minutes, so a diamond field surfaces somewhere every
+ * few minutes and the map is still filling in late in a long game.
  */
 export const RESOURCE_EPOCH_TICKS = 1200;
 
@@ -157,8 +157,8 @@ function fieldGrade(
       h = (h ^ (h >>> 15)) >>> 0;
       if (h % spec.oneIn !== 0) continue;
 
-      // Fields that surface later in the game (ore, diamond). A share of them
-      // is there from the start; the rest is dealt evenly over the epochs.
+      // Fields that surface later in the game (copper, diamond). A share of
+      // them is there from the start; the rest is dealt over the epochs.
       if (spec.birthEpochs > 0) {
         const roll = (h >>> 3) % 100;
         if (roll >= spec.presentAtStartPercent) {
@@ -216,12 +216,12 @@ function coalTerrainBonus(terrainByte: number): number {
 /**
  * What (if anything) can be mined at this tile, and how rich it is.
  *
- * `ticks` is the current game tick — it only matters for ore and diamond, whose
- * fields surface over time. Pass the same value on both sides or the overlay
- * will disagree with the simulation about a freshly surfaced pocket.
+ * `ticks` is the current game tick — it only matters for copper and diamond,
+ * whose fields surface over time. Pass the same value on both sides or the
+ * overlay will disagree with the simulation about a freshly surfaced pocket.
  *
- * Diamond wins over ore, ore over coal, so a rare find is never hidden under a
- * common one.
+ * Diamond wins over copper, copper over coal, so a rare find is never hidden
+ * under a common one.
  */
 export function resourceAt(
   terrainByte: number,
@@ -234,16 +234,16 @@ export function resourceAt(
   const mag = terrainByte & MAGNITUDE_MASK;
   const epoch = resourceEpoch(ticks);
 
-  // Diamond and ore are mountain business, but not exclusively: on flat ground
-  // a pocket is simply one grade poorer, which can wipe out a thin one. A hard
-  // height gate would leave a flat map with no rare resources at all.
+  // Diamond and copper are mountain business, but not exclusively: on flat
+  // ground a pocket is simply one grade poorer, which can wipe out a thin one.
+  // A hard height gate would leave a flat map with no rare resources at all.
   const heightPenalty = mag >= HIGHLAND_MAGNITUDE ? 0 : 1;
   const diamond = fieldGrade(DIAMOND, x, y, epoch) - heightPenalty;
   if (diamond > 0) {
     return { type: ResourceType.Diamond, grade: diamond };
   }
-  const ore = fieldGrade(ORE, x, y, epoch) - heightPenalty;
-  if (ore > 0) return { type: ResourceType.Ore, grade: ore };
+  const copper = fieldGrade(COPPER, x, y, epoch) - heightPenalty;
+  if (copper > 0) return { type: ResourceType.Copper, grade: copper };
 
   const coal = fieldGrade(COAL, x, y, epoch);
   if (coal <= 0) return null;

@@ -1821,7 +1821,7 @@ export class PlayerImpl implements Player {
   // so it needs no land ownership. Multiple may share a spot, so there is no
   // spacing or dedupe requirement.
   /**
-   * A mine sits on own land that actually holds something (coal, ore or
+   * A mine sits on own land that actually holds something (coal, copper or
    * diamond — see ResourceDeposits) and whose seam is not already worked out.
    * Unlike an oil pump there is no sea variant: everything mineable is inland.
    */

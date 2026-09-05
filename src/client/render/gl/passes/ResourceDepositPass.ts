@@ -2,7 +2,7 @@
  * ResourceDepositPass — toggleable overlay marking mineable tiles.
  *
  * Sister to OilDepositPass, with one difference that shapes the whole class:
- * ore and diamond fields keep SURFACING as the game runs (see
+ * copper and diamond fields keep SURFACING as the game runs (see
  * ResourceDeposits), so the baked mask goes stale. It is therefore re-baked
  * whenever the resource epoch advances — and only while the overlay is
  * actually switched on, since a full-map bake is not free.
