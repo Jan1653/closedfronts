@@ -3,6 +3,7 @@ import {
   Game,
   Player,
   ShipClass,
+  Structures,
   Tick,
   Unit,
   UnitType,
@@ -71,7 +72,7 @@ export class ConstructionExecution implements Execution {
     if (this.structure === null) {
       const info = this.mg.unitInfo(this.constructionType);
       // For non-structure units (nukes/ships), charge once and delegate to specialized executions.
-      const isStructure = this.isStructure(this.constructionType);
+      const isStructure = Structures.has(this.constructionType);
       if (!isStructure) {
         // Defer validation and gold deduction to the specific execution. The
         // build quantity (Tab+wheel) means "launch this many at once" here
@@ -287,26 +288,6 @@ export class ConstructionExecution implements Execution {
       }
       default:
         return requested;
-    }
-  }
-
-  private isStructure(type: UnitType): boolean {
-    switch (type) {
-      case UnitType.Port:
-      case UnitType.MissileSilo:
-      case UnitType.DefensePost:
-      case UnitType.SAMLauncher:
-      case UnitType.City:
-      case UnitType.Factory:
-      case UnitType.WaterTollStation:
-      case UnitType.Wall:
-      case UnitType.OilPump:
-      case UnitType.OilStorage:
-      case UnitType.EmergencyStation:
-      case UnitType.Lighthouse:
-        return true;
-      default:
-        return false;
     }
   }
 
