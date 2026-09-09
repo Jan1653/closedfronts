@@ -92,6 +92,14 @@ export class GameView implements GameMap {
   private updatedTiles: TileRef[] = [];
   private updatedTerrainTiles: TileRef[] = [];
   /**
+   * Whether the terrain deltas above have been handed out since they were
+   * collected. Unlike territory, terrain (a nuke turning land to water) has no
+   * cheap full re-upload, so the list is only cleared once someone has
+   * actually taken it — otherwise a crater simulated during a skipped
+   * catch-up frame would never reach the GPU.
+   */
+  private terrainDeltasTaken = false;
+  /**
    * Active units grouped by owner smallID, built lazily at most once per
    * tick. Keeps per-player unit queries (PlayerView.units) at O(own units)
    * instead of O(all units) — the leaderboard asks for every player's units
@@ -297,6 +305,25 @@ export class GameView implements GameMap {
     this.worker.instantCatchUp();
   }
 
+  /**
+   * Re-arm every "this changed since last frame" marker, so the next
+   * populateFrame() describes the WHOLE world instead of one tick's delta.
+   *
+   * Needed by the catch-up path: while a backlog is being chewed through the
+   * client stops uploading frames (see ClientGameRunner), which swallows the
+   * per-tick deltas those frames would have carried. One full upload
+   * afterwards costs far less than the frames it replaces, and leaves the GPU
+   * holding exactly what the mirror holds.
+   */
+  public forceFullFrameUpload(): void {
+    this._firstPopulate = true; // nulls changedTiles => full tile + trail push
+    this._namesDirty = true;
+    this._relationsDirty = true;
+    this._clustersDirty = true;
+    this._structuresDirty = true;
+    this.railroadCache.railroadDirty = true;
+  }
+
   public update(gu: GameUpdateViewData) {
     // Unit set/ownership changes below; rebuild the owner index on demand.
     this._unitsByOwnerStale = true;
@@ -310,7 +337,10 @@ export class GameView implements GameMap {
     this.lastUpdate = gu;
 
     this.updatedTiles = [];
-    this.updatedTerrainTiles = [];
+    if (this.terrainDeltasTaken) {
+      this.updatedTerrainTiles = [];
+      this.terrainDeltasTaken = false;
+    }
     const packed = this.lastUpdate.packedTileUpdates;
     for (let i = 0; i + 1 < packed.length; i += 2) {
       const tile = packed[i];
@@ -992,6 +1022,7 @@ export class GameView implements GameMap {
   }
 
   recentlyUpdatedTerrainTiles(): TileRef[] {
+    this.terrainDeltasTaken = true;
     return this.updatedTerrainTiles;
   }
 

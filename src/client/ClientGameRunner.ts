@@ -759,9 +759,25 @@ async function createClientGame(
   }
 }
 
+/**
+ * Backlog (in turns) above which the client stops drawing every simulated
+ * tick. Sits just above GameView.isCatchingUp()'s threshold, so normal
+ * jitter — a turn or two behind, common on mobile — still draws every frame.
+ */
+const CATCH_UP_SKIP_FRAMES_ABOVE = 8;
+
+/**
+ * Draw one frame per this many skipped ticks while catching up, so the
+ * progress counter keeps ticking and the game doesn't look hung.
+ */
+const CATCH_UP_KEEPALIVE_TICKS = 40;
+
 export class ClientGameRunner {
   private myPlayer: PlayerView | null = null;
   private isActive = false;
+
+  /** Ticks simulated but not drawn since the last frame (catch-up only). */
+  private skippedPresentTicks = 0;
 
   private turnsSeen = 0;
   private lastMousePosition: { x: number; y: number } | null = null;
@@ -896,14 +912,44 @@ export class ClientGameRunner {
       gu.updates[GameUpdateType.Hash].forEach((hu: HashUpdate) => {
         this.eventBus.emit(new SendHashEvent(hu.tick, hu.hash));
       });
-      this.gameView.update(gu);
-      this.webglBuilder?.update(this.gameView);
-      this.renderer.tick();
 
-      // Emit tick metrics event for performance overlay
-      this.eventBus.emit(
-        new TickMetricsEvent(gu.tickExecutionDuration, this.currentTickDelay),
-      );
+      // While a backlog is being worked off, every frame we build is thrown
+      // away by the next one a millisecond later — nobody ever sees it. The
+      // simulation mirror has to see each tick, but the PRESENTATION of it
+      // (full GPU upload + a pass over every HUD layer) does not, and that is
+      // the expensive half. Skipping it is what makes catching up on a few
+      // thousand turns finish in seconds instead of minutes.
+      //
+      // Every CATCH_UP_KEEPALIVE_TICKS we draw one anyway, so the "catching
+      // up, N turns behind" counter keeps moving and the screen doesn't look
+      // frozen.
+      const backlog = gu.pendingTurns ?? 0;
+      const present =
+        backlog <= CATCH_UP_SKIP_FRAMES_ABOVE ||
+        this.skippedPresentTicks >= CATCH_UP_KEEPALIVE_TICKS;
+
+      // Frames we skipped swallowed their deltas, so the first frame after a
+      // skip has to describe everything. Must happen BEFORE gameView.update(),
+      // which is what builds the frame we are about to upload.
+      if (present && this.skippedPresentTicks > 0) {
+        this.gameView.forceFullFrameUpload();
+        this.webglBuilder?.clearCaches();
+      }
+
+      this.gameView.update(gu);
+
+      if (present) {
+        this.skippedPresentTicks = 0;
+        this.webglBuilder?.update(this.gameView);
+        this.renderer.tick();
+
+        // Emit tick metrics event for performance overlay
+        this.eventBus.emit(
+          new TickMetricsEvent(gu.tickExecutionDuration, this.currentTickDelay),
+        );
+      } else {
+        this.skippedPresentTicks++;
+      }
 
       // Reset tick delay for next measurement
       this.currentTickDelay = undefined;

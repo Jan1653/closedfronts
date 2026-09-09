@@ -90,12 +90,21 @@ export async function createGameRunner(
   return gr;
 }
 
+/**
+ * Backlog (in turns) above which name placements are deferred. Matches the
+ * client's frame-skip threshold: above it nothing is drawn, so nothing needs
+ * placing.
+ */
+const NAME_PLACEMENT_SKIP_BACKLOG = 8;
+
 export class GameRunner {
   private turns: Turn[] = [];
   private currTurn = 0;
   private isExecuting = false;
 
   private playerViewData: Record<PlayerID, NameViewData> = {};
+  /** A placement pass was skipped while catching up and still owes a redo. */
+  private namePlacementsDeferred = false;
 
   constructor(
     public game: Game,
@@ -190,11 +199,19 @@ export class GameRunner {
     }
 
     const spawnJustEnded = wasInSpawnPhase && !this.game.inSpawnPhase();
-    if (
-      spawnJustEnded ||
-      this.game.ticks() < 3 ||
-      this.game.ticks() % 30 === 0
-    ) {
+    // placeName rasters a player's territory to find where the label fits.
+    // Cheap enough once, but it runs for EVERY player, and it is pure
+    // presentation — while a backlog is being worked off the client draws
+    // nothing (see ClientGameRunner), so every placement computed on the way
+    // through is discarded unseen. Skip them while behind and do a single
+    // pass once we are level again.
+    const placementsDue =
+      spawnJustEnded || this.game.ticks() < 3 || this.game.ticks() % 30 === 0;
+    const behind = (pendingTurns ?? 0) > NAME_PLACEMENT_SKIP_BACKLOG;
+    if (placementsDue && behind) {
+      this.namePlacementsDeferred = true;
+    } else if (placementsDue || this.namePlacementsDeferred) {
+      this.namePlacementsDeferred = false;
       for (const p of this.game.players()) {
         this.playerViewData[p.id()] = placeName(this.game, p);
       }
