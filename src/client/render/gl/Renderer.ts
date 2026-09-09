@@ -1038,7 +1038,7 @@ export class GPURenderer {
 
   updateSpawnOverlay(inSpawnPhase: boolean, centers: SpawnCenter[]): void {
     this.inSpawnPhase = inSpawnPhase;
-    this.spawnOverlayPass.update(inSpawnPhase, centers);
+    this.spawnOverlayPass.update(centers);
   }
 
   // ---------------------------------------------------------------------------

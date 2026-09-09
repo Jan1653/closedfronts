@@ -45,6 +45,7 @@ import { ReplayPanel } from "./layers/ReplayPanel";
 import { SettingsModal } from "./layers/SettingsModal";
 import { SpawnTimer } from "./layers/SpawnTimer";
 import { TeamStats } from "./layers/TeamStats";
+import { TutorialPanel } from "./layers/TutorialPanel";
 import { UnitDisplay } from "./layers/UnitDisplay";
 import { WinModal } from "./layers/WinModal";
 import { loadAllSprites } from "./SpriteLoader";
@@ -110,6 +111,17 @@ export function createRenderer(
   }
   gameLeftSidebar.game = game;
   gameLeftSidebar.eventBus = eventBus;
+
+  const tutorialPanel = document.querySelector(
+    "tutorial-panel",
+  ) as TutorialPanel;
+  if (!(tutorialPanel instanceof TutorialPanel)) {
+    console.error("tutorial panel not found");
+  }
+  tutorialPanel.game = game;
+  tutorialPanel.eventBus = eventBus;
+  tutorialPanel.userSettings = userSettings;
+  tutorialPanel.uiState = uiState;
 
   const teamStats = document.querySelector("team-stats") as TeamStats;
   if (!teamStats || !(teamStats instanceof TeamStats)) {
@@ -394,6 +406,7 @@ export function createRenderer(
     settingsModal,
     graphicsSettingsModal,
     teamStats,
+    tutorialPanel,
     playerPanel,
     headsUpMessage,
     multiTabModal,

@@ -46,6 +46,7 @@ import { initNavigation } from "./Navigation";
 import "./NewsModal";
 import "./PatternInput";
 import "./SinglePlayerModal";
+import { SinglePlayerModal } from "./SinglePlayerModal";
 import { StoreModal } from "./Store";
 import "./TerritoryPatternsModal";
 import { TerritoryPatternsModal } from "./TerritoryPatternsModal";
@@ -360,6 +361,15 @@ class Client {
       }
     });
 
+    // Tutorial entry points (play-page card, help page): back to the play page
+    // if needed (so a username problem is visible), then a default solo game
+    // with the guide on.
+    document.addEventListener("start-tutorial", () => {
+      if (this.usernameInput && !this.usernameInput.canPlay()) return;
+      void (
+        document.querySelector("single-player-modal") as SinglePlayerModal
+      )?.startTutorial();
+    });
     document.addEventListener("join-lobby", this.handleJoinLobby.bind(this));
     document.addEventListener("leave-lobby", this.handleLeaveLobby.bind(this));
     document.addEventListener("kick-player", this.handleKickPlayer.bind(this));

@@ -17,6 +17,7 @@ import {
 } from "../core/game/Game";
 import { OilDepositAmount } from "../core/game/OilDeposits";
 import { renderableMapSize } from "../core/game/TerrainMapLoader";
+import { UserSettings } from "../core/game/UserSettings";
 import { TeamCountConfig } from "../core/Schemas";
 import { generateID } from "../core/Util";
 import { hasLinkedAccount } from "./Api";
@@ -50,6 +51,16 @@ import {
 } from "./utilities/GameConfigHelpers";
 
 import { terrainMapFileLoader } from "./TerrainMapFileLoader";
+
+/**
+ * The guided run is a real game, not a sandbox — but a beginner reading a step
+ * should not lose the map while they read it. Fewer neighbours than a normal
+ * solo game, the gentlest difficulty, and a spawn immunity long enough to get
+ * through the early steps (the default is five seconds, which is nothing when
+ * you are still finding the build menu).
+ */
+const TUTORIAL_BOTS = 100;
+const TUTORIAL_IMMUNITY_TICKS = 5 * 60 * 10; // 5 minutes
 
 const DEFAULT_OPTIONS = {
   selectedMap: GameMapType.World,
@@ -131,6 +142,8 @@ export class SinglePlayerModal extends BaseModal {
   @state() private selectedDifficulty: Difficulty =
     DEFAULT_OPTIONS.selectedDifficulty;
   @state() private gameStyle: GameStyle = DEFAULT_OPTIONS.gameStyle;
+  /** Set only by startTutorial(); relaxes the game for a first run. */
+  private tutorialRun = false;
   @state() private nations: number = 0;
   @state() private defaultNationCount: number = 0;
   @state() private bots: number = DEFAULT_OPTIONS.bots;
@@ -660,6 +673,7 @@ export class SinglePlayerModal extends BaseModal {
   }
 
   protected onClose(): void {
+    this.tutorialRun = false;
     // Reset all transient form state to ensure clean slate
     this.selectedMap = DEFAULT_OPTIONS.selectedMap;
     this.selectedCustomMapId = null;
@@ -990,6 +1004,23 @@ export class SinglePlayerModal extends BaseModal {
     }
   }
 
+  /**
+   * Start a solo game on default settings without opening the modal, with the
+   * in-game guide switched back on and the safety rails above applied. Used by
+   * the Tutorial entry on the home screen.
+   */
+  public async startTutorial(): Promise<void> {
+    this.onClose();
+    // A nation count of 0 means "nations disabled"; wait for the real one, or
+    // the tutorial's alliance step has nobody to point at.
+    await this.loadNationCount();
+    new UserSettings().setTutorialDismissed(false);
+    this.tutorialRun = true;
+    this.bots = TUTORIAL_BOTS;
+    this.selectedDifficulty = Difficulty.Easy;
+    await this.startGame();
+  }
+
   private async startGame() {
     // Validate and clamp maxTimer setting before starting
     let finalMaxTimerValue: number | undefined = undefined;
@@ -1061,6 +1092,9 @@ export class SinglePlayerModal extends BaseModal {
               playerTeams: this.teamCount,
               difficulty: this.selectedDifficulty,
               gameStyle: this.gameStyle,
+              spawnImmunityDuration: this.tutorialRun
+                ? TUTORIAL_IMMUNITY_TICKS
+                : null,
               maxTimerValue: finalMaxTimerValue,
               bots: this.bots,
               infiniteGold: this.infiniteGold,

@@ -165,6 +165,12 @@ export class TutorialModal extends BaseModal {
     return chapter.sections.filter((s) => !s.closedFrontsOnly);
   }
 
+  /** Close the reader and drop straight into the guided game. */
+  private startGuidedRun() {
+    this.close();
+    document.dispatchEvent(new CustomEvent("start-tutorial"));
+  }
+
   private select(index: number) {
     this.current = Math.min(Math.max(index, 0), this.chapters.length - 1);
     // Jump the reading pane back to the top; without this, picking a later
@@ -246,6 +252,24 @@ export class TutorialModal extends BaseModal {
     const isLast = this.current === chapters.length - 1;
 
     return html`
+      <div class="px-4 pt-3">
+        <!-- The point of the tutorial: play it, don't read it. Reading stays
+             available underneath for anyone who wants the detail. -->
+        <button
+          class="w-full text-left p-4 rounded-xl bg-cyber-yellow hover:bg-yellow-300 active:bg-cyber-yellow/80 transition-colors cursor-pointer"
+          @click=${() => this.startGuidedRun()}
+        >
+          <span class="block font-bold uppercase tracking-wider text-gray-900">
+            ${translateText("tutorial_guide.start_run")}
+          </span>
+          <span class="block mt-1 text-xs text-gray-900/80">
+            ${translateText("tutorial_guide.start_run_desc")}
+          </span>
+        </button>
+        <p class="mt-2 text-xs text-white/40">
+          ${translateText("tutorial_guide.reference_hint")}
+        </p>
+      </div>
       <div class="flex flex-col lg:flex-row gap-4 px-4 py-3 h-full min-h-0">
         <!-- Chapter list: a scrolling strip on phones, a sidebar from lg up -->
         <nav
