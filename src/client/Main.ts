@@ -56,6 +56,7 @@ import {
   SendToggleGameStartTimer,
   SendUpdateGameConfigIntentEvent,
 } from "./Transport";
+import "./TutorialModal";
 import { UserSettingModal } from "./UserSettingModal";
 import "./UsernameInput";
 import { genAnonUsername, UsernameInput } from "./UsernameInput";
@@ -292,6 +293,10 @@ class Client {
     modalRouter.register("account", {
       tag: "account-modal",
       pageId: "page-account",
+    });
+    modalRouter.register("tutorial", {
+      tag: "tutorial-modal",
+      pageId: "page-tutorial",
     });
     modalRouter.register("help", { tag: "help-modal", pageId: "page-help" });
     modalRouter.register("language", {
@@ -819,6 +824,7 @@ class Client {
       console.log("joining lobby, stopping existing game");
       this.lobbyHandle.stop(true);
       document.body.classList.remove("in-game");
+      this.closeInGameOverlays();
     }
     if (lobby.source === "public") {
       this.joinModal?.open({
@@ -876,6 +882,7 @@ class Client {
         "game-starting-modal",
         "game-top-bar",
         "help-modal",
+        "tutorial-modal",
         "user-setting",
         "troubleshooting-modal",
         "territory-patterns-modal",
@@ -964,6 +971,58 @@ class Client {
     }
   }
 
+  /**
+   * Shut every in-game overlay that can still be open when a game ends.
+   *
+   * The menu side of this already exists: entering a game closes the home
+   * modals (see the list in the prestart handler). Leaving one had no such
+   * pass, so anything the player happened to have open — the build menu above
+   * all — stayed on screen once the main menu came back, sitting on top of it.
+   *
+   * The overlays don't share a base class, so try the close method each of
+   * them happens to expose; an element without one (or not on the page at
+   * all) is simply skipped.
+   */
+  private closeInGameOverlays() {
+    const closeMethods = [
+      "hideMenu",
+      "hideTable",
+      "closeModal",
+      "close",
+      "hide",
+    ];
+    [
+      "build-menu",
+      "emoji-table",
+      "chat-modal",
+      "player-panel",
+      "player-info-overlay",
+      "player-moderation-modal",
+      "send-resource-modal",
+      "win-modal",
+      "settings-modal",
+      "graphics-settings-modal",
+      "game-info-modal",
+      "replay-panel",
+      "mobile-build-controls",
+    ].forEach((tag) => {
+      const el = document.querySelector(tag) as
+        | (HTMLElement & Record<string, unknown>)
+        | null;
+      if (el === null) return;
+      for (const method of closeMethods) {
+        if (typeof el[method] === "function") {
+          try {
+            (el[method] as () => void).call(el);
+          } catch (e) {
+            console.warn(`failed to close ${tag}:`, e);
+          }
+          return;
+        }
+      }
+    });
+  }
+
   private async handleLeaveLobby(event?: CustomEvent) {
     if (this.lobbyHandle === null) {
       return;
@@ -980,6 +1039,7 @@ class Client {
     }
 
     document.body.classList.remove("in-game");
+    this.closeInGameOverlays();
 
     if (this.joinModal.isOpen()) {
       this.joinModal.close();
