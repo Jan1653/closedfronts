@@ -27,6 +27,9 @@ const FREQUENCY_EXEMPTIONS: Set<GameMapName> = new Set([
   "Tourney4",
   "EuropeClassic",
   "BritanniaClassic",
+  // Upstream took these two out of the public rotation (frequency 0).
+  "ChoppingBlock",
+  "Luna",
 ]);
 
 // Keys in the en.json "map" section that are UI strings, not map names.
