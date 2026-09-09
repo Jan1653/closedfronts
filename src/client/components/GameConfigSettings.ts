@@ -107,19 +107,19 @@ function renderSection(
 }
 
 const unitOptions: { type: UnitType; translationKey: string }[] = [
+  // Grouped the way players think about them — buildings, then everything that
+  // floats, then the bombs. The list grew by appending, which buried the boats
+  // behind every structure and made them look like they were missing.
   { type: UnitType.City, translationKey: "unit_type.city" },
-  { type: UnitType.DefensePost, translationKey: "unit_type.defense_post" },
-  { type: UnitType.Port, translationKey: "unit_type.port" },
-  { type: UnitType.Warship, translationKey: "unit_type.warship" },
-  { type: UnitType.TransportShip, translationKey: "unit_type.boat" },
-  { type: UnitType.MissileSilo, translationKey: "unit_type.missile_silo" },
-  { type: UnitType.SAMLauncher, translationKey: "unit_type.sam_launcher" },
-  { type: UnitType.AtomBomb, translationKey: "unit_type.atom_bomb" },
-  { type: UnitType.HydrogenBomb, translationKey: "unit_type.hydrogen_bomb" },
-  { type: UnitType.MIRV, translationKey: "unit_type.mirv" },
   { type: UnitType.Factory, translationKey: "unit_type.factory" },
+  { type: UnitType.Port, translationKey: "unit_type.port" },
+  { type: UnitType.Mine, translationKey: "unit_type.mine" },
   { type: UnitType.OilPump, translationKey: "unit_type.oil_pump" },
+  { type: UnitType.OilStorage, translationKey: "unit_type.oil_storage" },
+  { type: UnitType.DefensePost, translationKey: "unit_type.defense_post" },
   { type: UnitType.Wall, translationKey: "unit_type.wall" },
+  { type: UnitType.SAMLauncher, translationKey: "unit_type.sam_launcher" },
+  { type: UnitType.MissileSilo, translationKey: "unit_type.missile_silo" },
   {
     type: UnitType.WaterTollStation,
     translationKey: "unit_type.water_toll_station",
@@ -129,6 +129,9 @@ const unitOptions: { type: UnitType; translationKey: string }[] = [
     translationKey: "unit_type.emergency_station",
   },
   { type: UnitType.Lighthouse, translationKey: "unit_type.lighthouse" },
+
+  { type: UnitType.TransportShip, translationKey: "unit_type.boat" },
+  { type: UnitType.Warship, translationKey: "unit_type.warship" },
   { type: UnitType.FishingBoat, translationKey: "unit_type.fishing_boat" },
   { type: UnitType.PatrolBoat, translationKey: "unit_type.patrol_boat" },
   { type: UnitType.Submarine, translationKey: "unit_type.submarine" },
@@ -136,6 +139,11 @@ const unitOptions: { type: UnitType; translationKey: string }[] = [
     type: UnitType.AtomicSubmarine,
     translationKey: "unit_type.atomic_submarine",
   },
+
+  { type: UnitType.AtomBomb, translationKey: "unit_type.atom_bomb" },
+  { type: UnitType.HydrogenBomb, translationKey: "unit_type.hydrogen_bomb" },
+  { type: UnitType.ElectricBomb, translationKey: "unit_type.electric_bomb" },
+  { type: UnitType.MIRV, translationKey: "unit_type.mirv" },
 ];
 
 const MAP_ICON = svg`<path
