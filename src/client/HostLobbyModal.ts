@@ -1531,6 +1531,9 @@ export class HostLobbyModal extends BaseModal {
         detail: {
           config: {
             gameMap: this.selectedMap,
+            // Always sent (never undefined) so switching from Random back to a
+            // named map clears it on the server instead of leaving it stale.
+            randomMap: this.useRandomMap,
             // Send the hand-drawn map (or null to clear it — never undefined,
             // which JSON.stringify would drop, leaving a stale map on the host).
             customMap: this.selectedCustomMap

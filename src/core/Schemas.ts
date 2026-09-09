@@ -323,6 +323,11 @@ export const DoomsdayClockConfigSchema = z.object({
 
 export const GameConfigSchema = z.object({
   gameMap: z.enum(GameMapType),
+  // The host picked "Random" rather than this specific map: `gameMap` holds
+  // the roll's result, this remembers how it was chosen. Only the lobby
+  // preview cares — it must show what was picked, not what came up, or the
+  // Discord embed spoils a map the host chose to leave to chance.
+  randomMap: z.boolean().optional(),
   // Hand-drawn map payload. When present, the terrain is compiled from this
   // paint grid instead of loading `gameMap` from the CDN — works in
   // singleplayer and in private host lobbies (relayed to all clients). base64

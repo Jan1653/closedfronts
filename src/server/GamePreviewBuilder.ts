@@ -162,6 +162,12 @@ export async function buildPreview(
       countActivePlayers(players) || (lobby?.clients?.length ?? 0);
   }
   const map = lobby?.gameConfig?.gameMap ?? config.gameMap;
+  // The host left the map to chance. `map` holds what the roll produced, but
+  // the embed has to say what was CHOSEN — printing the rolled map would spoil
+  // it before anyone joins. Finished games show the real map: by then it is no
+  // secret, and "Random" would be useless in a result.
+  const isRandomMap = !isFinished && (lobby?.gameConfig?.randomMap ?? false);
+  const mapLabel = isRandomMap ? "Random" : map;
   let mode = lobby?.gameConfig?.gameMode ?? config.gameMode ?? GameMode.FFA;
   const playerTeams = lobby?.gameConfig?.playerTeams ?? config.playerTeams;
   const numericTeamCount =
@@ -194,11 +200,15 @@ export async function buildPreview(
   // Normalize map name to match filesystem (lowercase, no spaces or special chars)
   const normalizedMap = map ? map.toLowerCase().replace(/[\s.()]+/g, "") : null;
 
-  const mapThumbnail = normalizedMap
-    ? buildAbsoluteAssetUrl(
-        `maps/${encodeURIComponent(normalizedMap)}/thumbnail.webp`,
-      )
-    : null;
+  // Same reason as mapLabel: the map thumbnail would give away the roll that
+  // the title deliberately hides, so a random lobby gets the generic tile.
+  const mapThumbnail = isRandomMap
+    ? buildAbsoluteAssetUrl("images/RandomMap.webp")
+    : normalizedMap
+      ? buildAbsoluteAssetUrl(
+          `maps/${encodeURIComponent(normalizedMap)}/thumbnail.webp`,
+        )
+      : null;
   const image =
     mapThumbnail ?? buildAbsoluteAssetUrl("images/GameplayScreenshot.png");
 
@@ -207,8 +217,8 @@ export async function buildPreview(
 
   const title = isFinished
     ? `${mode ?? "Game"} on ${map ?? "Unknown Map"}${gameTypeLabel}`
-    : mode && map
-      ? `${mode} on ${map}${gameTypeLabel}`
+    : mode && mapLabel
+      ? `${mode} on ${mapLabel}${gameTypeLabel}`
       : "OpenFront Game";
 
   let description: string;
