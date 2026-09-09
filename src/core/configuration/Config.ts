@@ -1259,8 +1259,11 @@ export class Config {
   }
 
   // Average pause between one disaster ending and the next being announced.
+  // Deliberately long: a disaster should be an event you remember, not weather
+  // you plan around. At ~4.5 minutes they were landing often enough to feel
+  // like a tax on building anything.
   disasterIntervalTicks(): Tick {
-    return 2700; // ~4.5 minutes
+    return 7200; // ~12 minutes
   }
 
   disasterDurationTicks(type: NaturalDisasterType): Tick {

@@ -2010,7 +2010,16 @@
     "unknown": "Unbekannt",
     "yes": "Ja"
   },
-  "tutorial": {
+  "game_style": {
+    "closedfronts": "ClosedFronts",
+    "closedfronts_desc": "Das volle Spiel: Öl, Bergbau und Schienenfracht, U-Boote und Patrouillenboote, Mauern, Leuchttürme, Zollstationen, die Elektrobombe und Naturkatastrophen.",
+    "only_closedfronts": "Nur ClosedFronts",
+    "openfront": "OpenFront-Stil",
+    "openfront_desc": "Das ursprüngliche Regelwerk. Keine der Einheiten dieses Forks, kein Öl, kein Bergbau, keine Katastrophen — Nachjoinen, Aufholen und sämtliche Lobby-Optionen bleiben aber genau so, wie sie sind.",
+    "title": "Spielstil",
+    "tutorial_hint": "Kapitel mit diesem Symbol behandeln Features, die im OpenFront-Stil wegfallen."
+  },
+  "tutorial_guide": {
     "ch_basics_expand_b": "Klicke auf neutrales Land neben deiner Grenze, um es anzugreifen. Graues, herrenloses Land ist der billigste Boden, den du je bekommst — nimm ihn also früh und gierig. Jedes Feld erhöht sowohl dein Truppenwachstum als auch dein Einkommen.",
     "ch_basics_expand_h": "Erstes Land nehmen",
     "ch_basics_lead": "ClosedFronts ist ein Echtzeit-Strategiespiel um Territorium. Du startest mit einem einzigen Punkt auf der Karte und versuchst, am Ende so viel davon wie möglich zu halten.",
@@ -2133,14 +2142,5 @@
     "ch_nukes_electric_b": "Zerstört überhaupt nichts — sie deaktiviert stattdessen jedes Gebäude im Wirkungsbereich. Ideal unmittelbar vor einem Sturmangriff oder um eine Reihe SAM-Werfer abzuschalten, damit die echten Sprengköpfe durchkommen.",
     "ch_controls_resourcemaps_h": "Öl- und Rohstoffkarte",
     "ch_controls_resourcemaps_b": "Zwei Ansichten lohnen sich: Die Ölkarte zeigt Vorkommen (dunkler ist ergiebiger), die Rohstoffkarte zeigt Kohle grau, Kupfer orange und Diamant blau. Schau in einer langen Partie später noch einmal auf die Rohstoffkarte — Kupfer und Diamant tauchen an neuen Stellen auf."
-  },
-  "game_style": {
-    "closedfronts": "ClosedFronts",
-    "closedfronts_desc": "Das volle Spiel: Öl, Bergbau und Schienenfracht, U-Boote und Patrouillenboote, Mauern, Leuchttürme, Zollstationen, die Elektrobombe und Naturkatastrophen.",
-    "only_closedfronts": "Nur ClosedFronts",
-    "openfront": "OpenFront-Stil",
-    "openfront_desc": "Das ursprüngliche Regelwerk. Keine der Einheiten dieses Forks, kein Öl, kein Bergbau, keine Katastrophen — Nachjoinen, Aufholen und sämtliche Lobby-Optionen bleiben aber genau so, wie sie sind.",
-    "title": "Spielstil",
-    "tutorial_hint": "Kapitel mit diesem Symbol behandeln Features, die im OpenFront-Stil wegfallen."
   }
 }

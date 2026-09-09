@@ -185,7 +185,7 @@ export class TutorialModal extends BaseModal {
 
   protected renderHeaderSlot() {
     return modalHeader({
-      title: translateText("tutorial.title"),
+      title: translateText("tutorial_guide.title"),
       onBack: () => this.close(),
       ariaLabel: translateText("common.back"),
     });
@@ -227,7 +227,7 @@ export class TutorialModal extends BaseModal {
       <span
         class="text-sm font-semibold whitespace-nowrap lg:whitespace-normal"
       >
-        ${translateText(`tutorial.ch_${chapter.id}_title`)}
+        ${translateText(`tutorial_guide.ch_${chapter.id}_title`)}
       </span>
       ${chapter.closedFrontsOnly && this.viewStyle === GameStyle.ClosedFronts
         ? html`<span
@@ -250,13 +250,13 @@ export class TutorialModal extends BaseModal {
         <!-- Chapter list: a scrolling strip on phones, a sidebar from lg up -->
         <nav
           class="shrink-0 lg:w-60 flex flex-col gap-2 min-h-0"
-          aria-label=${translateText("tutorial.chapters")}
+          aria-label=${translateText("tutorial_guide.chapters")}
         >
           <div class="hidden lg:block">${this.renderStyleSwitch()}</div>
           <p
             class="hidden lg:block text-xs uppercase tracking-widest text-white/40 px-1 pt-1"
           >
-            ${translateText("tutorial.chapters")}
+            ${translateText("tutorial_guide.chapters")}
           </p>
           <div
             class="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-y-auto lg:overflow-x-hidden pb-1 custom-scrollbar"
@@ -273,17 +273,17 @@ export class TutorialModal extends BaseModal {
         >
           <header class="border-b border-white/10 pb-3 mb-4">
             <p class="text-xs uppercase tracking-widest text-malibu-blue/80">
-              ${translateText("tutorial.progress", {
+              ${translateText("tutorial_guide.progress", {
                 current: String(this.current + 1),
                 total: String(chapters.length),
               })}
             </p>
             <h2 class="text-2xl font-bold text-white mt-1">
               <span aria-hidden="true" class="mr-2">${chapter.icon}</span>
-              ${translateText(`tutorial.ch_${chapter.id}_title`)}
+              ${translateText(`tutorial_guide.ch_${chapter.id}_title`)}
             </h2>
             <p class="text-white/70 mt-2 leading-relaxed">
-              ${translateText(`tutorial.ch_${chapter.id}_lead`)}
+              ${translateText(`tutorial_guide.ch_${chapter.id}_lead`)}
             </p>
           </header>
 
@@ -293,12 +293,12 @@ export class TutorialModal extends BaseModal {
                 <section>
                   <h3 class="text-base font-semibold text-blue-100">
                     ${translateText(
-                      `tutorial.ch_${chapter.id}_${section.id}_h`,
+                      `tutorial_guide.ch_${chapter.id}_${section.id}_h`,
                     )}
                   </h3>
                   <p class="text-sm text-white/70 leading-relaxed mt-1">
                     ${translateText(
-                      `tutorial.ch_${chapter.id}_${section.id}_b`,
+                      `tutorial_guide.ch_${chapter.id}_${section.id}_b`,
                     )}
                   </p>
                 </section>
@@ -310,7 +310,7 @@ export class TutorialModal extends BaseModal {
             ? html`<div
                 class="mt-6 text-xs text-white/40 border-t border-white/10 pt-3 space-y-1"
               >
-                <p>${translateText("tutorial.more_help")}</p>
+                <p>${translateText("tutorial_guide.more_help")}</p>
                 ${this.viewStyle === GameStyle.ClosedFronts
                   ? html`<p>
                       <span aria-hidden="true" class="text-amber-300/70"
@@ -330,14 +330,14 @@ export class TutorialModal extends BaseModal {
               ?disabled=${isFirst}
               @click=${() => this.select(this.current - 1)}
             >
-              ${translateText("tutorial.prev")}
+              ${translateText("tutorial_guide.prev")}
             </button>
             <button
               class="px-4 py-2 rounded-lg bg-malibu-blue/20 border border-malibu-blue/50 text-sm font-semibold text-white enabled:hover:bg-malibu-blue/30 enabled:cursor-pointer disabled:opacity-30"
               ?disabled=${isLast}
               @click=${() => this.select(this.current + 1)}
             >
-              ${translateText("tutorial.next")}
+              ${translateText("tutorial_guide.next")}
             </button>
           </div>
         </div>
