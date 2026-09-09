@@ -1,4 +1,4 @@
-import { LitElement, html } from "lit";
+import { LitElement, html, nothing } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { keyed } from "lit/directives/keyed.js";
 import { assetUrl } from "../../../core/AssetUrls";
@@ -542,6 +542,10 @@ export class ControlPanel extends LitElement implements Controller {
   // Oil bar — mirrors the troop bar (single sky-blue fill = oil/maxOil), and
   // doubles as the oil-deposit map toggle (same click behaviour as before).
   private renderDesktopOilBar() {
+    // A game without an oil economy has no bar to show — the whole readout
+    // would sit there permanently empty.
+    if (!this.game?.config().oilEconomy()) return nothing;
+
     const fill = this.oilFillPercent();
     const empty = this.isOutOfOil();
     return html`
@@ -606,6 +610,10 @@ export class ControlPanel extends LitElement implements Controller {
   }
 
   private renderMobileOilBar() {
+    // A game without an oil economy has no bar to show — the whole readout
+    // would sit there permanently empty.
+    if (!this.game?.config().oilEconomy()) return nothing;
+
     const fill = this.oilFillPercent();
     const empty = this.isOutOfOil();
     return html`

@@ -2036,7 +2036,7 @@
     "ch_controls_fleet_b": "Halte Shift und ziehe einen Auswahlrahmen über mehrere Kriegsschiffe, oder nimm die Alles-auswählen-Taste für die gesamte Marine. Eine Flotte geschlossen zu bewegen ist der Unterschied zwischen einer Blockade und ein paar verstreuten Einzelschiffen.",
     "ch_controls_fleet_h": "Eine Flotte führen",
     "ch_controls_lead": "Eine Handvoll Gewohnheiten, die ein angenehmes von einem frustrierenden Spiel trennen. Alle Tasten lassen sich in den Einstellungen neu belegen.",
-    "ch_controls_overlays_b": "Drei Ansichten lohnen sich: die Ölkarte für Vorkommen, die Rohstoffkarte für Kohle, Kupfer und Diamant und das Koordinatengitter, um Positionen durchzugeben. Dazu gibt es eine Alternativansicht, die zwischen Gelände- und Länderfarben wechselt — praktisch, um zu sehen, wer wirklich an dich grenzt.",
+    "ch_controls_overlays_b": "Das Koordinatengitter hilft, Positionen an Verbündete durchzugeben. Dazu gibt es eine Alternativansicht, die zwischen Gelände- und Länderfarben wechselt — praktisch, um zu sehen, wer wirklich an dich grenzt.",
     "ch_controls_overlays_h": "Karten-Overlays",
     "ch_controls_quantity_b": "Halte Tab bei aktiver Bauvorschau und scrolle, um die Anzahl festzulegen — bei stapelbaren Gebäuden heißt das direkt hochstufen, bei Schiffen und Bomben eine ganze Salve auf einmal. Außerdem gibt es eine Taste, die das nächstgelegene Gebäude aufwertet, ohne ein Menü zu öffnen.",
     "ch_controls_quantity_h": "Mehrere auf einmal bauen",
@@ -2103,7 +2103,7 @@
     "ch_navy_transport_h": "Transportboote",
     "ch_navy_warship_b": "Patrouillieren ein Gebiet, kapern feindliche Handelsschiffe und zerstören deren Boote und Kriegsschiffe. Es gibt vier Rümpfe: klein ist leicht und billig, der Standard ist das Arbeitspferd, groß trifft härter und steckt mehr ein, und der Ultra ist eine schwimmende Festung, die sogar ein Landfeld einnehmen kann. Handelsschiffe zu kapern schadet der Wirtschaft eines Gegners so sehr wie Landverlust.",
     "ch_navy_warship_h": "Kriegsschiffe",
-    "ch_nukes_bombs_b": "Die Atombombe ist eine kleine Detonation, die Territorium, Gebäude und Schiffe zerstört. Die Wasserstoffbombe ist dasselbe mit weit größerem Radius. Die Elektrobombe fällt aus der Reihe: Sie zerstört nichts, sondern deaktiviert jedes Gebäude im Wirkungsbereich — ideal direkt vor einem Sturmangriff oder um eine Reihe SAMs abzuschalten.",
+    "ch_nukes_bombs_b": "Die Atombombe ist eine kleine Detonation, die Territorium, Gebäude und Schiffe zerstört. Die Wasserstoffbombe ist dasselbe mit weit größerem Radius. Beide hinterlassen einen Krater, der den Besitzer den Boden selbst kostet, nicht nur das, was darauf stand.",
     "ch_nukes_bombs_h": "Die drei Bomben",
     "ch_nukes_defend_b": "SAM-Werfer sind die einzige echte Antwort, und wegen ihrer Nachladezeit brauchen sie Masse. Auch verteilt zu bauen hilft: Eine einzelne Wasserstoffbombe sollte nie deine gesamte Industrie auslöschen können.",
     "ch_nukes_defend_h": "Einen Schlag überleben",
@@ -2128,6 +2128,19 @@
     "prev": "Zurück",
     "progress": "Kapitel {current} von {total}",
     "subtitle": "Alles, was das Spiel kann — der Reihe nach erklärt",
-    "title": "Tutorial"
+    "title": "Tutorial",
+    "ch_nukes_electric_h": "Elektrobombe",
+    "ch_nukes_electric_b": "Zerstört überhaupt nichts — sie deaktiviert stattdessen jedes Gebäude im Wirkungsbereich. Ideal unmittelbar vor einem Sturmangriff oder um eine Reihe SAM-Werfer abzuschalten, damit die echten Sprengköpfe durchkommen.",
+    "ch_controls_resourcemaps_h": "Öl- und Rohstoffkarte",
+    "ch_controls_resourcemaps_b": "Zwei Ansichten lohnen sich: Die Ölkarte zeigt Vorkommen (dunkler ist ergiebiger), die Rohstoffkarte zeigt Kohle grau, Kupfer orange und Diamant blau. Schau in einer langen Partie später noch einmal auf die Rohstoffkarte — Kupfer und Diamant tauchen an neuen Stellen auf."
+  },
+  "game_style": {
+    "closedfronts": "ClosedFronts",
+    "closedfronts_desc": "Das volle Spiel: Öl, Bergbau und Schienenfracht, U-Boote und Patrouillenboote, Mauern, Leuchttürme, Zollstationen, die Elektrobombe und Naturkatastrophen.",
+    "only_closedfronts": "Nur ClosedFronts",
+    "openfront": "OpenFront-Stil",
+    "openfront_desc": "Das ursprüngliche Regelwerk. Keine der Einheiten dieses Forks, kein Öl, kein Bergbau, keine Katastrophen — Nachjoinen, Aufholen und sämtliche Lobby-Optionen bleiben aber genau so, wie sie sind.",
+    "title": "Spielstil",
+    "tutorial_hint": "Kapitel mit diesem Symbol behandeln Features, die im OpenFront-Stil wegfallen."
   }
 }

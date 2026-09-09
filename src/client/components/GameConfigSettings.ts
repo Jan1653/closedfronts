@@ -16,6 +16,7 @@ import {
   Duos,
   GameMapType,
   GameMode,
+  GameStyle,
   HumansVsNations,
   Quads,
   Trios,
@@ -150,6 +151,10 @@ const MAP_ICON = svg`<path
   d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32L19.513 8.2z"
 />`;
 
+const STYLE_ICON = svg`<path
+  d="M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.994 15.994 0 011.622-3.395m3.42 3.42a15.995 15.995 0 004.764-4.648l3.876-5.814a1.151 1.151 0 00-1.597-1.597L14.146 6.32a15.996 15.996 0 00-4.649 4.763m3.42 3.42a6.776 6.776 0 00-3.42-3.42"
+/>`;
+
 const DIFFICULTY_ICON = svg`<path
   fill-rule="evenodd"
   d="M12.97 3.97a.75.75 0 011.06 0l7.5 7.5a.75.75 0 010 1.06l-7.5 7.5a.75.75 0 11-1.06-1.06l6.22-6.22H3a.75.75 0 010-1.5h16.19l-6.22-6.22a.75.75 0 010-1.06z"
@@ -222,6 +227,9 @@ export interface GameConfigSettingsData {
     randomMapDivider?: boolean;
     showMedals?: boolean;
     mapWins?: Map<GameMapType, Set<Difficulty>>;
+  };
+  gameStyle: {
+    selected: GameStyle;
   };
   difficulty: {
     selected: Difficulty;
@@ -297,6 +305,10 @@ export class GameConfigSettings extends LitElement {
 
   private handleSelectRandom = () => {
     this.emit("random-map-selected", {});
+  };
+
+  private handleGameStyleSelect = (gameStyle: GameStyle) => {
+    this.emit("game-style-selected", { gameStyle });
   };
 
   private handleDifficultySelect = (difficulty: Difficulty) => {
@@ -476,6 +488,39 @@ export class GameConfigSettings extends LitElement {
           ></map-picker>`,
           undefined,
           this.renderMapSearchInput(),
+        )}
+        ${renderSection(
+          STYLE_ICON,
+          "text-amber-400",
+          "bg-amber-500/20",
+          "game_style.title",
+          html`
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              ${[GameStyle.ClosedFronts, GameStyle.OpenFront].map((style) => {
+                const isSelected = settings.gameStyle.selected === style;
+                const key =
+                  style === GameStyle.OpenFront ? "openfront" : "closedfronts";
+                return html`
+                  <button
+                    class="${cardClass(isSelected, "p-4 text-left")}"
+                    aria-pressed=${isSelected}
+                    @click=${() => this.handleGameStyleSelect(style)}
+                  >
+                    <span
+                      class="block font-bold uppercase tracking-wider ${stateTextClass(
+                        isSelected,
+                      )}"
+                    >
+                      ${translateText(`game_style.${key}`)}
+                    </span>
+                    <span class="block mt-1 text-xs text-white/60 normal-case">
+                      ${translateText(`game_style.${key}_desc`)}
+                    </span>
+                  </button>
+                `;
+              })}
+            </div>
+          `,
         )}
         ${renderSection(
           DIFFICULTY_ICON,

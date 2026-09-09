@@ -152,6 +152,20 @@ export {
   type MapInfo,
 } from "./Maps.gen";
 
+/**
+ * Which ruleset a game runs.
+ *
+ * `OpenFront` strips this fork's own gameplay back out — the units below, the
+ * oil and mining economies, natural disasters and the warship hull classes —
+ * so a lobby can play the game the upstream way. Everything that is not part
+ * of the game itself stays on regardless: joining late, catching up, custom
+ * maps, team assignment, the lobby options.
+ */
+export enum GameStyle {
+  ClosedFronts = "ClosedFronts",
+  OpenFront = "OpenFront",
+}
+
 export enum GameType {
   Singleplayer = "Singleplayer",
   Public = "Public",
@@ -356,6 +370,25 @@ export const Structures = unitTypeGroup([
   UnitType.Lighthouse,
   UnitType.Mine,
 ] as const);
+
+/**
+ * The unit types this fork added. `GameStyle.OpenFront` disables every one of
+ * them; upstream has no such thing as a submarine, a wall or an oil pump.
+ */
+export const CLOSEDFRONTS_ONLY_UNITS: readonly UnitType[] = [
+  UnitType.AtomicSubmarine,
+  UnitType.ElectricBomb,
+  UnitType.EmergencyStation,
+  UnitType.FishingBoat,
+  UnitType.Lighthouse,
+  UnitType.Mine,
+  UnitType.OilPump,
+  UnitType.OilStorage,
+  UnitType.PatrolBoat,
+  UnitType.Submarine,
+  UnitType.Wall,
+  UnitType.WaterTollStation,
+] as const;
 
 export const BuildMenus = unitTypeGroup([
   ...Structures.types,

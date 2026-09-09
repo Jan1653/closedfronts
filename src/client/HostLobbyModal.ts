@@ -17,6 +17,7 @@ import {
   GameMapSize,
   GameMapType,
   GameMode,
+  GameStyle,
   NaturalDisasterType,
   UnitType,
 } from "../core/game/Game";
@@ -70,6 +71,7 @@ export class HostLobbyModal extends BaseModal {
   @state() private customMaps: CustomMap[] = [];
   @state() private selectedCustomMapId: string | null = null;
   @state() private selectedDifficulty: Difficulty = Difficulty.Easy;
+  @state() private gameStyle: GameStyle = GameStyle.ClosedFronts;
   @state() private nations: number = 0;
   @state() private defaultNationCount: number = 0;
   @state() private gameMode: GameMode = GameMode.FFA;
@@ -587,6 +589,7 @@ export class HostLobbyModal extends BaseModal {
                 useRandom: this.useRandomMap,
                 randomMapDivider: true,
               },
+              gameStyle: { selected: this.gameStyle },
               difficulty: {
                 selected: this.selectedDifficulty,
                 disabled: this.nations === 0,
@@ -734,6 +737,7 @@ export class HostLobbyModal extends BaseModal {
             }}
             @map-selected=${this.handleConfigMapSelected}
             @random-map-selected=${this.handleConfigRandomMapSelected}
+            @game-style-selected=${this.handleConfigGameStyleSelected}
             @difficulty-selected=${this.handleConfigDifficultySelected}
             @doomsday-clock-speed-selected=${this
               .handleConfigDoomsdayClockSpeedSelected}
@@ -928,6 +932,7 @@ export class HostLobbyModal extends BaseModal {
     this.selectedMap = GameMapType.World;
     this.selectedCustomMapId = null;
     this.selectedDifficulty = Difficulty.Easy;
+    this.gameStyle = GameStyle.ClosedFronts;
     this.nations = 0;
     this.defaultNationCount = 0;
     this.gameMode = GameMode.FFA;
@@ -1021,6 +1026,12 @@ export class HostLobbyModal extends BaseModal {
     this.selectedDifficulty = value;
     this.putGameConfig();
   }
+
+  private handleConfigGameStyleSelected = (e: Event) => {
+    const customEvent = e as CustomEvent<{ gameStyle: GameStyle }>;
+    this.gameStyle = customEvent.detail.gameStyle;
+    this.putGameConfig();
+  };
 
   private handleConfigDifficultySelected = (e: Event) => {
     const customEvent = e as CustomEvent<{ difficulty: Difficulty }>;
@@ -1548,6 +1559,7 @@ export class HostLobbyModal extends BaseModal {
               ? GameMapSize.Compact
               : GameMapSize.Normal,
             difficulty: this.selectedDifficulty,
+            gameStyle: this.gameStyle,
             bots: this.bots,
             infiniteGold: this.infiniteGold,
             donateGold: this.donateGold,

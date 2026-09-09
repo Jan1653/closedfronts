@@ -9,6 +9,7 @@ import {
   GameMapSize,
   GameMapType,
   GameMode,
+  GameStyle,
   GameType,
   maps,
   NaturalDisasterType,
@@ -53,6 +54,7 @@ import { terrainMapFileLoader } from "./TerrainMapFileLoader";
 const DEFAULT_OPTIONS = {
   selectedMap: GameMapType.World,
   selectedDifficulty: Difficulty.Easy,
+  gameStyle: GameStyle.ClosedFronts,
   bots: 400,
   infiniteGold: false,
   infiniteTroops: false,
@@ -128,6 +130,7 @@ export class SinglePlayerModal extends BaseModal {
   @state() private selectedCustomMapId: string | null = null;
   @state() private selectedDifficulty: Difficulty =
     DEFAULT_OPTIONS.selectedDifficulty;
+  @state() private gameStyle: GameStyle = DEFAULT_OPTIONS.gameStyle;
   @state() private nations: number = 0;
   @state() private defaultNationCount: number = 0;
   @state() private bots: number = DEFAULT_OPTIONS.bots;
@@ -496,6 +499,7 @@ export class SinglePlayerModal extends BaseModal {
                 showMedals: this.showAchievements,
                 mapWins: this.mapWins,
               },
+              gameStyle: { selected: this.gameStyle },
               difficulty: {
                 selected: this.selectedDifficulty,
                 disabled: this.nations === 0,
@@ -597,6 +601,7 @@ export class SinglePlayerModal extends BaseModal {
             }}
             @map-selected=${this.handleConfigMapSelected}
             @random-map-selected=${this.handleConfigRandomMapSelected}
+            @game-style-selected=${this.handleConfigGameStyleSelected}
             @difficulty-selected=${this.handleConfigDifficultySelected}
             @doomsday-clock-speed-selected=${this
               .handleConfigDoomsdayClockSpeedSelected}
@@ -659,6 +664,7 @@ export class SinglePlayerModal extends BaseModal {
     this.selectedMap = DEFAULT_OPTIONS.selectedMap;
     this.selectedCustomMapId = null;
     this.selectedDifficulty = DEFAULT_OPTIONS.selectedDifficulty;
+    this.gameStyle = DEFAULT_OPTIONS.gameStyle;
     this.gameMode = DEFAULT_OPTIONS.gameMode;
     this.useRandomMap = DEFAULT_OPTIONS.useRandomMap;
     this.bots = DEFAULT_OPTIONS.bots;
@@ -728,6 +734,11 @@ export class SinglePlayerModal extends BaseModal {
   private handleDifficultySelection(value: Difficulty) {
     this.selectedDifficulty = value;
   }
+
+  private handleConfigGameStyleSelected = (e: Event) => {
+    const customEvent = e as CustomEvent<{ gameStyle: GameStyle }>;
+    this.gameStyle = customEvent.detail.gameStyle;
+  };
 
   private handleConfigDifficultySelected = (e: Event) => {
     const customEvent = e as CustomEvent<{ difficulty: Difficulty }>;
@@ -1049,6 +1060,7 @@ export class SinglePlayerModal extends BaseModal {
               gameMode: this.gameMode,
               playerTeams: this.teamCount,
               difficulty: this.selectedDifficulty,
+              gameStyle: this.gameStyle,
               maxTimerValue: finalMaxTimerValue,
               bots: this.bots,
               infiniteGold: this.infiniteGold,

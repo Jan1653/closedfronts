@@ -1344,6 +1344,7 @@ export class PlayerImpl implements Player {
 
   updateOil(): void {
     const config = this.mg.config();
+    if (!config.oilEconomy()) return;
     // Each pump level produces a full pump's worth of oil, so stacking a pump
     // (levelling it up) makes it pump more. How much a pump is worth also
     // depends on the grade of the deposit it sits on (richer core = more oil).
@@ -1394,6 +1395,10 @@ export class PlayerImpl implements Player {
   }
 
   oilSpeedFactor(): number {
+    // In a game without oil there is no shortage to punish: everything runs at
+    // full speed rather than permanently starved of a resource that does not
+    // exist.
+    if (!this.mg.config().oilEconomy()) return 1;
     return this._oil > 0 ? 1 : this.mg.config().oilShortageSpeedFactor();
   }
 

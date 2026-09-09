@@ -14,6 +14,7 @@ import {
   GameMapSize,
   GameMapType,
   GameMode,
+  GameStyle,
   GameType,
   HumansVsNations,
   NaturalDisasterType,
@@ -323,6 +324,9 @@ export const DoomsdayClockConfigSchema = z.object({
 
 export const GameConfigSchema = z.object({
   gameMap: z.enum(GameMapType),
+  // Which ruleset to play. Absent = ClosedFronts, so older clients and saved
+  // lobbies keep the full feature set they were created with.
+  gameStyle: z.enum(GameStyle).optional(),
   // The host picked "Random" rather than this specific map: `gameMap` holds
   // the roll's result, this remembers how it was chosen. Only the lobby
   // preview cares — it must show what was picked, not what came up, or the

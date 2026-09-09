@@ -3,9 +3,11 @@ import { PlayerView } from "../../client/view";
 import { AssetManifest } from "../AssetUrls";
 import { DoomsdayClockSpeed } from "../game/DoomsdayClock";
 import {
+  CLOSEDFRONTS_ONLY_UNITS,
   Difficulty,
   Game,
   GameMode,
+  GameStyle,
   GameType,
   Gold,
   NaturalDisasterType,
@@ -288,7 +290,24 @@ export class Config {
     return this._gameConfig.nations !== "disabled";
   }
 
+  /**
+   * Which ruleset this game runs. Absent in older lobbies, which were all
+   * played the full-feature way.
+   */
+  gameStyle(): GameStyle {
+    return this._gameConfig.gameStyle ?? GameStyle.ClosedFronts;
+  }
+
+  /** True while playing the game the way upstream OpenFront does. */
+  isOpenFrontStyle(): boolean {
+    return this.gameStyle() === GameStyle.OpenFront;
+  }
+
   isUnitDisabled(unitType: UnitType): boolean {
+    // OpenFront style plays without anything this fork added.
+    if (this.isOpenFrontStyle() && CLOSEDFRONTS_ONLY_UNITS.includes(unitType)) {
+      return true;
+    }
     // Without the resource economy there is nothing to dig, so the mine drops
     // out of the build bar entirely rather than sitting there unbuildable.
     if (unitType === UnitType.Mine && !this.resourceEconomy()) return true;
@@ -1226,6 +1245,8 @@ export class Config {
 
   // Disaster types allowed in this game (host can disable each one).
   enabledNaturalDisasters(): NaturalDisasterType[] {
+    // Natural disasters are this fork's own; upstream has no weather.
+    if (this.isOpenFrontStyle()) return [];
     const disabled = this._gameConfig.disabledDisasters ?? [];
     return Object.values(NaturalDisasterType).filter(
       (t) => !disabled.includes(t),
@@ -1436,7 +1457,17 @@ export class Config {
    * dig up. Defaults to ON.
    */
   resourceEconomy(): boolean {
+    if (this.isOpenFrontStyle()) return false;
     return this._gameConfig.resourceEconomy ?? true;
+  }
+
+  /**
+   * Whether oil is part of this game at all. Off in OpenFront style, which
+   * takes the pumps with it — and, importantly, the shortage penalty too, or
+   * every ship and train would crawl for a resource nobody can produce.
+   */
+  oilEconomy(): boolean {
+    return !this.isOpenFrontStyle();
   }
 
   /**

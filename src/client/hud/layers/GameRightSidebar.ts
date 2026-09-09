@@ -278,16 +278,19 @@ export class GameRightSidebar extends LitElement implements Controller {
         <!-- Buttons -->
         ${this.maybeRenderReplayButtons()}
 
-        <!-- Oil-deposit map toggle (usable during spawn to pick a start) -->
-        <div
-          class="cursor-pointer rounded p-0.5 ${this._oilMapOn
-            ? "bg-sky-400/30 ring-1 ring-sky-300"
-            : ""}"
-          @click=${this.onOilMapButtonClick}
-          title=${translateText("control_panel.oil_map")}
-        >
-          <img src=${oilIcon} alt="oil map" width="20" height="20" />
-        </div>
+        <!-- Oil-deposit map toggle (usable during spawn to pick a start).
+             Hidden without an oil economy — there is nothing to mark. -->
+        ${this.game?.config().oilEconomy()
+          ? html`<div
+              class="cursor-pointer rounded p-0.5 ${this._oilMapOn
+                ? "bg-sky-400/30 ring-1 ring-sky-300"
+                : ""}"
+              @click=${this.onOilMapButtonClick}
+              title=${translateText("control_panel.oil_map")}
+            >
+              <img src=${oilIcon} alt="oil map" width="20" height="20" />
+            </div>`
+          : null}
 
         <!-- Mining map: coal / copper / diamond. Hidden when the host turned
              the resource economy off, since there would be nothing to show. -->

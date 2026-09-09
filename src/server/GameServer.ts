@@ -242,6 +242,9 @@ export class GameServer {
     if (gameConfig.randomMap !== undefined) {
       this.gameConfig.randomMap = gameConfig.randomMap;
     }
+    if (gameConfig.gameStyle !== undefined) {
+      this.gameConfig.gameStyle = gameConfig.gameStyle;
+    }
     if (gameConfig.gameMapSize !== undefined) {
       this.gameConfig.gameMapSize = gameConfig.gameMapSize;
     }
